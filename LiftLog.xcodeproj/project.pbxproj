@@ -6,8 +6,39 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		3B8906492FF595DF00E04640 /* exercises.json in Resources */ = {isa = PBXBuildFile; fileRef = 3B8906482FF595DF00E04640 /* exercises.json */; };
+		3BAE53492FF3A80100448B33 /* LiftLogWatchApp Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 3BAE533F2FF3A80000448B33 /* LiftLogWatchApp Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		3BAE53472FF3A80100448B33 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 3BAE53232FF3A7DB00448B33 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3BAE533E2FF3A80000448B33;
+			remoteInfo = "LiftLogWatchApp Watch App";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		3BAE534D2FF3A80100448B33 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				3BAE53492FF3A80100448B33 /* LiftLogWatchApp Watch App.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		3B8906482FF595DF00E04640 /* exercises.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = exercises.json; sourceTree = "<group>"; };
 		3BAE532B2FF3A7DB00448B33 /* LiftLog.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LiftLog.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3BAE533F2FF3A80000448B33 /* LiftLogWatchApp Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "LiftLogWatchApp Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -16,10 +47,22 @@
 			path = LiftLog;
 			sourceTree = "<group>";
 		};
+		3BAE53402FF3A80100448B33 /* LiftLogWatchApp Watch App */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "LiftLogWatchApp Watch App";
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		3BAE53282FF3A7DB00448B33 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3BAE533C2FF3A80000448B33 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -33,7 +76,9 @@
 			isa = PBXGroup;
 			children = (
 				3BAE532D2FF3A7DB00448B33 /* LiftLog */,
+				3BAE53402FF3A80100448B33 /* LiftLogWatchApp Watch App */,
 				3BAE532C2FF3A7DB00448B33 /* Products */,
+				3B8906482FF595DF00E04640 /* exercises.json */,
 			);
 			sourceTree = "<group>";
 		};
@@ -41,6 +86,7 @@
 			isa = PBXGroup;
 			children = (
 				3BAE532B2FF3A7DB00448B33 /* LiftLog.app */,
+				3BAE533F2FF3A80000448B33 /* LiftLogWatchApp Watch App.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -55,10 +101,12 @@
 				3BAE53272FF3A7DB00448B33 /* Sources */,
 				3BAE53282FF3A7DB00448B33 /* Frameworks */,
 				3BAE53292FF3A7DB00448B33 /* Resources */,
+				3BAE534D2FF3A80100448B33 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				3BAE53482FF3A80100448B33 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				3BAE532D2FF3A7DB00448B33 /* LiftLog */,
@@ -68,6 +116,28 @@
 			);
 			productName = LiftLog;
 			productReference = 3BAE532B2FF3A7DB00448B33 /* LiftLog.app */;
+			productType = "com.apple.product-type.application";
+		};
+		3BAE533E2FF3A80000448B33 /* LiftLogWatchApp Watch App */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3BAE534A2FF3A80100448B33 /* Build configuration list for PBXNativeTarget "LiftLogWatchApp Watch App" */;
+			buildPhases = (
+				3BAE533B2FF3A80000448B33 /* Sources */,
+				3BAE533C2FF3A80000448B33 /* Frameworks */,
+				3BAE533D2FF3A80000448B33 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				3BAE53402FF3A80100448B33 /* LiftLogWatchApp Watch App */,
+			);
+			name = "LiftLogWatchApp Watch App";
+			packageProductDependencies = (
+			);
+			productName = "LiftLogWatchApp Watch App";
+			productReference = 3BAE533F2FF3A80000448B33 /* LiftLogWatchApp Watch App.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -81,6 +151,9 @@
 				LastUpgradeCheck = 2650;
 				TargetAttributes = {
 					3BAE532A2FF3A7DB00448B33 = {
+						CreatedOnToolsVersion = 26.5;
+					};
+					3BAE533E2FF3A80000448B33 = {
 						CreatedOnToolsVersion = 26.5;
 					};
 				};
@@ -100,12 +173,21 @@
 			projectRoot = "";
 			targets = (
 				3BAE532A2FF3A7DB00448B33 /* LiftLog */,
+				3BAE533E2FF3A80000448B33 /* LiftLogWatchApp Watch App */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		3BAE53292FF3A7DB00448B33 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3B8906492FF595DF00E04640 /* exercises.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3BAE533D2FF3A80000448B33 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -122,7 +204,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		3BAE533B2FF3A80000448B33 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		3BAE53482FF3A80100448B33 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 3BAE533E2FF3A80000448B33 /* LiftLogWatchApp Watch App */;
+			targetProxy = 3BAE53472FF3A80100448B33 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		3BAE53362FF3A7DB00448B33 /* Debug */ = {
@@ -251,11 +348,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = LiftLog/LiftLog.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = X6HPP7XT6X;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Чтобы показывать пульс и калории во время тренировки";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Чтобы сохранять тренировки в приложение Здоровье";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -283,11 +383,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = LiftLog/LiftLog.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = X6HPP7XT6X;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Чтобы показывать пульс и калории во время тренировки";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Чтобы сохранять тренировки в приложение Здоровье";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -310,6 +413,82 @@
 			};
 			name = Release;
 		};
+		3BAE534B2FF3A80100448B33 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "LiftLogWatchApp Watch App/LiftLogWatchApp Watch App.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = X6HPP7XT6X;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "LiftLogWatchApp-Watch-App-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = LiftLogWatchApp;
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Чтобы показывать пульс и калории во время тренировки";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Чтобы сохранять тренировки в приложение Здоровье";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.you.LiftLog;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.you.LiftLog.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Debug;
+		};
+		3BAE534C2FF3A80100448B33 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "LiftLogWatchApp Watch App/LiftLogWatchApp Watch App.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = X6HPP7XT6X;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "LiftLogWatchApp-Watch-App-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = LiftLogWatchApp;
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Чтобы показывать пульс и калории во время тренировки";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Чтобы сохранять тренировки в приложение Здоровье";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.you.LiftLog;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.you.LiftLog.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -327,6 +506,15 @@
 			buildConfigurations = (
 				3BAE53392FF3A7DB00448B33 /* Debug */,
 				3BAE533A2FF3A7DB00448B33 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		3BAE534A2FF3A80100448B33 /* Build configuration list for PBXNativeTarget "LiftLogWatchApp Watch App" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3BAE534B2FF3A80100448B33 /* Debug */,
+				3BAE534C2FF3A80100448B33 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

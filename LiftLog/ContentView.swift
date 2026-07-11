@@ -1,61 +1,33 @@
-//
-//  ContentView.swift
-//  LiftLog
-//
-//  Created by Artem Sherstnev on 30.06.2026.
-//
-
 import SwiftUI
 import SwiftData
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
+    @Environment(\.modelContext) private var context
+    @Query(sort: \Exercise.createdAt) private var exercises: [Exercise]
 
     var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
+        NavigationStack {
+            List(exercises) { exercise in
+                NavigationLink {
+                    ExerciseDetailView(exercise: exercise)
+                } label: {
+                    Text(exercise.name)
+                    if exercise.catalogID != nil {
+                        Spacer()
+                        Image(systemName: "books.vertical")
+                            .foregroundStyle(.secondary)
+                            .font(.caption)
                     }
                 }
-                .onDelete(perform: deleteItems)
             }
+            .navigationTitle("Упражнения")
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
+                NavigationLink {
+                    CatalogView()
+                } label: {
+                    Image(systemName: "plus")
                 }
             }
-        } detail: {
-            Text("Select an item")
         }
     }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
-            }
-        }
-    }
-}
-
-#Preview {
-    ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
 }
