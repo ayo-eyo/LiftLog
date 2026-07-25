@@ -5,7 +5,7 @@ import SwiftData
 struct LiftLogApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootTabView()
         }
         .modelContainer(for: Exercise.self)
     }

@@ -38,6 +38,7 @@ struct ExerciseDetailView: View {
             inputBlock
             historyList
         }
+        .background(.chalk)
         .navigationTitle(exercise.name)
     }
 
@@ -45,26 +46,32 @@ struct ExerciseDetailView: View {
         VStack(spacing: 12) {
             HStack {
                 Text("Вес")
+                    .font(.sans(16))
+                    .foregroundStyle(.ink)
                 Spacer()
                 TextField("кг", value: $weight, format: .number)
+                    .font(.mono(17))
                     .keyboardType(.decimalPad)
                     .multilineTextAlignment(.center)
                     .frame(width: 80)
                     .padding(.vertical, 8)
-                    .background(Color(.systemGray6), in: .rect(cornerRadius: 8))
+                    .background(.chalkDeep, in: .rect(cornerRadius: 8))
                 Stepper("", value: weightBinding, in: 0...500, step: 0.5)
                     .labelsHidden()
             }
 
             HStack {
                 Text("Повторы")
+                    .font(.sans(16))
+                    .foregroundStyle(.ink)
                 Spacer()
                 TextField("кол-во", value: $reps, format: .number)
+                    .font(.mono(17))
                     .keyboardType(.numberPad)
                     .multilineTextAlignment(.center)
                     .frame(width: 80)
                     .padding(.vertical, 8)
-                    .background(Color(.systemGray6), in: .rect(cornerRadius: 8))
+                    .background(.chalkDeep, in: .rect(cornerRadius: 8))
                 Stepper("", value: repsBinding, in: 1...100)
                     .labelsHidden()
             }
@@ -73,8 +80,10 @@ struct ExerciseDetailView: View {
                 guard let w = weight, let r = reps else { return }
                 exercise.addSet(weight: w, reps: r, context: context)
             }
-            .disabled(weight == nil || reps == nil)
+            .font(.sans(15))
             .buttonStyle(.borderedProminent)
+            .tint(.plateBlue)
+            .disabled(weight == nil || reps == nil)
         }
         .padding()
     }
@@ -84,11 +93,18 @@ struct ExerciseDetailView: View {
             ForEach(sets) { set in
                 HStack {
                     Text(set.weight.formatted(.number) + " кг")
+                        .font(.mono(15))
+                        .foregroundStyle(.ink)
                     Spacer()
                     Text("× \(set.reps)")
-                        .foregroundStyle(.secondary)
+                        .font(.mono(15))
+                        .foregroundStyle(.steel)
                 }
+                .listRowSeparatorTint(.hairline)
+                .listRowBackground(Color.chalk)
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(.chalk)
     }
 }

@@ -9,6 +9,9 @@
 /* Begin PBXBuildFile section */
 		3B8906492FF595DF00E04640 /* exercises.json in Resources */ = {isa = PBXBuildFile; fileRef = 3B8906482FF595DF00E04640 /* exercises.json */; };
 		3BAE53492FF3A80100448B33 /* LiftLogWatchApp Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 3BAE533F2FF3A80000448B33 /* LiftLogWatchApp Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		3BC0110730129F3C0081F2B7 /* Oswald-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 3BC0110630129F3C0081F2B7 /* Oswald-SemiBold.ttf */; };
+		3BC0110930129F630081F2B7 /* IBMPlexSans-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 3BC0110830129F630081F2B7 /* IBMPlexSans-Regular.ttf */; };
+		3BC0110B30129F720081F2B7 /* IBMPlexMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 3BC0110A30129F720081F2B7 /* IBMPlexMono-Regular.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -39,11 +42,27 @@
 		3B8906482FF595DF00E04640 /* exercises.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = exercises.json; sourceTree = "<group>"; };
 		3BAE532B2FF3A7DB00448B33 /* LiftLog.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LiftLog.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3BAE533F2FF3A80000448B33 /* LiftLogWatchApp Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "LiftLogWatchApp Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		3BC0110630129F3C0081F2B7 /* Oswald-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Oswald-SemiBold.ttf"; sourceTree = "<group>"; };
+		3BC0110830129F630081F2B7 /* IBMPlexSans-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-Regular.ttf"; sourceTree = "<group>"; };
+		3BC0110A30129F720081F2B7 /* IBMPlexMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Regular.ttf"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		3BC0110D30129FBC0081F2B7 /* Exceptions for "LiftLog" folder in "LiftLog" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 3BAE532A2FF3A7DB00448B33 /* LiftLog */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		3BAE532D2FF3A7DB00448B33 /* LiftLog */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				3BC0110D30129FBC0081F2B7 /* Exceptions for "LiftLog" folder in "LiftLog" target */,
+			);
 			path = LiftLog;
 			sourceTree = "<group>";
 		};
@@ -79,6 +98,9 @@
 				3BAE53402FF3A80100448B33 /* LiftLogWatchApp Watch App */,
 				3BAE532C2FF3A7DB00448B33 /* Products */,
 				3B8906482FF595DF00E04640 /* exercises.json */,
+				3BC0110630129F3C0081F2B7 /* Oswald-SemiBold.ttf */,
+				3BC0110830129F630081F2B7 /* IBMPlexSans-Regular.ttf */,
+				3BC0110A30129F720081F2B7 /* IBMPlexMono-Regular.ttf */,
 			);
 			sourceTree = "<group>";
 		};
@@ -183,6 +205,9 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3BC0110930129F630081F2B7 /* IBMPlexSans-Regular.ttf in Resources */,
+				3BC0110B30129F720081F2B7 /* IBMPlexMono-Regular.ttf in Resources */,
+				3BC0110730129F3C0081F2B7 /* Oswald-SemiBold.ttf in Resources */,
 				3B8906492FF595DF00E04640 /* exercises.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -354,6 +379,9 @@
 				DEVELOPMENT_TEAM = X6HPP7XT6X;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LiftLog/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Gym;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.sports";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Чтобы показывать пульс и калории во время тренировки";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Чтобы сохранять тренировки в приложение Здоровье";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -361,6 +389,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -389,6 +418,9 @@
 				DEVELOPMENT_TEAM = X6HPP7XT6X;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LiftLog/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Gym;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.sports";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Чтобы показывать пульс и калории во время тренировки";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Чтобы сохранять тренировки в приложение Здоровье";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -396,6 +428,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
