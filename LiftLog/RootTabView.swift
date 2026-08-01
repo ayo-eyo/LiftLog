@@ -11,7 +11,7 @@ struct RootTabView: View {
     var body: some View {
         TabView {
             Tab("Тренировки", systemImage: "figure.strengthtraining.traditional") {
-                ContentView()
+                WorkoutListView()
             }
             Tab("Шаблоны", systemImage: "list.bullet.rectangle") {
                 TemplatesPlaceholderView()
