@@ -5,7 +5,7 @@ import SwiftData
 struct LiftLogApp: App {
     var body: some Scene {
         WindowGroup {
-            RootTabView()
+            RootTabView().preferredColorScheme(.light)
         }
         .modelContainer(for: Exercise.self)
     }
