@@ -28,4 +28,13 @@ enum ExerciseCatalog {
         let new = Exercise(name: catalogExercise.name, catalogID: catalogExercise.id)
         context.insert(new)
     }
+    
+    static func exercise(for catalogExercise: CatalogExercise, existing: [Exercise], context: ModelContext) -> Exercise {
+        if let found = existing.first(where: { $0.catalogID == catalogExercise.id}) {
+            return found
+        }
+        let new = Exercise(name: catalogExercise.name, catalogID: catalogExercise.id)
+        context.insert(new)
+        return new
+    }
 }
