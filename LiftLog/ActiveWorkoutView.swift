@@ -3,6 +3,7 @@ import SwiftData
 
 struct ActiveWorkoutView: View {
     @Bindable var workout: Workout
+    let restTimer: RestTimer
     @Environment(\.dismiss) private var dismiss
     @State private var showingPicker = false
 
@@ -11,7 +12,7 @@ struct ActiveWorkoutView: View {
             VStack(spacing: 0) {
                 List(workout.exercises) { exercise in
                     NavigationLink {
-                        WorkoutExerciseLogView(workout: workout, exercise: exercise)
+                        WorkoutExerciseLogView(workout: workout, exercise: exercise, restTimer: restTimer)
                     } label: {
                         HStack {
                             Text(exercise.name)
@@ -45,13 +46,17 @@ struct ActiveWorkoutView: View {
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Button("Завершить") {
+                        restTimer.skip()
                         workout.finish()
+                        HealthKitManager.save(workout)
                         dismiss()
                     }
                 }
             }
             .sheet(isPresented: $showingPicker) {
-                ExercisePickerView(workout: workout)
+                ExercisePickerView(excluding: Set(workout.exercises.compactMap { $0.catalogID })) { exercise in
+                    workout.addExercise(exercise)
+                }
             }
         }
     }

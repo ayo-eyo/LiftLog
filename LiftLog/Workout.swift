@@ -6,8 +6,8 @@ final class Workout {
     var date: Date
     var completedAt: Date?
     var exercises: [Exercise] = []
-    @Relationship(inverse: \WorkoutSet.workout) var sets: [WorkoutSet] = []
-
+    @Relationship(deleteRule: .cascade, inverse: \WorkoutSet.workout) var sets: [WorkoutSet] = []
+    
     init(date: Date = .now) {
         self.date = date
     }
@@ -34,5 +34,32 @@ final class Workout {
 
     func finish() {
         completedAt = .now
+    }
+    
+    var template: WorkoutTemplate?
+
+    func applyTemplate(_ template: WorkoutTemplate) {
+        self.template = template
+        for item in template.sortedItems {
+            if let exercise = item.exercise {
+                addExercise(exercise)
+            }
+        }
+    }
+
+    private func templateItem(for exercise: Exercise) -> TemplateItem? {
+        guard let template else { return nil }
+        let planned = template.sortedItems.filter { $0.exercise?.persistentModelID == exercise.persistentModelID }
+        let logged = setsFor(exercise).count
+        guard logged < planned.count else { return nil }
+        return planned[logged]
+    }
+
+    func defaultWeight(for exercise: Exercise) -> Double? {
+        templateItem(for: exercise)?.defaultWeight
+    }
+
+    func defaultReps(for exercise: Exercise) -> Int? {
+        templateItem(for: exercise)?.defaultReps
     }
 }

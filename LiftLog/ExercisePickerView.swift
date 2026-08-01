@@ -2,7 +2,9 @@ import SwiftUI
 import SwiftData
 
 struct ExercisePickerView: View {
-    @Bindable var workout: Workout
+    var excluding: Set<String> = []
+    var onSelect: (Exercise) -> Void
+
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     @Query private var myExercises: [Exercise]
@@ -10,14 +12,10 @@ struct ExercisePickerView: View {
     @State private var searchText = ""
     private let groups = ExerciseCatalog.grouped()
 
-    private var alreadyInWorkoutCatalogIDs: Set<String> {
-        Set(workout.exercises.compactMap { $0.catalogID })
-    }
-
     private var filteredGroups: [(muscle: String, exercises: [CatalogExercise])] {
         groups.compactMap { group in
             let filtered = group.exercises.filter { item in
-                !alreadyInWorkoutCatalogIDs.contains(item.id) &&
+                !excluding.contains(item.id) &&
                 (searchText.isEmpty || item.name.localizedCaseInsensitiveContains(searchText))
             }
             return filtered.isEmpty ? nil : (group.muscle, filtered)
@@ -30,7 +28,7 @@ struct ExercisePickerView: View {
                 ForEach(filteredGroups, id: \.muscle) { group in
                     Section {
                         ForEach(group.exercises) { item in
-                            Button(item.name) { add(item) }
+                            Button(item.name) { select(item) }
                                 .foregroundStyle(.ink)
                         }
                     } header: {
@@ -50,9 +48,9 @@ struct ExercisePickerView: View {
         }
     }
 
-    private func add(_ catalogExercise: CatalogExercise) {
+    private func select(_ catalogExercise: CatalogExercise) {
         let exercise = ExerciseCatalog.exercise(for: catalogExercise, existing: myExercises, context: context)
-        workout.addExercise(exercise)
+        onSelect(exercise)
         dismiss()
     }
 }

@@ -7,7 +7,8 @@ struct ExerciseDetailView: View {
 
     @State private var weight: Double?
     @State private var reps: Int?
-    
+    @State private var editingSet: WorkoutSet?
+
     init(exercise: Exercise) {
         self.exercise = exercise
         let last = exercise.sets.sorted { $0.createdAt < $1.createdAt }.last
@@ -15,22 +16,16 @@ struct ExerciseDetailView: View {
         _reps = State(initialValue: last?.reps)
     }
 
+    private var weightBinding: Binding<Double> {
+        Binding(get: { weight ?? 0 }, set: { weight = $0 })
+    }
+
+    private var repsBinding: Binding<Int> {
+        Binding(get: { reps ?? 0 }, set: { reps = $0 })
+    }
+
     private var sets: [WorkoutSet] {
         exercise.sets.sorted { $0.createdAt < $1.createdAt }
-    }
-    
-    private var weightBinding: Binding<Double> {
-        Binding(
-            get: { weight ?? 0 },
-            set: { weight = $0 }
-        )
-    }
-    
-    private var repsBinding: Binding<Int> {
-        Binding(
-            get: { reps ?? 0 },
-            set: { reps = $0 }
-        )
     }
 
     var body: some View {
@@ -40,14 +35,15 @@ struct ExerciseDetailView: View {
         }
         .background(.chalk)
         .navigationTitle(exercise.name)
+        .sheet(item: $editingSet) { set in
+            EditSetView(set: set)
+        }
     }
 
     private var inputBlock: some View {
         VStack(spacing: 12) {
             HStack {
-                Text("Вес")
-                    .font(.sans(16))
-                    .foregroundStyle(.ink)
+                Text("Вес").font(.sans(16)).foregroundStyle(.ink)
                 Spacer()
                 TextField("кг", value: $weight, format: .number)
                     .font(.mono(17))
@@ -59,13 +55,10 @@ struct ExerciseDetailView: View {
                 Stepper("", value: weightBinding, in: 0...500, step: 0.5)
                     .labelsHidden()
             }
-
             HStack {
-                Text("Повторы")
-                    .font(.sans(16))
-                    .foregroundStyle(.ink)
+                Text("Повторы").font(.sans(16)).foregroundStyle(.ink)
                 Spacer()
-                TextField("кол-во", value: $reps, format: .number)
+                TextField("", value: $reps, format: .number)
                     .font(.mono(17))
                     .keyboardType(.numberPad)
                     .multilineTextAlignment(.center)
@@ -75,7 +68,6 @@ struct ExerciseDetailView: View {
                 Stepper("", value: repsBinding, in: 1...100)
                     .labelsHidden()
             }
-
             Button("Добавить подход") {
                 guard let w = weight, let r = reps else { return }
                 exercise.addSet(weight: w, reps: r, context: context)
@@ -91,14 +83,16 @@ struct ExerciseDetailView: View {
     private var historyList: some View {
         List {
             ForEach(sets) { set in
-                HStack {
-                    Text(set.weight.formatted(.number) + " кг")
-                        .font(.mono(15))
-                        .foregroundStyle(.ink)
-                    Spacer()
-                    Text("× \(set.reps)")
-                        .font(.mono(15))
-                        .foregroundStyle(.steel)
+                Button {
+                    editingSet = set
+                } label: {
+                    HStack {
+                        Text(set.weight.formatted(.number) + " кг")
+                            .font(.mono(15)).foregroundStyle(.ink)
+                        Spacer()
+                        Text("× \(set.reps)")
+                            .font(.mono(15)).foregroundStyle(.steel)
+                    }
                 }
                 .listRowSeparatorTint(.hairline)
                 .listRowBackground(Color.chalk)

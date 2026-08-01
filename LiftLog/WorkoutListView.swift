@@ -2,18 +2,23 @@ import SwiftUI
 import SwiftData
 
 struct WorkoutListView: View {
+    let restTimer: RestTimer
     @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
+    @Environment(\.modelContext) private var context
 
     var body: some View {
         NavigationStack {
-            List(workouts) { workout in
-                NavigationLink {
-                    WorkoutSummaryView(workout: workout)
-                } label: {
-                    WorkoutRow(workout: workout)
+            List {
+                ForEach(workouts) { workout in
+                    NavigationLink {
+                        WorkoutSummaryView(workout: workout, restTimer: restTimer)
+                    } label: {
+                        WorkoutRow(workout: workout)
+                    }
+                    .listRowBackground(Color.chalk)
+                    .listRowSeparatorTint(.hairline)
                 }
-                .listRowBackground(Color.chalk)
-                .listRowSeparatorTint(.hairline)
+                .onDelete(perform: delete)
             }
             .scrollContentBackground(.hidden)
             .background(.chalk)
@@ -27,6 +32,12 @@ struct WorkoutListView: View {
                     )
                 }
             }
+        }
+    }
+
+    private func delete(at offsets: IndexSet) {
+        for index in offsets {
+            context.delete(workouts[index])
         }
     }
 }
@@ -46,9 +57,7 @@ private struct WorkoutRow: View {
             }
             Spacer()
             if workout.isActive {
-                Text("Идёт")
-                    .font(.mono(12))
-                    .foregroundStyle(.plateGreen)
+                Text("Идёт").font(.mono(12)).foregroundStyle(.plateGreen)
             }
         }
     }

@@ -5,16 +5,17 @@ struct RootTabView: View {
     @Environment(\.modelContext) private var context
     @Query(filter: #Predicate<Workout> { $0.completedAt == nil })
     private var activeWorkouts: [Workout]
-    
+
     @State private var presentedWorkout: Workout?
-    
+    @State private var restTimer = RestTimer()
+
     var body: some View {
         TabView {
             Tab("Тренировки", systemImage: "figure.strengthtraining.traditional") {
-                WorkoutListView()
+                WorkoutListView(restTimer: restTimer)
             }
             Tab("Шаблоны", systemImage: "list.bullet.rectangle") {
-                TemplatesPlaceholderView()
+                TemplateListView(restTimer: restTimer)
             }
             Tab("Упражнения", systemImage: "books.vertical") {
                 CatalogView()
@@ -25,23 +26,36 @@ struct RootTabView: View {
         }
         .tint(.plateBlue)
         .tabViewBottomAccessory {
-            Button {
-                startOrResumeWorkout()
-            } label: {
-                Label(
-                activeWorkouts.isEmpty ? "Начать тренировку" : "Тренировка идёт",
-                systemImage: "play.fill"
-                )
+            TimelineView(.periodic(from: .now, by: 1)) { timeline in
+                Button {
+                    startOrResumeWorkout()
+                } label: {
+                    Label(accessoryText(at: timeline.date), systemImage: "play.fill")
+                }
             }
         }
         .fullScreenCover(item: $presentedWorkout) { workout in
-            ActiveWorkoutView(workout: workout)
+            ActiveWorkoutView(workout: workout, restTimer: restTimer)
+        }
+        .task {
+            await HealthKitManager.requestAuthorization()
+        }
+        .task {
+            await HealthKitManager.requestAuthorization()
+            await NotificationManager.requestAuthorization()
         }
     }
-    
+
+    private func accessoryText(at date: Date) -> String {
+        if restTimer.isResting(at: date), let name = restTimer.exerciseName {
+            return "\(name) · \(restTimer.remaining(at: date).clockString)"
+        }
+        return activeWorkouts.isEmpty ? "Начать тренировку" : "Тренировка идёт"
+    }
+
     private func startOrResumeWorkout() {
-        if let workout = activeWorkouts.first {
-            presentedWorkout = workout
+        if let existing = activeWorkouts.first {
+            presentedWorkout = existing
         } else {
             let new = Workout()
             context.insert(new)
