@@ -7,15 +7,27 @@ struct CatalogView: View {
         NavigationStack {
             List {
                 ForEach(groups, id: \.muscle) { group in
-                    Section(group.muscle.capitalized) {
+                    Section {
                         ForEach(group.exercises) { exercise in
-                            NavigationLink(exercise.name) {
+                            NavigationLink {
                                 CatalogExerciseDetailView(exercise: exercise)
+                            } label: {
+                                Text(exercise.name)
+                                    .font(.sans(16))
+                                    .foregroundStyle(.ink)
                             }
+                            .listRowBackground(Color.chalk)
+                            .listRowSeparatorTint(.hairline)
                         }
+                    } header: {
+                        Text(group.muscle.capitalized)
+                            .font(.mono(12))
+                            .foregroundStyle(.steel)
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(.chalk)
             .navigationTitle("Каталог")
         }
     }

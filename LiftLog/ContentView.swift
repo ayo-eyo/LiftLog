@@ -2,7 +2,6 @@ import SwiftUI
 import SwiftData
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var context
     @Query(sort: \Exercise.createdAt) private var exercises: [Exercise]
 
     var body: some View {
@@ -11,16 +10,24 @@ struct ContentView: View {
                 NavigationLink {
                     ExerciseDetailView(exercise: exercise)
                 } label: {
-                    Text(exercise.name)
-                    if exercise.catalogID != nil {
-                        Spacer()
-                        Image(systemName: "books.vertical")
-                            .foregroundStyle(.secondary)
-                            .font(.caption)
+                    HStack {
+                        Text(exercise.name)
+                            .font(.sans(16))
+                            .foregroundStyle(.ink)
+                        if exercise.catalogID != nil {
+                            Spacer()
+                            Image(systemName: "books.vertical")
+                                .foregroundStyle(.steel)
+                                .font(.caption)
+                        }
                     }
                 }
+                .listRowBackground(Color.chalk)
+                .listRowSeparatorTint(.hairline)
             }
-            .navigationTitle("Упражнения")
+            .scrollContentBackground(.hidden)
+            .background(.chalk)
+            .navigationTitle("Тренировки")
             .toolbar {
                 NavigationLink {
                     CatalogView()
