@@ -23,6 +23,10 @@ struct WatchWorkoutSnapshot: Codable {
 }
 
 struct WatchLogSetCommand: Codable {
+    /// Identifies this specific command so a redelivery (watch retries after
+    /// `sendMessage` fails on the *reply* leg, having already applied on the phone,
+    /// or `transferUserInfo` redelivers) doesn't log the same set twice.
+    let commandID: UUID
     let workoutID: UUID
     let exerciseID: UUID
     /// Fallback match if `exerciseID` no longer resolves (e.g. the phone

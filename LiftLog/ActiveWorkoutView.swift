@@ -5,6 +5,7 @@ struct ActiveWorkoutView: View {
     let workout: Workout
     let restTimer: RestTimer
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var context
     @State private var showingPicker = false
 
     var body: some View {
@@ -43,7 +44,13 @@ struct ActiveWorkoutView: View {
             .navigationTitle("Тренировка")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Закрыть") { dismiss() }
+                    Button("Закрыть") {
+                        if workout.exercises.isEmpty {
+                            context.delete(workout)
+                            WatchSessionManager.shared.pushSnapshot(for: nil)
+                        }
+                        dismiss()
+                    }
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Button("Завершить") {

@@ -17,11 +17,13 @@ enum WatchSyncFixtures {
     static func logSetCommand(
         workoutID: UUID,
         exerciseID: UUID,
+        commandID: UUID = UUID(),
         exerciseName: String = "Жим лёжа",
         weight: Double = 60,
         reps: Int = 8
     ) -> WatchLogSetCommand {
         WatchLogSetCommand(
+            commandID: commandID,
             workoutID: workoutID,
             exerciseID: exerciseID,
             exerciseName: exerciseName,

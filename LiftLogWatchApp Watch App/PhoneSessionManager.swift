@@ -36,7 +36,7 @@ final class PhoneSessionManager: NSObject, ObservableObject, WCSessionDelegate {
             completion(.failed)
             return
         }
-        let command = WatchLogSetCommand(workoutID: workoutID, exerciseID: exerciseID, exerciseName: exerciseName, weight: weight, reps: reps)
+        let command = WatchLogSetCommand(commandID: UUID(), workoutID: workoutID, exerciseID: exerciseID, exerciseName: exerciseName, weight: weight, reps: reps)
         guard let data = try? JSONEncoder().encode(command) else {
             completion(.failed)
             return

@@ -12,8 +12,13 @@ struct ExercisePickerView: View {
     @State private var searchText = ""
     private let groups = ExerciseCatalog.grouped()
 
-    private var filteredGroups: [(muscle: String, exercises: [CatalogExercise])] {
-        groups.compactMap { group in
+    // Recomputed only when `searchText` actually changes (see .onChange below), instead
+    // of on every render — filtering ~870 catalog entries per keystroke is one thing,
+    // doing it again for unrelated re-renders (e.g. `myExercises` query updates) is not.
+    @State private var filteredGroups: [(muscle: String, exercises: [CatalogExercise])] = []
+
+    private func recomputeFilteredGroups() {
+        filteredGroups = groups.compactMap { group in
             let filtered = group.exercises.filter { item in
                 !excluding.contains(item.id) &&
                 (searchText.isEmpty || item.name.localizedCaseInsensitiveContains(searchText))
@@ -53,6 +58,8 @@ struct ExercisePickerView: View {
                 Button("Отмена") { dismiss() }
             }
         }
+        .onAppear { recomputeFilteredGroups() }
+        .onChange(of: searchText) { recomputeFilteredGroups() }
     }
 
     private func select(_ catalogExercise: CatalogExercise) {

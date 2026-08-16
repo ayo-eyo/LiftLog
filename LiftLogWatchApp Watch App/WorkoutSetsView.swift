@@ -19,7 +19,7 @@ struct WorkoutSetsView: View {
                             } label: {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(exercise.name)
-                                    Text("\(exercise.setsLoggedCount) подходов")
+                                    Text("\(exercise.setsLoggedCount) \(RussianPlural.form(exercise.setsLoggedCount, "подход", "подхода", "подходов"))")
                                         .font(.caption2)
                                         .foregroundStyle(.secondary)
                                 }
@@ -66,6 +66,7 @@ private struct LogSetView: View {
     @State private var weight: Double
     @State private var reps: Int
     @State private var isSaving = false
+    @State private var statusText: String?
     @Environment(\.dismiss) private var dismiss
 
     init(phone: PhoneSessionManager, exercise: WatchWorkoutSnapshot.ExerciseInfo) {
@@ -96,8 +97,16 @@ private struct LogSetView: View {
                     }
                 }
 
+                if let statusText {
+                    Text(statusText)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+
                 Button {
+                    guard weight > 0, reps > 0 else { return }
                     isSaving = true
+                    statusText = nil
                     phone.logSet(exerciseID: exercise.id, exerciseName: exercise.name, weight: weight, reps: reps) { result in
                         DispatchQueue.main.async {
                             isSaving = false
@@ -105,8 +114,10 @@ private struct LogSetView: View {
                             case .confirmed(let info):
                                 weight = info.weight ?? weight
                                 reps = info.reps ?? reps
-                            case .queued, .failed:
-                                break
+                            case .queued:
+                                statusText = "Поставлено в очередь — отправится, когда телефон будет рядом"
+                            case .failed:
+                                statusText = "Не удалось отправить"
                             }
                         }
                     }
@@ -119,7 +130,7 @@ private struct LogSetView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
-                .disabled(isSaving)
+                .disabled(isSaving || weight <= 0 || reps <= 0)
             }
             .padding(.horizontal, 6)
         }

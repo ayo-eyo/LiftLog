@@ -16,7 +16,7 @@ struct WorkoutExerciseLogView: View {
         self.exercise = exercise
         self.restTimer = restTimer
         let sessionLast = workout.setsFor(exercise).last
-        let allTimeLast = exercise.sets.sorted { $0.createdAt < $1.createdAt }.last
+        let allTimeLast = exercise.sets.sorted { ($0.createdAt, $0.order) < ($1.createdAt, $1.order) }.last
         let templateWeight = workout.defaultWeight(for: exercise)
         let templateReps = workout.defaultReps(for: exercise)
 
@@ -47,7 +47,7 @@ struct WorkoutExerciseLogView: View {
         .navigationTitle(exercise.name)
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $editingSet) { set in
-            EditSetView(set: set)
+            EditSetView(set: set, workout: workout)
         }
     }
 
@@ -56,7 +56,7 @@ struct WorkoutExerciseLogView: View {
             WeightInputRow(weight: $weight, stepper: weightBinding)
             RepsInputRow(reps: $reps, stepper: repsBinding)
             Button("Добавить подход") {
-                guard let w = weight, let r = reps else { return }
+                guard let w = weight, let r = reps, w > 0, r > 0 else { return }
                 workout.logSet(weight: w, reps: r, for: exercise, context: context)
 
                 if let nextWeight = workout.defaultWeight(for: exercise) {
@@ -65,20 +65,20 @@ struct WorkoutExerciseLogView: View {
                 if let nextReps = workout.defaultReps(for: exercise) {
                     reps = nextReps
                 }
-                restTimer.start(duration: 120, exerciseName: exercise.name)
+                restTimer.start(duration: RestTimer.defaultDuration, exerciseName: exercise.name)
                 WatchSessionManager.shared.pushSnapshot(for: workout)
             }
             .font(.sans(15))
             .buttonStyle(.borderedProminent)
             .tint(.plateBlue)
-            .disabled(weight == nil || reps == nil)
+            .disabled(weight == nil || reps == nil || (weight ?? 0) <= 0 || (reps ?? 0) <= 0)
         }
         .padding()
     }
 
     private var restBlock: some View {
         VStack(spacing: 8) {
-            RestTimerView(restTimer: restTimer, duration: 120)
+            RestTimerView(restTimer: restTimer, duration: RestTimer.defaultDuration)
             Button("Пропустить отдых") {
                 restTimer.skip()
                 WatchSessionManager.shared.pushSnapshot(for: workout)
