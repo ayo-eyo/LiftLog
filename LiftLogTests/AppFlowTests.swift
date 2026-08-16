@@ -15,13 +15,14 @@ struct RootTabViewResumeTests {
         #expect(try store.count(Workout.self) == 1)
     }
 
-    @Test("без активной тренировки создаётся новая и вставляется в контекст")
+    @Test("без активной тренировки создаётся новая, вставляется в контекст и сразу становится идущей")
     func createsNewWorkoutWhenNoneActive() throws {
         let store = try TestStore.open()
 
-        _ = RootTabView.workoutToResume(activeWorkouts: [], context: store.context)
+        let created = RootTabView.workoutToResume(activeWorkouts: [], context: store.context)
 
         #expect(try store.count(Workout.self) == 1)
+        #expect(created.isActive == true)
     }
 }
 
@@ -55,17 +56,16 @@ struct RootTabViewAccessoryTextTests {
 
 @Suite("WorkoutExerciseLogView.prefill — приоритет предзаполнения")
 struct WorkoutExerciseLogViewPrefillTests {
-    @Test("шаблон имеет приоритет над последним сетом этой тренировки и над всей историей")
-    func templateTakesPriority() throws {
+    @Test("план тренировки имеет приоритет над последним сетом этой тренировки и над всей историей")
+    func plannedItemTakesPriority() throws {
         let store = try TestStore.open()
         let bench = Fixtures.exercise(in: store.context)
-        // All-time history: a heavy set from a past, template-less workout — must not
-        // override the new workout's template default.
+        // All-time history: a heavy set from a past, plan-less workout — must not
+        // override the new workout's planned default.
         let pastWorkout = Fixtures.workout(exercises: [bench], in: store.context)
         Fixtures.log([(999, 99)], for: bench, in: pastWorkout, context: store.context)
 
-        let template = Fixtures.template(items: [(bench, 60, 8)], in: store.context)
-        let workout = Fixtures.workout(template: template, in: store.context)
+        let workout = Fixtures.workout(items: [(bench, 60, 8)], in: store.context)
 
         let prefill = WorkoutExerciseLogView.prefill(workout: workout, exercise: bench)
 
@@ -73,7 +73,7 @@ struct WorkoutExerciseLogViewPrefillTests {
         #expect(prefill.reps == 8)
     }
 
-    @Test("без шаблона — последний сет в этой тренировке")
+    @Test("без плана — последний сет в этой тренировке")
     func fallsBackToSessionLast() throws {
         let store = try TestStore.open()
         let bench = Fixtures.exercise(in: store.context)
@@ -86,7 +86,7 @@ struct WorkoutExerciseLogViewPrefillTests {
         #expect(prefill.reps == 6)
     }
 
-    @Test("без шаблона и без сетов в этой тренировке — последний сет за всё время")
+    @Test("без плана и без сетов в этой тренировке — последний сет за всё время")
     func fallsBackToAllTimeLast() throws {
         let store = try TestStore.open()
         let bench = Fixtures.exercise(in: store.context)

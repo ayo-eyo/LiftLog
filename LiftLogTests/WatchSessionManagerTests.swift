@@ -85,6 +85,49 @@ struct WatchSessionManagerTests {
         #expect(manager.lastSnapshot?.workoutID == workout.syncID)
     }
 
+    @Test("снапшот идущей тренировки перечисляет упражнения в порядке плана")
+    func snapshotListsExercisesInPlanOrder() throws {
+        let store = try TestStore.open()
+        let bench = Fixtures.exercise("Жим лёжа", in: store.context)
+        let squat = Fixtures.exercise("Присед", in: store.context)
+        let workout = Fixtures.workout(in: store.context)
+        workout.addExercise(squat, weight: 100, reps: 5, context: store.context)
+        workout.addExercise(bench, weight: 60, reps: 8, context: store.context)
+
+        let manager = WatchSessionManager()
+        manager.start(modelContext: store.context, restTimer: Fixtures.restTimer())
+        manager.pushSnapshot(for: workout)
+
+        #expect(manager.lastSnapshot?.exercises.map(\.name) == ["Присед", "Жим лёжа"])
+    }
+
+    @Test("план (не начатая тренировка) не уходит на часы — снапшот пуст")
+    func planDoesNotReachWatch() throws {
+        let store = try TestStore.open()
+        let bench = Fixtures.exercise(in: store.context)
+        let plan = Fixtures.workout(startedAt: nil, items: [(bench, 60, 8)], in: store.context)
+
+        let manager = WatchSessionManager()
+        manager.start(modelContext: store.context, restTimer: Fixtures.restTimer())
+        manager.pushSnapshot(for: plan)
+
+        #expect(manager.lastSnapshot == nil)
+    }
+
+    @Test("завершённая тренировка не уходит на часы — снапшот пуст")
+    func completedWorkoutDoesNotReachWatch() throws {
+        let store = try TestStore.open()
+        let bench = Fixtures.exercise(in: store.context)
+        let workout = Fixtures.workout(exercises: [bench], in: store.context)
+        workout.finish()
+
+        let manager = WatchSessionManager()
+        manager.start(modelContext: store.context, restTimer: Fixtures.restTimer())
+        manager.pushSnapshot(for: workout)
+
+        #expect(manager.lastSnapshot == nil)
+    }
+
     @Test("фолбэк по имени всё ещё находит нужное упражнение, если syncID не совпал")
     func nameFallbackStillLogsToCorrectExercise() throws {
         let store = try TestStore.open()

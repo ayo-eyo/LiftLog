@@ -5,38 +5,44 @@ import SwiftData
 
 @Suite("Полный цикл сохранения через SwiftData")
 struct PersistenceLifecycleTests {
-    @Test("тренировка по шаблону → сеты → finish() → save() → новый контекст: всё на месте, связи целы")
+    @Test("копия тренировки → старт → сеты → finish() → save() → новый контекст: всё на месте, связи целы")
     func fullLifecycleSurvivesReload() throws {
         let handle = try TestStore.open()
         let bench = Fixtures.exercise("Жим лёжа", in: handle.context)
-        let template = Fixtures.template(items: [(bench, 60, 8)], in: handle.context)
-        let workout = Fixtures.workout(template: template, in: handle.context)
-        workout.logSet(weight: 60, reps: 8, for: bench, context: handle.context)
-        workout.finish()
+        let source = Fixtures.workout(items: [(bench, 60, 8)], in: handle.context)
+
+        let copy = Workout.copy(of: source, sortIndex: 0, context: handle.context)
+        copy.start()
+        copy.logSet(weight: 60, reps: 8, for: bench, context: handle.context)
+        copy.finish()
 
         let reloaded = try handle.reload()
 
-        let workouts = try reloaded.fetch(FetchDescriptor<Workout>())
-        let reloadedWorkout = try #require(workouts.first)
-        #expect(reloadedWorkout.completedAt != nil)
-        #expect(reloadedWorkout.exercises.map(\.name) == ["Жим лёжа"])
-        #expect(reloadedWorkout.sets.count == 1)
-        #expect(reloadedWorkout.sets.first?.exercise?.name == "Жим лёжа")
-        #expect(reloadedWorkout.template?.name == template.name)
+        let workouts = try reloaded.fetch(FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date)]))
+        let reloadedCopy = try #require(workouts.first { $0.syncID == copy.syncID })
+        #expect(reloadedCopy.completedAt != nil)
+        #expect(reloadedCopy.orderedExercises.map(\.name) == ["Жим лёжа"])
+        #expect(reloadedCopy.sets.count == 1)
+        #expect(reloadedCopy.sets.first?.exercise?.name == "Жим лёжа")
+        // Плановые позиции копии повторяют план источника (у него не было залогированных
+        // подходов), а не подходы, залогированные уже в самой копии.
+        #expect(reloadedCopy.sortedItems.map(\.plannedWeight) == [60])
     }
 }
 
 @Suite("Предикат активной тренировки из RootTabView")
 struct PersistenceActiveWorkoutPredicateTests {
-    @Test("#Predicate<Workout> { completedAt == nil } находит только незавершённые")
-    func predicateFindsOnlyIncompleteWorkouts() throws {
+    @Test("#Predicate<Workout> { startedAt != nil && completedAt == nil } находит только идущие, не планы и не завершённые")
+    func predicateFindsOnlyActiveWorkouts() throws {
         let store = try TestStore.open()
-        let active = Fixtures.workout(date: Fixtures.date(offset: 0), in: store.context)
+        let plan = Fixtures.workout(date: Fixtures.date(offset: 0), startedAt: nil, in: store.context)
+        let active = Fixtures.workout(date: Fixtures.date(offset: 50), in: store.context)
         let finished = Fixtures.workout(date: Fixtures.date(offset: 100), in: store.context)
         finished.finish()
         try store.context.save()
+        _ = plan
 
-        let predicate = #Predicate<Workout> { $0.completedAt == nil }
+        let predicate = #Predicate<Workout> { $0.startedAt != nil && $0.completedAt == nil }
         let found = try store.context.fetch(FetchDescriptor<Workout>(predicate: predicate))
 
         #expect(found.map(\.persistentModelID) == [active.persistentModelID])
@@ -88,17 +94,19 @@ struct PersistenceCascadeTests {
         #expect(try handle.count(WorkoutSet.self) == 0)
     }
 
-    @Test("WorkoutTemplate -> TemplateItem каскадно удаляется после save/reload")
-    func templateCascadesToItemsAfterReload() throws {
+    @Test("Workout -> WorkoutItem каскадно удаляется после save/reload")
+    func workoutCascadesToItemsAfterReload() throws {
         let handle = try TestStore.open()
         let bench = Fixtures.exercise(in: handle.context)
-        let template = Fixtures.template(items: [(bench, 60, 8)], in: handle.context)
+        let workout = Fixtures.workout(items: [(bench, 60, 8)], in: handle.context)
         _ = try handle.reload()
 
-        handle.context.delete(template)
+        #expect(try handle.count(WorkoutItem.self) == 1)
+
+        handle.context.delete(workout)
         try handle.context.save()
 
-        #expect(try handle.count(TemplateItem.self) == 0)
+        #expect(try handle.count(WorkoutItem.self) == 0)
     }
 
     @Test("Exercise -> WorkoutSet не каскадит по умолчанию отсутствия связи, но текущий контракт — удаление сетов")

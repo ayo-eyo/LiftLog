@@ -1,4 +1,5 @@
 import Testing
+import Foundation
 import SwiftData
 @testable import LiftLog
 
@@ -41,32 +42,46 @@ struct WorkoutSetsForOrderTests {
 
 @Suite("Workout.addExercise")
 struct WorkoutAddExerciseTests {
-    @Test("повторное добавление того же объекта не создаёт дубль")
-    func sameObjectTwiceIsNotDuplicated() throws {
+    @Test("повторное добавление того же упражнения создаёт вторую плановую позицию, а не дублирует ошибочно")
+    func addingTwiceCreatesSecondPlannedPosition() throws {
         let store = try TestStore.open()
         let bench = Fixtures.exercise(in: store.context)
         let workout = Fixtures.workout(in: store.context)
 
-        workout.addExercise(bench)
-        workout.addExercise(bench)
+        workout.addExercise(bench, weight: 60, reps: 8, context: store.context)
+        workout.addExercise(bench, weight: 65, reps: 6, context: store.context)
 
-        #expect(workout.exercises.count == 1)
+        #expect(workout.items.count == 2)
+        #expect(workout.orderedExercises.count == 1)
+        #expect(workout.sortedItems.map(\.plannedWeight) == [60, 65])
     }
 
-    @Test("два разных упражнения с одинаковым именем добавляются оба — дедуп только по идентичности")
+    @Test("добавление без плановых цифр оставляет их nil")
+    func addingWithoutNumbersLeavesThemNil() throws {
+        let store = try TestStore.open()
+        let bench = Fixtures.exercise(in: store.context)
+        let workout = Fixtures.workout(in: store.context)
+
+        workout.addExercise(bench, context: store.context)
+
+        #expect(workout.sortedItems.first?.plannedWeight == nil)
+        #expect(workout.sortedItems.first?.plannedReps == nil)
+    }
+
+    @Test("два разных объекта с одинаковым именем добавляются оба — orderedExercises различает по идентичности")
     func differentObjectsSameNameBothAdded() throws {
         let store = try TestStore.open()
         let bench1 = Fixtures.exercise("Жим лёжа", in: store.context)
         let bench2 = Fixtures.exercise("Жим лёжа", in: store.context)
         let workout = Fixtures.workout(in: store.context)
 
-        workout.addExercise(bench1)
-        workout.addExercise(bench2)
+        workout.addExercise(bench1, context: store.context)
+        workout.addExercise(bench2, context: store.context)
 
-        #expect(workout.exercises.count == 2)
+        #expect(workout.orderedExercises.count == 2)
     }
 
-    @Test("порядок exercises соответствует порядку добавления")
+    @Test("orderedExercises соответствует порядку добавления")
     func preservesInsertionOrder() throws {
         let store = try TestStore.open()
         let squat = Fixtures.exercise("Присед", in: store.context)
@@ -74,11 +89,76 @@ struct WorkoutAddExerciseTests {
         let row = Fixtures.exercise("Тяга", in: store.context)
         let workout = Fixtures.workout(in: store.context)
 
-        workout.addExercise(squat)
-        workout.addExercise(bench)
-        workout.addExercise(row)
+        workout.addExercise(squat, context: store.context)
+        workout.addExercise(bench, context: store.context)
+        workout.addExercise(row, context: store.context)
 
-        #expect(workout.exercises.map(\.name) == ["Присед", "Жим лёжа", "Тяга"])
+        #expect(workout.orderedExercises.map(\.name) == ["Присед", "Жим лёжа", "Тяга"])
+    }
+}
+
+@Suite("Workout.groupedItems / moveExercise / deleteExercise")
+struct WorkoutGroupedItemsTests {
+    @Test("groupedItems собирает позиции одного упражнения вместе, в порядке первого появления")
+    func groupsPositionsByExercise() throws {
+        let store = try TestStore.open()
+        let bench = Fixtures.exercise("Жим лёжа", in: store.context)
+        let squat = Fixtures.exercise("Присед", in: store.context)
+        let workout = Fixtures.workout(in: store.context)
+        workout.addExercise(bench, weight: 60, reps: 8, context: store.context)
+        workout.addExercise(squat, weight: 100, reps: 5, context: store.context)
+        workout.addExercise(bench, weight: 65, reps: 6, context: store.context)
+
+        let groups = workout.groupedItems
+
+        #expect(groups.map(\.exercise.name) == ["Жим лёжа", "Присед"])
+        #expect(groups[0].items.map(\.plannedWeight) == [60, 65])
+    }
+
+    @Test("moveExercise переставляет все позиции упражнения разом и перенумеровывает order сквозным счётчиком")
+    func moveExerciseMovesWholeGroup() throws {
+        let store = try TestStore.open()
+        let bench = Fixtures.exercise("Жим лёжа", in: store.context)
+        let squat = Fixtures.exercise("Присед", in: store.context)
+        let row = Fixtures.exercise("Тяга", in: store.context)
+        let workout = Fixtures.workout(in: store.context)
+        workout.addExercise(bench, weight: 60, reps: 8, context: store.context)
+        workout.addExercise(squat, weight: 100, reps: 5, context: store.context)
+        workout.addExercise(row, weight: 50, reps: 10, context: store.context)
+
+        workout.moveExercise(from: IndexSet(integer: 2), to: 0)
+
+        #expect(workout.groupedItems.map(\.exercise.name) == ["Тяга", "Жим лёжа", "Присед"])
+        #expect(workout.sortedItems.map(\.order) == [0, 1, 2])
+    }
+
+    @Test("deleteExercise удаляет все плановые позиции упражнения и его залогированные подходы в этой тренировке")
+    func deleteExerciseRemovesItemsAndSets() throws {
+        let store = try TestStore.open()
+        let bench = Fixtures.exercise("Жим лёжа", in: store.context)
+        let squat = Fixtures.exercise("Присед", in: store.context)
+        let workout = Fixtures.workout(items: [(bench, 60, 8)], in: store.context)
+        workout.addExercise(squat, weight: 100, reps: 5, context: store.context)
+        Fixtures.log([(60, 8)], for: bench, in: workout, context: store.context)
+
+        workout.deleteExercise(bench, context: store.context)
+
+        #expect(workout.orderedExercises.map(\.name) == ["Присед"])
+        #expect(workout.setsFor(bench).isEmpty)
+    }
+
+    @Test("deleteExercise не трогает позиции и подходы другого упражнения")
+    func deleteExerciseLeavesOthersIntact() throws {
+        let store = try TestStore.open()
+        let bench = Fixtures.exercise("Жим лёжа", in: store.context)
+        let squat = Fixtures.exercise("Присед", in: store.context)
+        let workout = Fixtures.workout(items: [(bench, 60, 8), (squat, 100, 5)], in: store.context)
+        Fixtures.log([(100, 5)], for: squat, in: workout, context: store.context)
+
+        workout.deleteExercise(bench, context: store.context)
+
+        #expect(workout.orderedExercises.map(\.name) == ["Присед"])
+        #expect(workout.setsFor(squat).count == 1)
     }
 }
 
@@ -138,12 +218,24 @@ struct WorkoutSetsForTests {
     }
 }
 
-@Suite("Workout.isActive / finish")
+@Suite("Workout.isActive / start / finish — три состояния")
 struct WorkoutLifecycleTests {
-    @Test("isActive истинно, пока completedAt == nil")
-    func isActiveWhileNotCompleted() throws {
+    @Test("план (startedAt == nil) не активен")
+    func planIsNotActive() throws {
         let store = try TestStore.open()
-        let workout = Fixtures.workout(in: store.context)
+        let workout = Fixtures.workout(startedAt: nil, in: store.context)
+        #expect(workout.isActive == false)
+    }
+
+    @Test("start() проставляет startedAt, переносит date на момент старта и делает isActive истинным")
+    func startActivatesWorkoutAndMovesDate() throws {
+        let store = try TestStore.open()
+        let workout = Fixtures.workout(date: Fixtures.date(offset: -1000), startedAt: nil, in: store.context)
+
+        workout.start(now: Fixtures.date(offset: 5))
+
+        #expect(workout.startedAt == Fixtures.date(offset: 5))
+        #expect(workout.date == Fixtures.date(offset: 5))
         #expect(workout.isActive == true)
     }
 
@@ -170,54 +262,7 @@ struct WorkoutLifecycleTests {
     }
 }
 
-@Suite("Workout.applyTemplate")
-struct WorkoutApplyTemplateTests {
-    @Test("добавляет упражнения в порядке sortedItems")
-    func addsExercisesInSortedOrder() throws {
-        let store = try TestStore.open()
-        let squat = Fixtures.exercise("Присед", in: store.context)
-        let bench = Fixtures.exercise("Жим лёжа", in: store.context)
-        let template = Fixtures.template(items: [(squat, 100, 5), (bench, 60, 8)], in: store.context)
-        let workout = Fixtures.workout(in: store.context)
-
-        workout.applyTemplate(template)
-
-        #expect(workout.exercises.map(\.name) == ["Присед", "Жим лёжа"])
-        #expect(workout.template === template)
-    }
-
-    @Test("пропускает позиции с exercise == nil")
-    func skipsNilExercisePositions() throws {
-        let store = try TestStore.open()
-        let bench = Fixtures.exercise(in: store.context)
-        let template = Fixtures.template(in: store.context)
-        template.addExercise(bench, weight: 60, reps: 8, context: store.context)
-        let removable = Fixtures.exercise("Удалённое", in: store.context)
-        template.addExercise(removable, weight: 1, reps: 1, context: store.context)
-        // Simulates the exercise being deleted elsewhere: the TemplateItem survives,
-        // its `exercise` link goes nil (no cascade from Exercise -> TemplateItem).
-        template.items.last?.exercise = nil
-
-        let workout = Fixtures.workout(in: store.context)
-        workout.applyTemplate(template)
-
-        #expect(workout.exercises.map(\.name) == ["Жим лёжа"])
-    }
-
-    @Test("не дублирует уже добавленные упражнения")
-    func doesNotDuplicateAlreadyAddedExercises() throws {
-        let store = try TestStore.open()
-        let bench = Fixtures.exercise(in: store.context)
-        let template = Fixtures.template(items: [(bench, 60, 8)], in: store.context)
-        let workout = Fixtures.workout(exercises: [bench], in: store.context)
-
-        workout.applyTemplate(template)
-
-        #expect(workout.exercises.count == 1)
-    }
-}
-
-@Suite("Каскад удаления Workout -> WorkoutSet")
+@Suite("Каскад удаления Workout -> WorkoutSet, WorkoutItem")
 struct WorkoutDeleteCascadeTests {
     @Test("удаление тренировки удаляет все её сеты (проверка через fetchCount после save)")
     func deletingWorkoutCascadesToSets() throws {
@@ -234,6 +279,21 @@ struct WorkoutDeleteCascadeTests {
 
         #expect(try store.count(WorkoutSet.self) == 0)
     }
+
+    @Test("удаление тренировки удаляет все её плановые позиции (проверка через fetchCount после save)")
+    func deletingWorkoutCascadesToItems() throws {
+        let store = try TestStore.open()
+        let bench = Fixtures.exercise(in: store.context)
+        let workout = Fixtures.workout(items: [(bench, 60, 8)], in: store.context)
+        try store.context.save()
+
+        #expect(try store.count(WorkoutItem.self) == 1)
+
+        store.context.delete(workout)
+        try store.context.save()
+
+        #expect(try store.count(WorkoutItem.self) == 0)
+    }
 }
 
 @Suite("Каскад удаления Exercise -> WorkoutSet")
@@ -241,10 +301,10 @@ struct ExerciseDeleteCascadeTests {
     @Test("удаление упражнения удаляет его подходы, а не оставляет их с exercise == nil")
     func deletingExerciseCascadesToSets() throws {
         let store = try TestStore.open()
-        // Стоящее особняком упражнение, без Workout: `Workout.exercises` — обычный
-        // массив без @Relationship и без inverse, так что подключение сюда ещё и
-        // тренировки задевало бы её отдельную (нерелевантную здесь) семантику.
-        // Каскад, который проверяет этот тест, — только Exercise -> WorkoutSet.
+        // Стоящее особняком упражнение, без Workout: `Workout.orderedExercises` строится
+        // из `items`, так что подключение сюда ещё и тренировки задевало бы её отдельную
+        // (нерелевантную здесь) семантику. Каскад, который проверяет этот тест, — только
+        // Exercise -> WorkoutSet.
         let bench = Fixtures.exercise("Жим лёжа", in: store.context)
         bench.addSet(weight: 60, reps: 8, context: store.context)
         bench.addSet(weight: 65, reps: 6, context: store.context)

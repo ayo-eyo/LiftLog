@@ -16,8 +16,7 @@ struct LiftLogApp: App {
         Exercise.self,
         Workout.self,
         WorkoutSet.self,
-        WorkoutTemplate.self,
-        TemplateItem.self,
+        WorkoutItem.self,
     ])
 
     private static let container: ModelContainer = {

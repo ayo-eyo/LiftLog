@@ -45,7 +45,7 @@ final class WatchSessionManager: NSObject, WCSessionDelegate {
         if let workout, workout.isActive {
             snapshot = WatchWorkoutSnapshot(
                 workoutID: workout.syncID,
-                exercises: workout.exercises.map { self.exerciseInfo(for: $0, in: workout) },
+                exercises: workout.orderedExercises.map { self.exerciseInfo(for: $0, in: workout) },
                 restEndDate: restTimer?.endDate,
                 restExerciseName: restTimer?.exerciseName
             )
@@ -146,7 +146,7 @@ final class WatchSessionManager: NSObject, WCSessionDelegate {
         let exercise: Exercise?
         if let byID = try? context.fetch(FetchDescriptor<Exercise>(predicate: #Predicate { $0.syncID == exerciseID })).first {
             exercise = byID
-        } else if let byName = workout.exercises.first(where: { $0.name == command.exerciseName }) {
+        } else if let byName = workout.orderedExercises.first(where: { $0.name == command.exerciseName }) {
             logger.error("logSet: syncID \(exerciseID) not found, falling back to name match '\(command.exerciseName)' — exercise names aren't unique, this can log to the wrong exercise")
             exercise = byName
         } else {
