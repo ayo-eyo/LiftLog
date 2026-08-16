@@ -6,6 +6,10 @@ final class WorkoutTemplate {
     var name: String
     var createdAt: Date
     @Relationship(deleteRule: .cascade, inverse: \TemplateItem.template) var items: [TemplateItem] = []
+    /// Declares the inverse of `Workout.template` so SwiftData nullifies it when a
+    /// template is deleted — without an inverse, a deleted template's `Workout`
+    /// references are left dangling instead of clearing.
+    @Relationship(deleteRule: .nullify, inverse: \Workout.template) var workouts: [Workout] = []
 
     init(name: String, createdAt: Date = .now) {
         self.name = name
