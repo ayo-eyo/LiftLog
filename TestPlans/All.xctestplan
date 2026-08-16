@@ -1,0 +1,44 @@
+{
+  "configurations" : [
+    {
+      "id" : "A1C4F0E1-0002-4F00-9E00-000000000002",
+      "name" : "ru-RU",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "codeCoverage" : {
+      "targets" : [
+        {
+          "containerPath" : "container:LiftLog.xcodeproj",
+          "identifier" : "3BAE532A2FF3A7DB00448B33",
+          "name" : "LiftLog"
+        }
+      ]
+    },
+    "defaultTestExecutionTimeAllowance" : 120,
+    "language" : "ru",
+    "region" : "RU",
+    "testTimeoutsEnabled" : true,
+    "uiTestingScreenshotsLifetime" : "keepNever"
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:LiftLog.xcodeproj",
+        "identifier" : "3BD0A00630130A000081F2B7",
+        "name" : "LiftLogTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:LiftLog.xcodeproj",
+        "identifier" : "3BD0A01630130A000081F2B7",
+        "name" : "LiftLogUITests"
+      }
+    }
+  ],
+  "version" : 1
+}

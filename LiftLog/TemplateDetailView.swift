@@ -54,6 +54,11 @@ struct TemplateDetailView: View {
         .background(.chalk)
         .navigationTitle(template.name.isEmpty ? "Шаблон" : template.name)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if groupedItems.count > 1 {
+                EditButton()
+            }
+        }
         .sheet(item: $activeSheet) { sheet in
             sheetContent(for: sheet)
         }
@@ -65,35 +70,34 @@ struct TemplateDetailView: View {
     private var itemsList: some View {
         List {
             ForEach(groupedItems, id: \.exercise.persistentModelID) { group in
-                Section {
-                    ForEach(group.items) { item in
-                        itemRow(item)
-                    }
-                    .onDelete { offsets in delete(group.items, at: offsets) }
-                } header: {
-                    Text(group.exercise.name).font(.sans(15)).foregroundStyle(.ink)
+                NavigationLink {
+                    TemplateItemDefaultsView(template: template, exercise: group.exercise)
+                } label: {
+                    exerciseRow(group)
                 }
+                .listRowBackground(Color.chalk)
+                .listRowSeparatorTint(.hairline)
             }
+            .onMove(perform: moveExercise)
+            .onDelete(perform: deleteExercise)
         }
         .scrollContentBackground(.hidden)
         .background(.chalk)
     }
 
-    private func itemRow(_ item: TemplateItem) -> some View {
-        HStack {
-            Text(item.defaultWeight.formatted(.number) + " кг")
-                .font(.mono(14)).foregroundStyle(.ink)
-            Spacer()
-            Text("× \(item.defaultReps)")
-                .font(.mono(14)).foregroundStyle(.steel)
+    private func exerciseRow(_ group: (exercise: Exercise, items: [TemplateItem])) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(group.exercise.name).font(.sans(16)).foregroundStyle(.ink)
+            Text(group.items.map { "\($0.defaultWeight.formatted(.number)) кг × \($0.defaultReps)" }.joined(separator: " · "))
+                .font(.mono(12))
+                .foregroundStyle(.steel)
+                .lineLimit(1)
         }
-        .listRowBackground(Color.chalk)
-        .listRowSeparatorTint(.hairline)
     }
 
     private var bottomButtons: some View {
         VStack(spacing: 10) {
-            Button("Добавить подход") { activeSheet = .picker }
+            Button("Добавить упражнение") { activeSheet = .picker }
                 .font(.sans(15))
                 .buttonStyle(.bordered)
                 .tint(.plateBlue)
@@ -122,7 +126,9 @@ struct TemplateDetailView: View {
                 activeSheet = .defaults(exercise)
             }
         case .defaults(let exercise):
-            TemplateItemDefaultsView(template: template, exercise: exercise)
+            NavigationStack {
+                TemplateItemDefaultsView(template: template, exercise: exercise)
+            }
         }
     }
 
@@ -133,9 +139,25 @@ struct TemplateDetailView: View {
         startedWorkout = workout
     }
 
-    private func delete(_ items: [TemplateItem], at offsets: IndexSet) {
+    private func moveExercise(from source: IndexSet, to destination: Int) {
+        var groups = groupedItems
+        groups.move(fromOffsets: source, toOffset: destination)
+
+        var order = 0
+        for group in groups {
+            for item in group.items {
+                item.order = order
+                order += 1
+            }
+        }
+    }
+
+    private func deleteExercise(at offsets: IndexSet) {
+        let groups = groupedItems
         for index in offsets {
-            context.delete(items[index])
+            for item in groups[index].items {
+                context.delete(item)
+            }
         }
     }
 }

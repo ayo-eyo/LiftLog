@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct TemplateItemDefaultsView: View {
-    @Bindable var template: WorkoutTemplate
+    let template: WorkoutTemplate
     let exercise: Exercise
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
@@ -23,47 +23,31 @@ struct TemplateItemDefaultsView: View {
         template.sortedItems.filter { $0.exercise?.persistentModelID == exercise.persistentModelID }
     }
 
+    private var weightBinding: Binding<Double?> {
+        Binding(get: { weight }, set: { weight = $0 ?? weight })
+    }
+
+    private var repsBinding: Binding<Int?> {
+        Binding(get: { reps }, set: { reps = $0 ?? reps })
+    }
+
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                inputBlock
-                historyList
-            }
-            .background(.chalk)
-            .navigationTitle(exercise.name)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                Button("Готово") { dismiss() }
-            }
+        VStack(spacing: 0) {
+            inputBlock
+            historyList
+        }
+        .background(.chalk)
+        .navigationTitle(exercise.name)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            Button("Готово") { dismiss() }
         }
     }
 
     private var inputBlock: some View {
         VStack(spacing: 12) {
-            HStack {
-                Text("Вес").font(.sans(16)).foregroundStyle(.ink)
-                Spacer()
-                TextField("кг", value: $weight, format: .number)
-                    .font(.mono(17))
-                    .keyboardType(.decimalPad)
-                    .multilineTextAlignment(.center)
-                    .frame(width: 80)
-                    .padding(.vertical, 8)
-                    .background(.chalkDeep, in: .rect(cornerRadius: 8))
-                Stepper("", value: $weight, in: 0...500, step: 0.5).labelsHidden()
-            }
-            HStack {
-                Text("Повторы").font(.sans(16)).foregroundStyle(.ink)
-                Spacer()
-                TextField("", value: $reps, format: .number)
-                    .font(.mono(17))
-                    .keyboardType(.numberPad)
-                    .multilineTextAlignment(.center)
-                    .frame(width: 80)
-                    .padding(.vertical, 8)
-                    .background(.chalkDeep, in: .rect(cornerRadius: 8))
-                Stepper("", value: $reps, in: 1...100).labelsHidden()
-            }
+            WeightInputRow(weight: weightBinding, stepper: $weight)
+            RepsInputRow(reps: repsBinding, stepper: $reps)
             Button("Добавить подход") {
                 template.addExercise(exercise, weight: weight, reps: reps, context: context)
             }
@@ -77,15 +61,9 @@ struct TemplateItemDefaultsView: View {
     private var historyList: some View {
         List {
             ForEach(items) { item in
-                HStack {
-                    Text(item.defaultWeight.formatted(.number) + " кг")
-                        .font(.mono(15)).foregroundStyle(.ink)
-                    Spacer()
-                    Text("× \(item.defaultReps)")
-                        .font(.mono(15)).foregroundStyle(.steel)
-                }
-                .listRowSeparatorTint(.hairline)
-                .listRowBackground(Color.chalk)
+                SetRow(weight: item.defaultWeight, reps: item.defaultReps)
+                    .listRowSeparatorTint(.hairline)
+                    .listRowBackground(Color.chalk)
             }
             .onDelete(perform: delete)
         }

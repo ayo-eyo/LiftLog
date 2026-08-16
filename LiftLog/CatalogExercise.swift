@@ -11,5 +11,4 @@ struct CatalogExercise: Codable, Identifiable {
     let secondaryMuscles: [String]
     let instructions: [String]
     let category: String
-    let images: [String]
 }

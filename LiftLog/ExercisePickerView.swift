@@ -28,8 +28,15 @@ struct ExercisePickerView: View {
                 ForEach(filteredGroups, id: \.muscle) { group in
                     Section {
                         ForEach(group.exercises) { item in
-                            Button(item.name) { select(item) }
-                                .foregroundStyle(.ink)
+                            Button {
+                                select(item)
+                            } label: {
+                                HStack(spacing: 11) {
+                                    ExerciseThumbnail(primaryMuscles: item.primaryMuscles, secondaryMuscles: item.secondaryMuscles)
+                                    Text(item.name)
+                                        .foregroundStyle(.ink)
+                                }
+                            }
                         }
                     } header: {
                         Text(group.muscle.capitalized)
@@ -51,6 +58,5 @@ struct ExercisePickerView: View {
     private func select(_ catalogExercise: CatalogExercise) {
         let exercise = ExerciseCatalog.exercise(for: catalogExercise, existing: myExercises, context: context)
         onSelect(exercise)
-        dismiss()
     }
 }
