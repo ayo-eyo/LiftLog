@@ -18,7 +18,17 @@ struct ExercisePickerView: View {
     @State private var filteredGroups: [(muscle: String, exercises: [CatalogExercise])] = []
 
     private func recomputeFilteredGroups() {
-        filteredGroups = groups.compactMap { group in
+        filteredGroups = Self.filteredGroups(groups, excluding: excluding, searchText: searchText)
+    }
+
+    /// Pulled out of `recomputeFilteredGroups` so the exclusion/search logic is
+    /// testable without instantiating the view.
+    static func filteredGroups(
+        _ groups: [(muscle: String, exercises: [CatalogExercise])],
+        excluding: Set<String>,
+        searchText: String
+    ) -> [(muscle: String, exercises: [CatalogExercise])] {
+        groups.compactMap { group in
             let filtered = group.exercises.filter { item in
                 !excluding.contains(item.id) &&
                 (searchText.isEmpty || item.name.localizedCaseInsensitiveContains(searchText))

@@ -35,8 +35,8 @@ final class Workout {
             .sorted { ($0.createdAt, $0.order) < ($1.createdAt, $1.order) }
     }
 
-    func finish() {
-        completedAt = .now
+    func finish(now: Date = .now) {
+        completedAt = now
     }
     
     var template: WorkoutTemplate?

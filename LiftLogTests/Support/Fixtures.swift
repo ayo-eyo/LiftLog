@@ -79,6 +79,14 @@ enum Fixtures {
         }
     }
 
+    // MARK: RestTimer
+
+    /// A `RestTimer` whose notification hooks are no-ops, so tests never touch the
+    /// real `UNUserNotificationCenter`.
+    static func restTimer() -> RestTimer {
+        RestTimer(scheduleNotification: { _, _ in }, cancelNotification: {})
+    }
+
     // MARK: Templates
 
     @discardableResult

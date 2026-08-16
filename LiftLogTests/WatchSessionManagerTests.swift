@@ -15,7 +15,7 @@ struct WatchSessionManagerTests {
         let exercise = Fixtures.exercise(in: store.context)
         let workout = Fixtures.workout(exercises: [exercise], in: store.context)
 
-        let restTimer = RestTimer()
+        let restTimer = Fixtures.restTimer()
         restTimer.start(duration: 120, exerciseName: exercise.name)
 
         let manager = WatchSessionManager()
@@ -38,7 +38,7 @@ struct WatchSessionManagerTests {
         let workout = Fixtures.workout(exercises: [exercise], in: store.context)
 
         let manager = WatchSessionManager()
-        manager.start(modelContext: store.context, restTimer: RestTimer())
+        manager.start(modelContext: store.context, restTimer: Fixtures.restTimer())
 
         let command = WatchSyncFixtures.logSetCommand(workoutID: workout.syncID, exerciseID: exercise.syncID)
 
@@ -58,7 +58,7 @@ struct WatchSessionManagerTests {
         let workout = Fixtures.workout(exercises: [exercise], in: store.context)
 
         let manager = WatchSessionManager()
-        manager.start(modelContext: store.context, restTimer: RestTimer())
+        manager.start(modelContext: store.context, restTimer: Fixtures.restTimer())
 
         let first = WatchSyncFixtures.logSetCommand(workoutID: workout.syncID, exerciseID: exercise.syncID, weight: 60, reps: 8)
         let second = WatchSyncFixtures.logSetCommand(workoutID: workout.syncID, exerciseID: exercise.syncID, weight: 65, reps: 6)
@@ -79,7 +79,7 @@ struct WatchSessionManagerTests {
         let workout = Fixtures.workout(in: store.context)
 
         let manager = WatchSessionManager()
-        manager.start(modelContext: store.context, restTimer: RestTimer())
+        manager.start(modelContext: store.context, restTimer: Fixtures.restTimer())
         manager.pushSnapshot(for: workout)
 
         #expect(manager.lastSnapshot?.workoutID == workout.syncID)
@@ -92,7 +92,7 @@ struct WatchSessionManagerTests {
         let workout = Fixtures.workout(exercises: [exercise], in: store.context)
 
         let manager = WatchSessionManager()
-        manager.start(modelContext: store.context, restTimer: RestTimer())
+        manager.start(modelContext: store.context, restTimer: Fixtures.restTimer())
 
         // exerciseID не совпадает ни с одним syncID — часы прислали устаревший снапшот.
         let command = WatchSyncFixtures.logSetCommand(

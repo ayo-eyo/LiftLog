@@ -15,13 +15,24 @@ struct WorkoutExerciseLogView: View {
         self.workout = workout
         self.exercise = exercise
         self.restTimer = restTimer
+        let prefill = Self.prefill(workout: workout, exercise: exercise)
+        _weight = State(initialValue: prefill.weight)
+        _reps = State(initialValue: prefill.reps)
+    }
+
+    /// Prefill priority: template default for the next planned set → last set logged
+    /// in this workout → last set ever logged for this exercise → empty. Pulled out
+    /// of `init` so the priority order is testable without instantiating the view.
+    static func prefill(workout: Workout, exercise: Exercise) -> (weight: Double?, reps: Int?) {
         let sessionLast = workout.setsFor(exercise).last
         let allTimeLast = exercise.sets.sorted { ($0.createdAt, $0.order) < ($1.createdAt, $1.order) }.last
         let templateWeight = workout.defaultWeight(for: exercise)
         let templateReps = workout.defaultReps(for: exercise)
 
-        _weight = State(initialValue: templateWeight ?? sessionLast?.weight ?? allTimeLast?.weight)
-        _reps = State(initialValue: templateReps ?? sessionLast?.reps ?? allTimeLast?.reps)
+        return (
+            templateWeight ?? sessionLast?.weight ?? allTimeLast?.weight,
+            templateReps ?? sessionLast?.reps ?? allTimeLast?.reps
+        )
     }
 
     private var weightBinding: Binding<Double> {
