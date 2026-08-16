@@ -8,6 +8,7 @@ struct RootTabView: View {
 
     @State private var presentedWorkout: Workout?
     @State private var restTimer = RestTimer()
+    @State private var didRunDataIntegrityCheck = false
 
     var body: some View {
         TabView {
@@ -42,7 +43,10 @@ struct RootTabView: View {
             await NotificationManager.requestAuthorization()
         }
         .onAppear {
-            DataIntegrity.deduplicateSyncIDs(context: context)
+            if !didRunDataIntegrityCheck {
+                didRunDataIntegrityCheck = true
+                DataIntegrity.deduplicateSyncIDs(context: context)
+            }
             WatchSessionManager.shared.start(modelContext: context, restTimer: restTimer)
         }
     }

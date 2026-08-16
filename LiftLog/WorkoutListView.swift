@@ -37,7 +37,11 @@ struct WorkoutListView: View {
 
     private func delete(at offsets: IndexSet) {
         for index in offsets {
-            context.delete(workouts[index])
+            let workout = workouts[index]
+            if workout.isActive {
+                WatchSessionManager.shared.pushSnapshot(for: nil)
+            }
+            context.delete(workout)
         }
     }
 }
@@ -51,7 +55,7 @@ private struct WorkoutRow: View {
                 Text(workout.date.formatted(date: .abbreviated, time: .shortened))
                     .font(.sans(16))
                     .foregroundStyle(.ink)
-                Text("\(workout.exercises.count) упражнений · \(workout.sets.count) подходов")
+                Text("\(workout.exercises.count) \(RussianPlural.form(workout.exercises.count, "упражнение", "упражнения", "упражнений")) · \(workout.sets.count) \(RussianPlural.form(workout.sets.count, "подход", "подхода", "подходов"))")
                     .font(.mono(13))
                     .foregroundStyle(.steel)
             }

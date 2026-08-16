@@ -11,7 +11,7 @@ struct ExerciseDetailView: View {
 
     init(exercise: Exercise) {
         self.exercise = exercise
-        let last = exercise.sets.sorted { $0.createdAt < $1.createdAt }.last
+        let last = exercise.sets.sorted { ($0.createdAt, $0.order) < ($1.createdAt, $1.order) }.last
         _weight = State(initialValue: last?.weight)
         _reps = State(initialValue: last?.reps)
     }
@@ -25,7 +25,7 @@ struct ExerciseDetailView: View {
     }
 
     private var sets: [WorkoutSet] {
-        exercise.sets.sorted { $0.createdAt < $1.createdAt }
+        exercise.sets.sorted { ($0.createdAt, $0.order) < ($1.createdAt, $1.order) }
     }
 
     var body: some View {
@@ -45,13 +45,13 @@ struct ExerciseDetailView: View {
             WeightInputRow(weight: $weight, stepper: weightBinding)
             RepsInputRow(reps: $reps, stepper: repsBinding)
             Button("Добавить подход") {
-                guard let w = weight, let r = reps else { return }
+                guard let w = weight, let r = reps, w > 0, r > 0 else { return }
                 exercise.addSet(weight: w, reps: r, context: context)
             }
             .font(.sans(15))
             .buttonStyle(.borderedProminent)
             .tint(.plateBlue)
-            .disabled(weight == nil || reps == nil)
+            .disabled(weight == nil || reps == nil || (weight ?? 0) <= 0 || (reps ?? 0) <= 0)
         }
         .padding()
     }

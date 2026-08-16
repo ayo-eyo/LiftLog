@@ -22,7 +22,8 @@ final class Workout {
     }
 
     func logSet(weight: Double, reps: Int, for exercise: Exercise, context: ModelContext) {
-        let new = WorkoutSet(weight: weight, reps: reps)
+        let order = (sets.map(\.order).max() ?? -1) + 1
+        let new = WorkoutSet(weight: weight, reps: reps, order: order)
         context.insert(new)
         sets.append(new)
         exercise.sets.append(new)
@@ -31,7 +32,7 @@ final class Workout {
     func setsFor(_ exercise: Exercise) -> [WorkoutSet] {
         sets
             .filter { $0.exercise?.persistentModelID == exercise.persistentModelID }
-            .sorted { $0.createdAt < $1.createdAt }
+            .sorted { ($0.createdAt, $0.order) < ($1.createdAt, $1.order) }
     }
 
     func finish() {

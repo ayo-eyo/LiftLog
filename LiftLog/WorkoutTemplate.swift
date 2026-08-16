@@ -17,7 +17,12 @@ final class WorkoutTemplate {
     }
 
     func addExercise(_ exercise: Exercise, weight: Double, reps: Int, context: ModelContext) {
-        let item = TemplateItem(exercise: exercise, defaultWeight: weight, defaultReps: reps, order: items.count)
+        // Deletion doesn't renumber remaining items, so `items.count` can collide with an
+        // existing `order` (e.g. 3 items 0/1/2 → delete #0 → 2 remain → count == 2 collides
+        // with the surviving item at order 2). max+1 never collides, gaps are harmless since
+        // `sortedItems` only cares about relative order.
+        let order = (items.map(\.order).max() ?? -1) + 1
+        let item = TemplateItem(exercise: exercise, defaultWeight: weight, defaultReps: reps, order: order)
         context.insert(item)
         items.append(item)
     }

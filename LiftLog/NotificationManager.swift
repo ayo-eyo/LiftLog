@@ -1,7 +1,7 @@
 import UserNotifications
 
 enum NotificationManager {
-    private static let restTimerID = "restTimer"
+    fileprivate static let restTimerID = "restTimer"
 
     static func requestAuthorization() async {
         UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
@@ -34,6 +34,12 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification
     ) async -> UNNotificationPresentationOptions {
-        [.banner, .sound]
+        // Called only while the app is in the foreground. For the rest timer the
+        // in-app countdown (RestTimerView) already shows this, and the watch schedules
+        // its own independent alert — showing this banner too is a redundant third copy.
+        if notification.request.identifier == NotificationManager.restTimerID {
+            return []
+        }
+        return [.banner, .sound]
     }
 }

@@ -3,6 +3,8 @@ import Observation
 
 @Observable
 final class RestTimer {
+    static let defaultDuration: TimeInterval = 120
+
     private(set) var endDate: Date?
     private(set) var exerciseName: String?
 
