@@ -1,10 +1,14 @@
 import SwiftUI
+import os
 
 extension Color {
     init(hex: String) {
         var rgb: UInt64 = 0
-        Scanner(string: hex).scanHexInt64(&rgb)
-        
+        if !Scanner(string: hex).scanHexInt64(&rgb) {
+            Logger(subsystem: Bundle.main.bundleIdentifier ?? "LiftLog", category: "Theme")
+                .error("Не удалось разобрать hex-цвет: \(hex)")
+        }
+
         let r = Double((rgb >> 16) & 0xFF) / 255
         let g = Double((rgb >> 8) & 0xFF) / 255
         let b = Double(rgb & 0xFF) / 255

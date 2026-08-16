@@ -3,12 +3,14 @@ import SwiftData
 
 @Model
 final class Workout {
+    var syncID: UUID = UUID()
     var date: Date
     var completedAt: Date?
     var exercises: [Exercise] = []
     @Relationship(deleteRule: .cascade, inverse: \WorkoutSet.workout) var sets: [WorkoutSet] = []
     
     init(date: Date = .now) {
+        self.syncID = UUID()
         self.date = date
     }
 

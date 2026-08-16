@@ -1,0 +1,128 @@
+import SwiftUI
+
+struct WorkoutSetsView: View {
+    @ObservedObject var phone: PhoneSessionManager
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if let snapshot = phone.snapshot, !snapshot.exercises.isEmpty {
+                    List {
+                        TimelineView(.periodic(from: .now, by: 1)) { timeline in
+                            if let restEndDate = snapshot.restEndDate, restEndDate > timeline.date {
+                                restSection(remaining: restEndDate.timeIntervalSince(timeline.date), name: snapshot.restExerciseName)
+                            }
+                        }
+                        ForEach(snapshot.exercises) { exercise in
+                            NavigationLink {
+                                LogSetView(phone: phone, exercise: exercise)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(exercise.name)
+                                    Text("\(exercise.setsLoggedCount) подходов")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    ContentUnavailableView(
+                        "Нет активной тренировки",
+                        systemImage: "figure.strengthtraining.traditional",
+                        description: Text("Начни тренировку на телефоне")
+                    )
+                }
+            }
+            .navigationTitle("Подходы")
+        }
+    }
+
+    private func restSection(remaining: TimeInterval, name: String?) -> some View {
+        Section {
+            VStack(spacing: 4) {
+                Text(name ?? "Отдых")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Text(clockString(remaining))
+                    .font(.title2.monospacedDigit())
+                Button("Пропустить") { phone.skipRest() }
+                    .font(.caption2)
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+}
+
+private func clockString(_ interval: TimeInterval) -> String {
+    let seconds = max(0, Int(interval.rounded()))
+    return String(format: "%d:%02d", seconds / 60, seconds % 60)
+}
+
+private struct LogSetView: View {
+    @ObservedObject var phone: PhoneSessionManager
+    let exercise: WatchWorkoutSnapshot.ExerciseInfo
+
+    @State private var weight: Double
+    @State private var reps: Int
+    @State private var isSaving = false
+    @Environment(\.dismiss) private var dismiss
+
+    init(phone: PhoneSessionManager, exercise: WatchWorkoutSnapshot.ExerciseInfo) {
+        self.phone = phone
+        self.exercise = exercise
+        _weight = State(initialValue: exercise.weight ?? 20)
+        _reps = State(initialValue: exercise.reps ?? 10)
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 6) {
+                Stepper(value: $weight, in: 0...500, step: 2.5) {
+                    Text("\(weight.formatted(.number)) кг")
+                }
+                .controlSize(.small)
+
+                Stepper(value: $reps, in: 1...50) {
+                    Text("× \(reps)")
+                }
+                .controlSize(.small)
+
+                TimelineView(.periodic(from: .now, by: 1)) { timeline in
+                    if let restEndDate = phone.snapshot?.restEndDate, restEndDate > timeline.date {
+                        Text(clockString(restEndDate.timeIntervalSince(timeline.date)))
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Button {
+                    isSaving = true
+                    phone.logSet(exerciseID: exercise.id, exerciseName: exercise.name, weight: weight, reps: reps) { result in
+                        DispatchQueue.main.async {
+                            isSaving = false
+                            switch result {
+                            case .confirmed(let info):
+                                weight = info.weight ?? weight
+                                reps = info.reps ?? reps
+                            case .queued, .failed:
+                                break
+                            }
+                        }
+                    }
+                } label: {
+                    if isSaving {
+                        ProgressView()
+                    } else {
+                        Text("Записать подход")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .disabled(isSaving)
+            }
+            .padding(.horizontal, 6)
+        }
+        .navigationTitle(exercise.name)
+    }
+}

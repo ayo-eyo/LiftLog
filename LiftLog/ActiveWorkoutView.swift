@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct ActiveWorkoutView: View {
-    @Bindable var workout: Workout
+    let workout: Workout
     let restTimer: RestTimer
     @Environment(\.dismiss) private var dismiss
     @State private var showingPicker = false
@@ -14,7 +14,8 @@ struct ActiveWorkoutView: View {
                     NavigationLink {
                         WorkoutExerciseLogView(workout: workout, exercise: exercise, restTimer: restTimer)
                     } label: {
-                        HStack {
+                        HStack(spacing: 11) {
+                            ExerciseThumbnail(primaryMuscles: exercise.primaryMuscles, secondaryMuscles: exercise.secondaryMuscles, size: 44, cornerRadius: 9)
                             Text(exercise.name)
                                 .font(.sans(16))
                                 .foregroundStyle(.ink)
@@ -49,6 +50,7 @@ struct ActiveWorkoutView: View {
                         restTimer.skip()
                         workout.finish()
                         HealthKitManager.save(workout)
+                        WatchSessionManager.shared.pushSnapshot(for: nil)
                         dismiss()
                     }
                 }
@@ -56,8 +58,13 @@ struct ActiveWorkoutView: View {
             .sheet(isPresented: $showingPicker) {
                 ExercisePickerView(excluding: Set(workout.exercises.compactMap { $0.catalogID })) { exercise in
                     workout.addExercise(exercise)
+                    showingPicker = false
+                    WatchSessionManager.shared.pushSnapshot(for: workout)
                 }
             }
+        }
+        .onAppear {
+            WatchSessionManager.shared.pushSnapshot(for: workout)
         }
     }
 }

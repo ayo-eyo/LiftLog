@@ -22,6 +22,20 @@
 			remoteGlobalIDString = 3BAE533E2FF3A80000448B33;
 			remoteInfo = "LiftLogWatchApp Watch App";
 		};
+		3BD0A00B30130A000081F2B7 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 3BAE53232FF3A7DB00448B33 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3BAE532A2FF3A7DB00448B33;
+			remoteInfo = LiftLog;
+		};
+		3BD0A01B30130A000081F2B7 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 3BAE53232FF3A7DB00448B33 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3BAE532A2FF3A7DB00448B33;
+			remoteInfo = LiftLog;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -45,6 +59,10 @@
 		3BC0110630129F3C0081F2B7 /* Oswald-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Oswald-SemiBold.ttf"; sourceTree = "<group>"; };
 		3BC0110830129F630081F2B7 /* IBMPlexSans-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-Regular.ttf"; sourceTree = "<group>"; };
 		3BC0110A30129F720081F2B7 /* IBMPlexMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Regular.ttf"; sourceTree = "<group>"; };
+		3BD0A00130130A000081F2B7 /* LiftLogTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LiftLogTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		3BD0A01130130A000081F2B7 /* LiftLogUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LiftLogUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		3BD0A02130130A000081F2B7 /* TestPlans/Unit.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = TestPlans/Unit.xctestplan; sourceTree = "<group>"; };
+		3BD0A02230130A000081F2B7 /* TestPlans/All.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = TestPlans/All.xctestplan; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -71,6 +89,16 @@
 			path = "LiftLogWatchApp Watch App";
 			sourceTree = "<group>";
 		};
+		3BD0A00230130A000081F2B7 /* LiftLogTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = LiftLogTests;
+			sourceTree = "<group>";
+		};
+		3BD0A01230130A000081F2B7 /* LiftLogUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = LiftLogUITests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -88,6 +116,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		3BD0A00430130A000081F2B7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3BD0A01430130A000081F2B7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -96,6 +138,10 @@
 			children = (
 				3BAE532D2FF3A7DB00448B33 /* LiftLog */,
 				3BAE53402FF3A80100448B33 /* LiftLogWatchApp Watch App */,
+				3BD0A00230130A000081F2B7 /* LiftLogTests */,
+				3BD0A01230130A000081F2B7 /* LiftLogUITests */,
+				3BD0A02130130A000081F2B7 /* TestPlans/Unit.xctestplan */,
+				3BD0A02230130A000081F2B7 /* TestPlans/All.xctestplan */,
 				3BAE532C2FF3A7DB00448B33 /* Products */,
 				3B8906482FF595DF00E04640 /* exercises.json */,
 				3BC0110630129F3C0081F2B7 /* Oswald-SemiBold.ttf */,
@@ -109,6 +155,8 @@
 			children = (
 				3BAE532B2FF3A7DB00448B33 /* LiftLog.app */,
 				3BAE533F2FF3A80000448B33 /* LiftLogWatchApp Watch App.app */,
+				3BD0A00130130A000081F2B7 /* LiftLogTests.xctest */,
+				3BD0A01130130A000081F2B7 /* LiftLogUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -162,6 +210,52 @@
 			productReference = 3BAE533F2FF3A80000448B33 /* LiftLogWatchApp Watch App.app */;
 			productType = "com.apple.product-type.application";
 		};
+		3BD0A00630130A000081F2B7 /* LiftLogTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3BD0A00730130A000081F2B7 /* Build configuration list for PBXNativeTarget "LiftLogTests" */;
+			buildPhases = (
+				3BD0A00330130A000081F2B7 /* Sources */,
+				3BD0A00430130A000081F2B7 /* Frameworks */,
+				3BD0A00530130A000081F2B7 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				3BD0A00A30130A000081F2B7 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				3BD0A00230130A000081F2B7 /* LiftLogTests */,
+			);
+			name = LiftLogTests;
+			packageProductDependencies = (
+			);
+			productName = LiftLogTests;
+			productReference = 3BD0A00130130A000081F2B7 /* LiftLogTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		3BD0A01630130A000081F2B7 /* LiftLogUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3BD0A01730130A000081F2B7 /* Build configuration list for PBXNativeTarget "LiftLogUITests" */;
+			buildPhases = (
+				3BD0A01330130A000081F2B7 /* Sources */,
+				3BD0A01430130A000081F2B7 /* Frameworks */,
+				3BD0A01530130A000081F2B7 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				3BD0A01A30130A000081F2B7 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				3BD0A01230130A000081F2B7 /* LiftLogUITests */,
+			);
+			name = LiftLogUITests;
+			packageProductDependencies = (
+			);
+			productName = LiftLogUITests;
+			productReference = 3BD0A01130130A000081F2B7 /* LiftLogUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -177,6 +271,14 @@
 					};
 					3BAE533E2FF3A80000448B33 = {
 						CreatedOnToolsVersion = 26.5;
+					};
+					3BD0A00630130A000081F2B7 = {
+						CreatedOnToolsVersion = 26.6;
+						TestTargetID = 3BAE532A2FF3A7DB00448B33;
+					};
+					3BD0A01630130A000081F2B7 = {
+						CreatedOnToolsVersion = 26.6;
+						TestTargetID = 3BAE532A2FF3A7DB00448B33;
 					};
 				};
 			};
@@ -196,6 +298,8 @@
 			targets = (
 				3BAE532A2FF3A7DB00448B33 /* LiftLog */,
 				3BAE533E2FF3A80000448B33 /* LiftLogWatchApp Watch App */,
+				3BD0A00630130A000081F2B7 /* LiftLogTests */,
+				3BD0A01630130A000081F2B7 /* LiftLogUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -219,6 +323,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		3BD0A00530130A000081F2B7 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3BD0A01530130A000081F2B7 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -236,6 +354,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		3BD0A00330130A000081F2B7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3BD0A01330130A000081F2B7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -243,6 +375,16 @@
 			isa = PBXTargetDependency;
 			target = 3BAE533E2FF3A80000448B33 /* LiftLogWatchApp Watch App */;
 			targetProxy = 3BAE53472FF3A80100448B33 /* PBXContainerItemProxy */;
+		};
+		3BD0A00A30130A000081F2B7 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 3BAE532A2FF3A7DB00448B33 /* LiftLog */;
+			targetProxy = 3BD0A00B30130A000081F2B7 /* PBXContainerItemProxy */;
+		};
+		3BD0A01A30130A000081F2B7 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 3BAE532A2FF3A7DB00448B33 /* LiftLog */;
+			targetProxy = 3BD0A01B30130A000081F2B7 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -463,6 +605,7 @@
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Чтобы показывать пульс и калории во время тренировки";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Чтобы сохранять тренировки в приложение Здоровье";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKApplication = YES;
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.you.LiftLog;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -501,6 +644,7 @@
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Чтобы показывать пульс и калории во время тренировки";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Чтобы сохранять тренировки в приложение Здоровье";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKApplication = YES;
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.you.LiftLog;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -519,6 +663,96 @@
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 4;
 				WATCHOS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Release;
+		};
+		3BD0A00830130A000081F2B7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = X6HPP7XT6X;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.you.LiftLogTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LiftLog.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/LiftLog";
+			};
+			name = Debug;
+		};
+		3BD0A00930130A000081F2B7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = X6HPP7XT6X;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.you.LiftLogTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LiftLog.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/LiftLog";
+			};
+			name = Release;
+		};
+		3BD0A01830130A000081F2B7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = X6HPP7XT6X;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.you.LiftLogUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = LiftLog;
+			};
+			name = Debug;
+		};
+		3BD0A01930130A000081F2B7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = X6HPP7XT6X;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.you.LiftLogUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = LiftLog;
 			};
 			name = Release;
 		};
@@ -548,6 +782,24 @@
 			buildConfigurations = (
 				3BAE534B2FF3A80100448B33 /* Debug */,
 				3BAE534C2FF3A80100448B33 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		3BD0A00730130A000081F2B7 /* Build configuration list for PBXNativeTarget "LiftLogTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3BD0A00830130A000081F2B7 /* Debug */,
+				3BD0A00930130A000081F2B7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		3BD0A01730130A000081F2B7 /* Build configuration list for PBXNativeTarget "LiftLogUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3BD0A01830130A000081F2B7 /* Debug */,
+				3BD0A01930130A000081F2B7 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

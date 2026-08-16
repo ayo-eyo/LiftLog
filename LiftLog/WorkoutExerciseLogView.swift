@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct WorkoutExerciseLogView: View {
-    @Bindable var workout: Workout
+    let workout: Workout
     let exercise: Exercise
     let restTimer: RestTimer
     @Environment(\.modelContext) private var context
@@ -34,6 +34,7 @@ struct WorkoutExerciseLogView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            MuscleMapHero(primaryMuscles: exercise.primaryMuscles, secondaryMuscles: exercise.secondaryMuscles, height: 180)
             inputBlock
             TimelineView(.periodic(from: .now, by: 1)) { timeline in
                 if restTimer.isResting(at: timeline.date) {
@@ -52,32 +53,8 @@ struct WorkoutExerciseLogView: View {
 
     private var inputBlock: some View {
         VStack(spacing: 12) {
-            HStack {
-                Text("Вес").font(.sans(16)).foregroundStyle(.ink)
-                Spacer()
-                TextField("кг", value: $weight, format: .number)
-                    .font(.mono(17))
-                    .keyboardType(.decimalPad)
-                    .multilineTextAlignment(.center)
-                    .frame(width: 80)
-                    .padding(.vertical, 8)
-                    .background(.chalkDeep, in: .rect(cornerRadius: 8))
-                Stepper("", value: weightBinding, in: 0...500, step: 0.5)
-                    .labelsHidden()
-            }
-            HStack {
-                Text("Повторы").font(.sans(16)).foregroundStyle(.ink)
-                Spacer()
-                TextField("", value: $reps, format: .number)
-                    .font(.mono(17))
-                    .keyboardType(.numberPad)
-                    .multilineTextAlignment(.center)
-                    .frame(width: 80)
-                    .padding(.vertical, 8)
-                    .background(.chalkDeep, in: .rect(cornerRadius: 8))
-                Stepper("", value: repsBinding, in: 1...100)
-                    .labelsHidden()
-            }
+            WeightInputRow(weight: $weight, stepper: weightBinding)
+            RepsInputRow(reps: $reps, stepper: repsBinding)
             Button("Добавить подход") {
                 guard let w = weight, let r = reps else { return }
                 workout.logSet(weight: w, reps: r, for: exercise, context: context)
@@ -89,6 +66,7 @@ struct WorkoutExerciseLogView: View {
                     reps = nextReps
                 }
                 restTimer.start(duration: 120, exerciseName: exercise.name)
+                WatchSessionManager.shared.pushSnapshot(for: workout)
             }
             .font(.sans(15))
             .buttonStyle(.borderedProminent)
@@ -103,6 +81,7 @@ struct WorkoutExerciseLogView: View {
             RestTimerView(restTimer: restTimer, duration: 120)
             Button("Пропустить отдых") {
                 restTimer.skip()
+                WatchSessionManager.shared.pushSnapshot(for: workout)
             }
             .font(.sans(13))
             .foregroundStyle(.steel)
@@ -116,13 +95,7 @@ struct WorkoutExerciseLogView: View {
                 Button {
                     editingSet = set
                 } label: {
-                    HStack {
-                        Text(set.weight.formatted(.number) + " кг")
-                            .font(.mono(15)).foregroundStyle(.ink)
-                        Spacer()
-                        Text("× \(set.reps)")
-                            .font(.mono(15)).foregroundStyle(.steel)
-                    }
+                    SetRow(weight: set.weight, reps: set.reps)
                 }
                 .listRowSeparatorTint(.hairline)
                 .listRowBackground(Color.chalk)

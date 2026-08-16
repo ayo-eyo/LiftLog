@@ -6,31 +6,19 @@ struct EditSetView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
 
+    private var weightBinding: Binding<Double?> {
+        Binding(get: { set.weight }, set: { set.weight = $0 ?? set.weight })
+    }
+
+    private var repsBinding: Binding<Int?> {
+        Binding(get: { set.reps }, set: { set.reps = $0 ?? set.reps })
+    }
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
-                HStack {
-                    Text("Вес").font(.sans(16)).foregroundStyle(.ink)
-                    Spacer()
-                    TextField("кг", value: $set.weight, format: .number)
-                        .font(.mono(17))
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.center)
-                        .frame(width: 80)
-                        .padding(.vertical, 8)
-                        .background(.chalkDeep, in: .rect(cornerRadius: 8))
-                }
-                HStack {
-                    Text("Повторы").font(.sans(16)).foregroundStyle(.ink)
-                    Spacer()
-                    TextField("", value: $set.reps, format: .number)
-                        .font(.mono(17))
-                        .keyboardType(.numberPad)
-                        .multilineTextAlignment(.center)
-                        .frame(width: 80)
-                        .padding(.vertical, 8)
-                        .background(.chalkDeep, in: .rect(cornerRadius: 8))
-                }
+                WeightInputRow(weight: weightBinding)
+                RepsInputRow(reps: repsBinding)
                 Button("Удалить подход", role: .destructive) {
                     context.delete(set)
                     dismiss()

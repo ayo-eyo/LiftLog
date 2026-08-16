@@ -39,10 +39,11 @@ struct RootTabView: View {
         }
         .task {
             await HealthKitManager.requestAuthorization()
-        }
-        .task {
-            await HealthKitManager.requestAuthorization()
             await NotificationManager.requestAuthorization()
+        }
+        .onAppear {
+            DataIntegrity.deduplicateSyncIDs(context: context)
+            WatchSessionManager.shared.start(modelContext: context, restTimer: restTimer)
         }
     }
 

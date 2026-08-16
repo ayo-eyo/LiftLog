@@ -1,17 +1,13 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var workout = WorkoutManager()
+    @ObservedObject private var phone = PhoneSessionManager.shared
 
     var body: some View {
-        VStack(spacing: 12) {
-            Text("\(Int(workout.heartRate)) bpm")
-                .font(.title2).bold()
-
-            Button(workout.isRunning ? "Finish" : "Start") {
-                workout.isRunning ? workout.end() : workout.start()
+        WorkoutSetsView(phone: phone)
+            .task {
+                await RestNotificationManager.requestAuthorization()
+                phone.start()
             }
-        }
-        .task { await workout.requestAuthorization() }
     }
 }

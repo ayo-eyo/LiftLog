@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct WorkoutSummaryView: View {
-    @Bindable var workout: Workout
+    let workout: Workout
     let restTimer: RestTimer
     @State private var showingActive = false
 
@@ -53,12 +53,6 @@ struct WorkoutSummaryView: View {
     }
 
     private func setRow(_ set: WorkoutSet) -> some View {
-        HStack {
-            Text(set.weight.formatted(.number) + " кг")
-                .font(.mono(14)).foregroundStyle(.ink)
-            Spacer()
-            Text("× \(set.reps)")
-                .font(.mono(14)).foregroundStyle(.steel)
-        }
+        SetRow(weight: set.weight, reps: set.reps, fontSize: 14)
     }
 }
