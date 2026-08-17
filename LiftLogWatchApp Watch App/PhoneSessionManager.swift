@@ -1,17 +1,19 @@
 import Foundation
 import WatchConnectivity
-import Combine
+import Observation
 import os
 
 /// Receives the active workout snapshot pushed from the iPhone app and sends
 /// set-logging / rest-skip commands back. The watch has no persistence of its
 /// own — it's a thin remote control over the phone's SwiftData store.
-final class PhoneSessionManager: NSObject, ObservableObject, WCSessionDelegate {
+@Observable
+@MainActor
+final class PhoneSessionManager: NSObject, WCSessionDelegate {
     static let shared = PhoneSessionManager()
 
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "LiftLogWatchApp", category: "PhoneSession")
 
-    @Published var snapshot: WatchWorkoutSnapshot?
+    var snapshot: WatchWorkoutSnapshot?
 
     func start() {
         guard WCSession.isSupported() else { return }
@@ -85,7 +87,11 @@ final class PhoneSessionManager: NSObject, ObservableObject, WCSessionDelegate {
 
     // MARK: WCSessionDelegate
 
-    func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
+    // WatchConnectivity calls these on its own delegate queue, not necessarily main —
+    // `nonisolated` here, hopping to the main actor for the actual state write, keeps
+    // `snapshot` single-threaded on main (the class is `@MainActor`).
+
+    nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
         if let error {
             logger.error("activation failed: \(error.localizedDescription)")
         }
@@ -94,15 +100,24 @@ final class PhoneSessionManager: NSObject, ObservableObject, WCSessionDelegate {
         }
     }
 
-    func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
+    nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
         guard let data = applicationContext["data"] as? Data else { return }
         applyContext(data)
     }
 
-    private func applyContext(_ data: Data) {
-        guard let context = try? JSONDecoder().decode(WatchContext.self, from: data) else { return }
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
+    // `sessionDidBecomeInactive`/`sessionDidDeactivate` exist on `WCSessionDelegate` but
+    // are `__WATCHOS_UNAVAILABLE` — implementing them here doesn't compile for this
+    // target (they're the iOS-side multi-session-transition callbacks; watchOS has only
+    // one paired counterpart, so they don't apply). Only the two methods above are
+    // required/relevant on watchOS.
+
+    nonisolated private func applyContext(_ data: Data) {
+        // `WatchContext`'s `Decodable` conformance is main-actor-isolated (the project
+        // defaults every type to `@MainActor`), so the decode itself has to happen
+        // after hopping, not before — decoding here in the `nonisolated` function would
+        // warn under Swift 5 and fail to compile under the Swift 6 language mode.
+        Task { @MainActor in
+            guard let context = try? JSONDecoder().decode(WatchContext.self, from: data) else { return }
             let oldEndDate = self.snapshot?.restEndDate
             let newEndDate = context.snapshot?.restEndDate
             self.snapshot = context.snapshot

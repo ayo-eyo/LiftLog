@@ -1,6 +1,14 @@
 import Foundation
 import SwiftData
 
+/// The three states in the table on `isActive` — computed from `startedAt`/
+/// `completedAt` rather than stored, so it can never drift from them.
+nonisolated enum WorkoutStatus {
+    case plan
+    case active
+    case completed
+}
+
 @Model
 final class Workout {
     var syncID: UUID = UUID()
@@ -23,7 +31,13 @@ final class Workout {
         self.sortIndex = sortIndex
     }
 
-    var isActive: Bool { startedAt != nil && completedAt == nil }
+    var status: WorkoutStatus {
+        if completedAt != nil { return .completed }
+        if startedAt != nil { return .active }
+        return .plan
+    }
+
+    var isActive: Bool { status == .active }
 
     var sortedItems: [WorkoutItem] {
         items.sorted { $0.order < $1.order }
@@ -118,6 +132,15 @@ final class Workout {
         }
     }
 
+    /// Removes a single planned position — as opposed to `deleteExercise`, which
+    /// removes every position for an exercise plus its logged sets. Same in-memory
+    /// cleanup reasoning as `deleteExercise`: `context.delete` alone doesn't prune
+    /// `item` out of `items` until the next save/fetch.
+    func deleteItem(_ item: WorkoutItem, context: ModelContext) {
+        context.delete(item)
+        items.removeAll { $0.persistentModelID == item.persistentModelID }
+    }
+
     func logSet(weight: Double, reps: Int, for exercise: Exercise, context: ModelContext) {
         let order = (sets.map(\.order).max() ?? -1) + 1
         let new = WorkoutSet(weight: weight, reps: reps, order: order)
@@ -172,7 +195,7 @@ extension Workout {
     /// shared, not duplicated, so exercise history stays unified; the source is
     /// never mutated.
     static func copy(of source: Workout, sortIndex: Int, now: Date = .now, context: ModelContext) -> Workout {
-        let copy = Workout(date: now, name: copyName(of: source.name), sortIndex: sortIndex)
+        let copy = Workout(date: now, name: source.name, sortIndex: sortIndex)
         context.insert(copy)
 
         var order = 0
@@ -198,7 +221,4 @@ extension Workout {
         return copy
     }
 
-    static func copyName(of name: String) -> String {
-        name.isEmpty ? "" : "\(name) (копия)"
-    }
 }

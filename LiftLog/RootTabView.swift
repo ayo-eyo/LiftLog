@@ -26,14 +26,7 @@ struct RootTabView: View {
         .tint(.plateBlue)
         .tabViewBottomAccessory {
             if !hidesStartAccessory {
-                TimelineView(.periodic(from: .now, by: 1)) { timeline in
-                    Button {
-                        startOrResumeWorkout()
-                    } label: {
-                        Label(accessoryText(at: timeline.date), systemImage: "play.fill")
-                    }
-                    .accessibilityIdentifier("root.startAccessory")
-                }
+                accessoryButton
             }
         }
         .onPreferenceChange(HidesStartAccessoryPreferenceKey.self) { hidesStartAccessory = $0 }
@@ -54,6 +47,29 @@ struct RootTabView: View {
             }
             WatchSessionManager.shared.start(modelContext: context, restTimer: restTimer)
         }
+    }
+
+    /// `TimelineView(.periodic)` only exists while resting — gated on `restTimer.endDate`
+    /// instead of running for the whole time the accessory is on screen (i.e. always, since
+    /// it hides only while a plan screen shows its own start button).
+    @ViewBuilder
+    private var accessoryButton: some View {
+        if let endDate = restTimer.endDate {
+            TimelineView(.periodic(from: endDate, by: 1)) { timeline in
+                startButton(at: timeline.date)
+            }
+        } else {
+            startButton(at: .now)
+        }
+    }
+
+    private func startButton(at date: Date) -> some View {
+        Button {
+            startOrResumeWorkout()
+        } label: {
+            Label(accessoryText(at: date), systemImage: "play.fill")
+        }
+        .accessibilityIdentifier("root.startAccessory")
     }
 
     private func accessoryText(at date: Date) -> String {

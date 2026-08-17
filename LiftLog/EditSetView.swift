@@ -37,7 +37,7 @@ struct EditSetView: View {
                 WeightInputRow(weight: $weight, stepper: weightStepper, accessibilityID: "editSet.weight")
                 RepsInputRow(reps: $reps, stepper: repsStepper, accessibilityID: "editSet.reps")
                 Button("Удалить подход", role: .destructive) {
-                    context.delete(set)
+                    WorkoutSet.delete(set, context: context)
                     pushWatchUpdate()
                     dismiss()
                 }

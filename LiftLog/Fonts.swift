@@ -1,16 +1,20 @@
 import SwiftUI
 
 extension Font {
-    static func display(_ size: CGFloat) -> Font {
-        .custom("Oswald-SemiBold", size: size)
+    // `relativeTo:` ties each style to a specific Dynamic Type text style, so display,
+    // body, and numeric text keep their relative proportions at large text sizes
+    // instead of all scaling uniformly off `.body` (the default for `.custom(_:size:)`
+    // without `relativeTo:`).
+    static func display(_ size: CGFloat, relativeTo style: Font.TextStyle = .title2) -> Font {
+        .custom("Oswald-SemiBold", size: size, relativeTo: style)
     }
-    
-    static func sans(_ size: CGFloat) -> Font {
-        .custom("IBMPlexSans-Regular", size: size)
+
+    static func sans(_ size: CGFloat, relativeTo style: Font.TextStyle = .body) -> Font {
+        .custom("IBMPlexSans-Regular", size: size, relativeTo: style)
     }
-    
-    static func mono(_ size: CGFloat) -> Font {
-        .custom("IBMPlexMono-Regular", size: size)
+
+    static func mono(_ size: CGFloat, relativeTo style: Font.TextStyle = .callout) -> Font {
+        .custom("IBMPlexMono-Regular", size: size, relativeTo: style)
     }
 }
 

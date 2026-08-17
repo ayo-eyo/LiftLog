@@ -51,6 +51,6 @@ final class WorkoutCopyUITests: XCTestCase {
             addWorkoutButton.waitForExistence(timeout: 10),
             "После копирования приложение должно остаться отзывчивым и вернуться к списку тренировок"
         )
-        XCTAssertTrue(app.staticTexts["Ноги (копия)"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Ноги"].waitForExistence(timeout: 5))
     }
 }

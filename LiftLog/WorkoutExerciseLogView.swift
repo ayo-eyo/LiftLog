@@ -47,9 +47,11 @@ struct WorkoutExerciseLogView: View {
         VStack(spacing: 0) {
             MuscleMapHero(primaryMuscles: exercise.primaryMuscles, secondaryMuscles: exercise.secondaryMuscles, height: 180)
             inputBlock
-            TimelineView(.periodic(from: .now, by: 1)) { timeline in
-                if restTimer.isResting(at: timeline.date) {
-                    restBlock
+            if let endDate = restTimer.endDate {
+                TimelineView(.periodic(from: endDate, by: 1)) { timeline in
+                    if restTimer.isResting(at: timeline.date) {
+                        restBlock
+                    }
                 }
             }
             historyList
@@ -115,4 +117,21 @@ struct WorkoutExerciseLogView: View {
         .scrollContentBackground(.hidden)
         .background(.chalk)
     }
+}
+
+#Preview {
+    let container = PreviewSupport.container()
+    let context = container.mainContext
+    let bench = Exercise(name: "Жим лёжа", catalogID: "Barbell_Bench_Press_-_Medium_Grip")
+    context.insert(bench)
+    let workout = Workout(name: "Грудь")
+    context.insert(workout)
+    workout.addExercise(bench, weight: 60, reps: 8, context: context)
+    workout.start()
+    workout.logSet(weight: 60, reps: 8, for: bench, context: context)
+
+    return NavigationStack {
+        WorkoutExerciseLogView(workout: workout, exercise: bench, restTimer: PreviewSupport.restTimer())
+    }
+    .modelContainer(container)
 }

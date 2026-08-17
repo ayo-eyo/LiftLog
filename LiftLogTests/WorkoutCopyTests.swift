@@ -125,9 +125,13 @@ struct WorkoutCopyTests {
         #expect(try store.count(Exercise.self) == 1)
     }
 
-    @Test("название копии получает пометку, пустое имя источника остаётся пустым")
-    func copyNameMarksCopyUnlessSourceNameIsEmpty() {
-        #expect(Workout.copyName(of: "День груди") == "День груди (копия)")
-        #expect(Workout.copyName(of: "") == "")
+    @Test("копия сохраняет имя источника без изменений")
+    func copyKeepsSourceName() throws {
+        let store = try TestStore.open()
+        let source = Fixtures.workout(name: "День груди", in: store.context)
+
+        let copy = Workout.copy(of: source, sortIndex: 0, context: store.context)
+
+        #expect(copy.name == "День груди")
     }
 }

@@ -94,9 +94,9 @@ struct MuscleMapView: View {
         side == .front ? CGRect(x: 0, y: 0, width: 724, height: 1448) : CGRect(x: 724, y: 0, width: 724, height: 1448)
     }
 
-    private func sourceRect() -> CGRect {
+    private func sourceRect(primary: Set<String>, secondary: Set<String>) -> CGRect {
         guard zoomToHighlight else { return fullRect }
-        let slugs = primarySlugs.isEmpty ? secondarySlugs : primarySlugs
+        let slugs = primary.isEmpty ? secondary : primary
         guard !slugs.isEmpty else { return fullRect }
 
         var box: CGRect?
@@ -112,8 +112,15 @@ struct MuscleMapView: View {
     }
 
     var body: some View {
+        // `primarySlugs`/`secondarySlugs` each build a fresh `Set` from the muscle atlas —
+        // hoisted out of the per-region loop below so a ~35-region draw builds them once,
+        // not ~70 times (this view renders once per row in lists with hundreds of rows).
+        let primary = primarySlugs
+        let secondary = secondarySlugs
+        let rect = sourceRect(primary: primary, secondary: secondary)
+
+
         Canvas { context, size in
-            let rect = sourceRect()
             guard rect.width > 0, rect.height > 0 else { return }
             let scale = min(size.width / rect.width, size.height / rect.height)
             let tx = (size.width - rect.width * scale) / 2 - rect.minX * scale
@@ -122,9 +129,9 @@ struct MuscleMapView: View {
 
             for region in regions {
                 let color: Color
-                if primarySlugs.contains(region.slug) {
+                if primary.contains(region.slug) {
                     color = .plateBlue
-                } else if secondarySlugs.contains(region.slug) {
+                } else if secondary.contains(region.slug) {
                     color = .steelLight
                 } else {
                     color = .chalkDeep
@@ -147,8 +154,23 @@ struct MuscleMapHero: View {
             MuscleMapView(primaryMuscles: primaryMuscles, secondaryMuscles: secondaryMuscles, side: .front)
             MuscleMapView(primaryMuscles: primaryMuscles, secondaryMuscles: secondaryMuscles, side: .back)
         }
+        // Unlike `ExerciseThumbnail`, this is the primary content of the screens that
+        // show it — a `Canvas` is otherwise invisible to VoiceOver.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel)
         .frame(height: height)
         .frame(maxWidth: .infinity)
         .background(.chalkDeep)
+    }
+
+    private var accessibilityLabel: String {
+        var parts: [String] = []
+        if !primaryMuscles.isEmpty {
+            parts.append("основные мышцы: \(primaryMuscles.joined(separator: ", "))")
+        }
+        if !secondaryMuscles.isEmpty {
+            parts.append("вспомогательные: \(secondaryMuscles.joined(separator: ", "))")
+        }
+        return parts.isEmpty ? "Карта мышц" : parts.joined(separator: ", ")
     }
 }
