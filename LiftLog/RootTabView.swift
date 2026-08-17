@@ -9,6 +9,7 @@ struct RootTabView: View {
     @State private var presentedWorkout: Workout?
     @State private var restTimer = RestTimer()
     @State private var didRunDataIntegrityCheck = false
+    @State private var hidesStartAccessory = false
 
     var body: some View {
         TabView {
@@ -24,14 +25,18 @@ struct RootTabView: View {
         }
         .tint(.plateBlue)
         .tabViewBottomAccessory {
-            TimelineView(.periodic(from: .now, by: 1)) { timeline in
-                Button {
-                    startOrResumeWorkout()
-                } label: {
-                    Label(accessoryText(at: timeline.date), systemImage: "play.fill")
+            if !hidesStartAccessory {
+                TimelineView(.periodic(from: .now, by: 1)) { timeline in
+                    Button {
+                        startOrResumeWorkout()
+                    } label: {
+                        Label(accessoryText(at: timeline.date), systemImage: "play.fill")
+                    }
+                    .accessibilityIdentifier("root.startAccessory")
                 }
             }
         }
+        .onPreferenceChange(HidesStartAccessoryPreferenceKey.self) { hidesStartAccessory = $0 }
         .fullScreenCover(item: $presentedWorkout) { workout in
             NavigationStack {
                 WorkoutDetailView(workout: workout, restTimer: restTimer)

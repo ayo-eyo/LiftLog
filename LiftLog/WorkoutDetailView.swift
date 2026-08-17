@@ -1,6 +1,16 @@
 import SwiftUI
 import SwiftData
 
+/// Bubbles up to `RootTabView` so it can hide its own global "start" accessory
+/// while a plan screen is already showing its own «Начать» button for the same
+/// action — otherwise the user sees two start buttons on screen at once.
+struct HidesStartAccessoryPreferenceKey: PreferenceKey {
+    static var defaultValue: Bool { false }
+    static func reduce(value: inout Bool, nextValue: () -> Bool) {
+        value = value || nextValue()
+    }
+}
+
 enum WorkoutSheet: Identifiable {
     case picker
     case defaults(Exercise)
@@ -27,8 +37,16 @@ struct WorkoutDetailView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var activeSheet: WorkoutSheet?
-    @State private var copiedWorkout: Workout?
     @State private var pendingDeleteExercise: Exercise?
+    @State private var editingSet: WorkoutSet?
+    /// Picking an exercise from `.picker` used to jump straight to
+    /// `.defaults(exercise)` by reassigning `activeSheet` to a different non-nil
+    /// value while its sheet was still on screen. `.sheet(item:)` doesn't treat
+    /// that as a clean swap — it can leave a second presentation stacked behind
+    /// the first, which then fights the new one for layout. Routing through a
+    /// full dismiss (`activeSheet = nil`) and presenting `.defaults` from
+    /// `onDismiss` instead avoids that.
+    @State private var pendingDefaultsExercise: Exercise?
 
     @Query(filter: #Predicate<Workout> { $0.startedAt != nil && $0.completedAt == nil })
     private var activeWorkouts: [Workout]
@@ -52,11 +70,16 @@ struct WorkoutDetailView: View {
         .navigationTitle(workout.name.isEmpty ? workout.date.formatted(date: .abbreviated, time: .shortened) : workout.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbarContent }
-        .sheet(item: $activeSheet) { sheet in
+        .sheet(item: $activeSheet, onDismiss: {
+            if let exercise = pendingDefaultsExercise {
+                pendingDefaultsExercise = nil
+                activeSheet = .defaults(exercise)
+            }
+        }) { sheet in
             sheetContent(for: sheet)
         }
-        .navigationDestination(item: $copiedWorkout) { copy in
-            WorkoutDetailView(workout: copy, restTimer: restTimer)
+        .sheet(item: $editingSet) { set in
+            EditSetView(set: set)
         }
         .confirmationDialog(
             "Удалить упражнение вместе с уже залогированными подходами?",
@@ -76,6 +99,14 @@ struct WorkoutDetailView: View {
                 WatchSessionManager.shared.pushSnapshot(for: workout)
             }
         }
+        .preference(key: HidesStartAccessoryPreferenceKey.self, value: showsOwnStartButton)
+    }
+
+    /// Whether this screen is showing its own «Начать» button — the exact
+    /// condition `bottomButtons` uses, shared so the global accessory can hide
+    /// itself instead of duplicating the button.
+    private var showsOwnStartButton: Bool {
+        workout.startedAt == nil && !workout.items.isEmpty && activeWorkouts.isEmpty
     }
 
     // MARK: Header
@@ -153,7 +184,7 @@ struct WorkoutDetailView: View {
                 .tint(.plateBlue)
 
             if workout.startedAt == nil && !workout.items.isEmpty {
-                if activeWorkouts.isEmpty {
+                if showsOwnStartButton {
                     Button("Начать") { start() }
                         .font(.sans(15))
                         .buttonStyle(.borderedProminent)
@@ -183,7 +214,11 @@ struct WorkoutDetailView: View {
     private func exerciseSection(_ exercise: Exercise) -> some View {
         Section {
             ForEach(workout.setsFor(exercise)) { set in
-                SetRow(weight: set.weight, reps: set.reps, fontSize: 14)
+                Button {
+                    editingSet = set
+                } label: {
+                    SetRow(weight: set.weight, reps: set.reps, fontSize: 14)
+                }
             }
             NavigationLink("Вся история упражнения") {
                 ExerciseDetailView(exercise: exercise)
@@ -203,11 +238,14 @@ struct WorkoutDetailView: View {
         if workout.completedAt == nil && groupedItems.count > 1 {
             ToolbarItem(placement: .navigationBarTrailing) { EditButton() }
         }
-        ToolbarItem(placement: .navigationBarTrailing) {
-            Button {
-                copyWorkout()
-            } label: {
-                Image(systemName: "doc.on.doc")
+        if !workout.isActive {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    copyWorkout()
+                } label: {
+                    Image(systemName: "doc.on.doc")
+                }
+                .accessibilityIdentifier("workoutDetail.copyButton")
             }
         }
         if workout.isActive {
@@ -230,7 +268,8 @@ struct WorkoutDetailView: View {
                     activeSheet = nil
                     WatchSessionManager.shared.pushSnapshot(for: workout)
                 } else {
-                    activeSheet = .defaults(exercise)
+                    pendingDefaultsExercise = exercise
+                    activeSheet = nil
                 }
             }
         case .defaults(let exercise):
@@ -263,9 +302,16 @@ struct WorkoutDetailView: View {
         dismiss()
     }
 
+    /// Creates the copy and returns to the list, where it now sorts to the top,
+    /// instead of pushing straight into it: pushing a second `WorkoutDetailView`
+    /// from within a `WorkoutDetailView` over `.navigationDestination(item:)`
+    /// hung the app — the destination is the same view type as the presenter,
+    /// and having both live on the stack sent SwiftUI's view-graph diffing into
+    /// a runaway loop, independent of the copy's exercise count.
     private func copyWorkout() {
         let newSortIndex = (allWorkouts.map(\.sortIndex).min() ?? 0) - 1
-        copiedWorkout = Workout.copy(of: workout, sortIndex: newSortIndex, context: context)
+        _ = Workout.copy(of: workout, sortIndex: newSortIndex, context: context)
+        dismiss()
     }
 
     private func moveExercise(from source: IndexSet, to destination: Int) {

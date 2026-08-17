@@ -3,6 +3,10 @@ import SwiftUI
 struct WeightInputRow: View {
     @Binding var weight: Double?
     var stepper: Binding<Double>?
+    /// Overridable so two `WeightInputRow`s on screen at once (e.g. a background
+    /// screen's own input plus an edit sheet presented over it) stay distinguishable
+    /// to UI tests instead of colliding on the shared default.
+    var accessibilityID = "weightInput"
 
     var body: some View {
         HStack {
@@ -15,6 +19,7 @@ struct WeightInputRow: View {
                 .frame(width: 80)
                 .padding(.vertical, 8)
                 .background(.chalkDeep, in: .rect(cornerRadius: 8))
+                .accessibilityIdentifier(accessibilityID)
             if let stepper {
                 Stepper("", value: stepper, in: 0...500, step: 0.5)
                     .labelsHidden()
@@ -26,6 +31,8 @@ struct WeightInputRow: View {
 struct RepsInputRow: View {
     @Binding var reps: Int?
     var stepper: Binding<Int>?
+    /// See `WeightInputRow.accessibilityID`.
+    var accessibilityID = "repsInput"
 
     var body: some View {
         HStack {
@@ -38,6 +45,7 @@ struct RepsInputRow: View {
                 .frame(width: 80)
                 .padding(.vertical, 8)
                 .background(.chalkDeep, in: .rect(cornerRadius: 8))
+                .accessibilityIdentifier(accessibilityID)
             if let stepper {
                 Stepper("", value: stepper, in: 1...100)
                     .labelsHidden()
