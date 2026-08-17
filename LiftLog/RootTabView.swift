@@ -3,7 +3,7 @@ import SwiftData
 
 struct RootTabView: View {
     @Environment(\.modelContext) private var context
-    @Query(filter: #Predicate<Workout> { $0.completedAt == nil })
+    @Query(filter: #Predicate<Workout> { $0.startedAt != nil && $0.completedAt == nil })
     private var activeWorkouts: [Workout]
 
     @State private var presentedWorkout: Workout?
@@ -14,9 +14,6 @@ struct RootTabView: View {
         TabView {
             Tab("Тренировки", systemImage: "figure.strengthtraining.traditional") {
                 WorkoutListView(restTimer: restTimer)
-            }
-            Tab("Шаблоны", systemImage: "list.bullet.rectangle") {
-                TemplateListView(restTimer: restTimer)
             }
             Tab("Упражнения", systemImage: "books.vertical") {
                 CatalogView()
@@ -36,7 +33,9 @@ struct RootTabView: View {
             }
         }
         .fullScreenCover(item: $presentedWorkout) { workout in
-            ActiveWorkoutView(workout: workout, restTimer: restTimer)
+            NavigationStack {
+                WorkoutDetailView(workout: workout, restTimer: restTimer)
+            }
         }
         .task {
             await HealthKitManager.requestAuthorization()
@@ -46,6 +45,7 @@ struct RootTabView: View {
             if !didRunDataIntegrityCheck {
                 didRunDataIntegrityCheck = true
                 DataIntegrity.deduplicateSyncIDs(context: context)
+                DataIntegrity.restoreWorkoutComposition(context: context)
             }
             WatchSessionManager.shared.start(modelContext: context, restTimer: restTimer)
         }
@@ -69,13 +69,16 @@ struct RootTabView: View {
     }
 
     /// Pulled out of `startOrResumeWorkout()` so the "resume existing vs. create new"
-    /// decision is testable without a live `@Query` / view hierarchy.
+    /// decision is testable without a live `@Query` / view hierarchy. Never picks up
+    /// a plan — a plan is only started explicitly from its own screen, since picking
+    /// one implicitly here would be ambiguous about which plan to start.
     static func workoutToResume(activeWorkouts: [Workout], context: ModelContext) -> Workout {
         if let existing = activeWorkouts.first {
             return existing
         }
         let new = Workout()
         context.insert(new)
+        new.start()
         return new
     }
 }

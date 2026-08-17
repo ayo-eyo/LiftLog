@@ -4,7 +4,7 @@ import SwiftData
 
 /// Builders for the model graph. All of them insert into the passed context so a
 /// test never has to remember the insert/append pairing that `Workout.logSet`
-/// and `WorkoutTemplate.addExercise` rely on.
+/// and `Workout.addExercise` rely on.
 ///
 /// Dates are deterministic: `Fixtures.epoch` plus an offset, never `.now`, so
 /// ordering assertions (`setsFor`, `sortedItems`) are stable.
@@ -48,20 +48,29 @@ enum Fixtures {
 
     // MARK: Workouts
 
+    /// Builds a workout. `startedAt` defaults to `epoch` (i.e. active) since most
+    /// tests care about an in-progress workout — pass `startedAt: nil` for a plan,
+    /// or `completedAt:` for a finished one.
     @discardableResult
     static func workout(
         date: Date = epoch,
+        name: String = "",
+        startedAt: Date? = epoch,
+        completedAt: Date? = nil,
+        sortIndex: Int = 0,
         exercises: [Exercise] = [],
-        template: WorkoutTemplate? = nil,
+        items: [(exercise: Exercise, weight: Double?, reps: Int?)] = [],
         in context: ModelContext
     ) -> Workout {
-        let workout = Workout(date: date)
+        let workout = Workout(date: date, name: name, sortIndex: sortIndex)
         context.insert(workout)
-        if let template {
-            workout.applyTemplate(template)
-        }
+        workout.startedAt = startedAt
+        workout.completedAt = completedAt
         for exercise in exercises {
-            workout.addExercise(exercise)
+            workout.addExercise(exercise, context: context)
+        }
+        for item in items {
+            workout.addExercise(item.exercise, weight: item.weight, reps: item.reps, context: context)
         }
         return workout
     }
@@ -85,21 +94,5 @@ enum Fixtures {
     /// real `UNUserNotificationCenter`.
     static func restTimer() -> RestTimer {
         RestTimer(scheduleNotification: { _, _ in }, cancelNotification: {})
-    }
-
-    // MARK: Templates
-
-    @discardableResult
-    static func template(
-        name: String = "День груди",
-        items: [(exercise: Exercise, weight: Double, reps: Int)] = [],
-        in context: ModelContext
-    ) -> WorkoutTemplate {
-        let template = WorkoutTemplate(name: name, createdAt: epoch)
-        context.insert(template)
-        for item in items {
-            template.addExercise(item.exercise, weight: item.weight, reps: item.reps, context: context)
-        }
-        return template
     }
 }

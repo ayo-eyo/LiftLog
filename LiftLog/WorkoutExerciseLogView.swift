@@ -20,18 +20,18 @@ struct WorkoutExerciseLogView: View {
         _reps = State(initialValue: prefill.reps)
     }
 
-    /// Prefill priority: template default for the next planned set → last set logged
+    /// Prefill priority: plan default for the next planned position → last set logged
     /// in this workout → last set ever logged for this exercise → empty. Pulled out
     /// of `init` so the priority order is testable without instantiating the view.
     static func prefill(workout: Workout, exercise: Exercise) -> (weight: Double?, reps: Int?) {
         let sessionLast = workout.setsFor(exercise).last
         let allTimeLast = exercise.sets.sorted { ($0.createdAt, $0.order) < ($1.createdAt, $1.order) }.last
-        let templateWeight = workout.defaultWeight(for: exercise)
-        let templateReps = workout.defaultReps(for: exercise)
+        let plannedWeight = workout.defaultWeight(for: exercise)
+        let plannedReps = workout.defaultReps(for: exercise)
 
         return (
-            templateWeight ?? sessionLast?.weight ?? allTimeLast?.weight,
-            templateReps ?? sessionLast?.reps ?? allTimeLast?.reps
+            plannedWeight ?? sessionLast?.weight ?? allTimeLast?.weight,
+            plannedReps ?? sessionLast?.reps ?? allTimeLast?.reps
         )
     }
 

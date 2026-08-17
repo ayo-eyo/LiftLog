@@ -1,26 +1,27 @@
 import SwiftUI
 import SwiftData
 
-struct TemplateItemDefaultsView: View {
-    let template: WorkoutTemplate
+/// Add/edit planned weight×reps positions for one exercise in a workout that
+/// isn't active yet — the plan-building successor to `TemplateItemDefaultsView`.
+struct WorkoutItemDefaultsView: View {
+    let workout: Workout
     let exercise: Exercise
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
 
     @State private var weight: Double
     @State private var reps: Int
-    
 
-    init(template: WorkoutTemplate, exercise: Exercise) {
-        self.template = template
+    init(workout: Workout, exercise: Exercise) {
+        self.workout = workout
         self.exercise = exercise
-        let existing = template.sortedItems.filter { $0.exercise?.persistentModelID == exercise.persistentModelID }
-        _weight = State(initialValue: existing.last?.defaultWeight ?? 20)
-        _reps = State(initialValue: existing.last?.defaultReps ?? 10)
+        let existing = workout.sortedItems.filter { $0.exercise?.persistentModelID == exercise.persistentModelID }
+        _weight = State(initialValue: existing.last?.plannedWeight ?? 20)
+        _reps = State(initialValue: existing.last?.plannedReps ?? 10)
     }
 
-    private var items: [TemplateItem] {
-        template.sortedItems.filter { $0.exercise?.persistentModelID == exercise.persistentModelID }
+    private var items: [WorkoutItem] {
+        workout.sortedItems.filter { $0.exercise?.persistentModelID == exercise.persistentModelID }
     }
 
     private var weightBinding: Binding<Double?> {
@@ -49,7 +50,7 @@ struct TemplateItemDefaultsView: View {
             WeightInputRow(weight: weightBinding, stepper: $weight)
             RepsInputRow(reps: repsBinding, stepper: $reps)
             Button("Добавить подход") {
-                template.addExercise(exercise, weight: weight, reps: reps, context: context)
+                workout.addExercise(exercise, weight: weight, reps: reps, context: context)
             }
             .font(.sans(15))
             .buttonStyle(.borderedProminent)
@@ -61,7 +62,7 @@ struct TemplateItemDefaultsView: View {
     private var historyList: some View {
         List {
             ForEach(items) { item in
-                SetRow(weight: item.defaultWeight, reps: item.defaultReps)
+                SetRow(weight: item.plannedWeight ?? 0, reps: item.plannedReps ?? 0)
                     .listRowSeparatorTint(.hairline)
                     .listRowBackground(Color.chalk)
             }

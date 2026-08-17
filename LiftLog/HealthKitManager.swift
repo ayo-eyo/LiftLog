@@ -26,7 +26,7 @@ enum HealthKitManager {
         guard HKHealthStore.isHealthDataAvailable(),
               savingStore.authorizationStatus(for: .workoutType()) == .sharingAuthorized else { return }
 
-        let hkWorkout = HKWorkout(activityType: .traditionalStrengthTraining, start: workout.date, end: end)
+        let hkWorkout = HKWorkout(activityType: .traditionalStrengthTraining, start: workout.startedAt ?? workout.date, end: end)
         savingStore.save(hkWorkout, withCompletion: { success, error in
             if let error {
                 logger.error("HealthKit save failed: \(error.localizedDescription)")

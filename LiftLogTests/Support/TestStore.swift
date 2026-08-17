@@ -14,8 +14,7 @@ enum TestStore {
         Exercise.self,
         Workout.self,
         WorkoutSet.self,
-        WorkoutTemplate.self,
-        TemplateItem.self,
+        WorkoutItem.self,
     ])
 
     static func makeContainer() throws -> ModelContainer {
