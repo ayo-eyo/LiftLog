@@ -11,6 +11,13 @@ struct WorkoutItemDefaultsView: View {
 
     @State private var weight: Double
     @State private var reps: Int
+    /// Tapping a planned row switches `inputBlock` from "add a new position" into
+    /// "edit this one" — reusing the same fields rather than opening a second
+    /// screen. A separate edit sheet presented over this (already pushed) view
+    /// caused every keystroke to bounce observers on `workout.items` all the way
+    /// up through `WorkoutDetailView`, which reliably dropped keyboard focus after
+    /// the first character — editing in place avoids that extra observed layer.
+    @State private var editingItem: WorkoutItem?
 
     init(workout: Workout, exercise: Exercise) {
         self.workout = workout
@@ -43,18 +50,41 @@ struct WorkoutItemDefaultsView: View {
         .toolbar {
             Button("Готово") { dismiss() }
         }
+        // The weight stepper sits right below the sheet's grab area, and a tap
+        // there can be captured by the sheet's swipe-to-dismiss gesture instead
+        // of the stepper — losing whatever wasn't saved yet. "Готово" above is
+        // the only way out.
+        .interactiveDismissDisabled()
     }
 
     private var inputBlock: some View {
         VStack(spacing: 12) {
             WeightInputRow(weight: weightBinding, stepper: $weight)
             RepsInputRow(reps: repsBinding, stepper: $reps)
-            Button("Добавить подход") {
-                workout.addExercise(exercise, weight: weight, reps: reps, context: context)
+            if let editingItem {
+                HStack(spacing: 12) {
+                    Button("Сохранить") {
+                        editingItem.plannedWeight = weight
+                        editingItem.plannedReps = reps
+                        self.editingItem = nil
+                    }
+                    .font(.sans(15))
+                    .buttonStyle(.borderedProminent)
+                    .tint(.plateBlue)
+                    Button("Отмена") {
+                        self.editingItem = nil
+                    }
+                    .font(.sans(15))
+                    .buttonStyle(.bordered)
+                }
+            } else {
+                Button("Добавить подход") {
+                    workout.addExercise(exercise, weight: weight, reps: reps, context: context)
+                }
+                .font(.sans(15))
+                .buttonStyle(.borderedProminent)
+                .tint(.plateBlue)
             }
-            .font(.sans(15))
-            .buttonStyle(.borderedProminent)
-            .tint(.plateBlue)
         }
         .padding()
     }
@@ -62,9 +92,15 @@ struct WorkoutItemDefaultsView: View {
     private var historyList: some View {
         List {
             ForEach(items) { item in
-                SetRow(weight: item.plannedWeight ?? 0, reps: item.plannedReps ?? 0)
-                    .listRowSeparatorTint(.hairline)
-                    .listRowBackground(Color.chalk)
+                Button {
+                    editingItem = item
+                    weight = item.plannedWeight ?? weight
+                    reps = item.plannedReps ?? reps
+                } label: {
+                    SetRow(weight: item.plannedWeight ?? 0, reps: item.plannedReps ?? 0)
+                }
+                .listRowSeparatorTint(.hairline)
+                .listRowBackground(Color.chalk)
             }
             .onDelete(perform: delete)
         }
@@ -74,6 +110,9 @@ struct WorkoutItemDefaultsView: View {
 
     private func delete(at offsets: IndexSet) {
         for index in offsets {
+            if editingItem?.persistentModelID == items[index].persistentModelID {
+                editingItem = nil
+            }
             context.delete(items[index])
         }
     }

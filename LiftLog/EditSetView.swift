@@ -23,11 +23,19 @@ struct EditSetView: View {
         _reps = State(initialValue: set.reps)
     }
 
+    private var weightStepper: Binding<Double> {
+        Binding(get: { weight ?? 0 }, set: { weight = $0 })
+    }
+
+    private var repsStepper: Binding<Int> {
+        Binding(get: { reps ?? 0 }, set: { reps = $0 })
+    }
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
-                WeightInputRow(weight: $weight)
-                RepsInputRow(reps: $reps)
+                WeightInputRow(weight: $weight, stepper: weightStepper, accessibilityID: "editSet.weight")
+                RepsInputRow(reps: $reps, stepper: repsStepper, accessibilityID: "editSet.reps")
                 Button("Удалить подход", role: .destructive) {
                     context.delete(set)
                     pushWatchUpdate()

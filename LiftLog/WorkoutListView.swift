@@ -50,6 +50,7 @@ struct WorkoutListView: View {
                 ToolbarItem(placement: .navigationBarLeading) { EditButton() }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button { createWorkout() } label: { Image(systemName: "plus") }
+                        .accessibilityIdentifier("workoutList.addWorkout")
                 }
             }
             .overlay {
