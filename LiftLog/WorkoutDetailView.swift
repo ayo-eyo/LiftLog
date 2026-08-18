@@ -65,7 +65,9 @@ struct WorkoutDetailView: View {
                 completedList
             } else {
                 editableList
-                bottomButtons
+                if workout.status == .plan {
+                    bottomButtons
+                }
             }
         }
         .background(.chalk)
@@ -200,16 +202,17 @@ struct WorkoutDetailView: View {
         }.joined(separator: " · ")
     }
 
+    /// Only called when `workout.status == .plan` — an active/completed workout has
+    /// nothing to show here, so the caller skips this entirely rather than rendering
+    /// an empty padded `VStack`.
     private var bottomButtons: some View {
         VStack(spacing: 10) {
-            if workout.status == .plan {
-                Button("Добавить упражнение") { activeSheet = .picker }
-                    .font(.sans(15))
-                    .buttonStyle(.bordered)
-                    .tint(.plateBlue)
-            }
+            Button("Добавить упражнение") { activeSheet = .picker }
+                .font(.sans(15))
+                .buttonStyle(.bordered)
+                .tint(.plateBlue)
 
-            if workout.startedAt == nil && !workout.items.isEmpty {
+            if !workout.items.isEmpty {
                 if showsOwnStartButton {
                     Button("Начать") { start() }
                         .font(.sans(15))
