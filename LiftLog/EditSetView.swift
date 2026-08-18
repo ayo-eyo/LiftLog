@@ -12,7 +12,8 @@ struct EditSetView: View {
     // Local, clearable state: writing straight through to `set.weight`/`set.reps` with a
     // "revert to old value on nil" binding (the previous approach) makes the field
     // un-clearable, since every keystroke that empties it snaps back to the old value.
-    // Only commit to the model when the field holds a valid positive value.
+    // Only commit to the model once the field holds a valid value — weight may be 0
+    // (bodyweight exercises), reps must stay positive.
     @State private var weight: Double?
     @State private var reps: Int?
 
@@ -53,7 +54,7 @@ struct EditSetView: View {
             }
         }
         .onChange(of: weight) { _, newValue in
-            if let newValue, newValue > 0 { set.weight = newValue }
+            if let newValue, newValue >= 0 { set.weight = newValue }
         }
         .onChange(of: reps) { _, newValue in
             if let newValue, newValue > 0 { set.reps = newValue }
@@ -64,7 +65,7 @@ struct EditSetView: View {
     }
 
     private func commitAndDismiss() {
-        if let weight, weight > 0 { set.weight = weight }
+        if let weight, weight >= 0 { set.weight = weight }
         if let reps, reps > 0 { set.reps = reps }
         dismiss()
     }

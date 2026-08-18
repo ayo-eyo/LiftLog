@@ -1,16 +1,6 @@
 import SwiftUI
 import SwiftData
 
-/// Bubbles up to `RootTabView` so it can hide its own global "start" accessory
-/// while a plan screen is already showing its own «Начать» button for the same
-/// action — otherwise the user sees two start buttons on screen at once.
-struct HidesStartAccessoryPreferenceKey: PreferenceKey {
-    static var defaultValue: Bool { false }
-    static func reduce(value: inout Bool, nextValue: () -> Bool) {
-        value = value || nextValue()
-    }
-}
-
 enum WorkoutSheet: Identifiable {
     case picker
     case defaults(Exercise)
@@ -100,12 +90,10 @@ struct WorkoutDetailView: View {
                 WatchSessionManager.shared.pushSnapshot(for: workout)
             }
         }
-        .preference(key: HidesStartAccessoryPreferenceKey.self, value: showsOwnStartButton)
     }
 
-    /// Whether this screen is showing its own «Начать» button — the exact
-    /// condition `bottomButtons` uses, shared so the global accessory can hide
-    /// itself instead of duplicating the button.
+    /// Whether this screen is showing its own «Начать» button, vs. the "another
+    /// workout is already active" message — `bottomButtons` is the only reader.
     private var showsOwnStartButton: Bool {
         workout.startedAt == nil && !workout.items.isEmpty && activeWorkouts.isEmpty
     }
@@ -131,9 +119,14 @@ struct WorkoutDetailView: View {
                 Text(workout.name.isEmpty ? workout.date.formatted(date: .abbreviated, time: .shortened) : workout.name)
                     .font(.display(24))
                     .foregroundStyle(.ink)
-                Text(workout.date.formatted(date: .abbreviated, time: .shortened))
-                    .font(.sans(13))
-                    .foregroundStyle(.steel)
+                // Skipped when there's no name — the title above is already the date,
+                // repeating it here would be the same string a third time alongside
+                // the nav bar title.
+                if !workout.name.isEmpty {
+                    Text(workout.date.formatted(date: .abbreviated, time: .shortened))
+                        .font(.sans(13))
+                        .foregroundStyle(.steel)
+                }
             }
         }
         .padding()

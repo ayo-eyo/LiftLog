@@ -45,13 +45,13 @@ struct ExerciseDetailView: View {
             WeightInputRow(weight: $weight, stepper: weightBinding)
             RepsInputRow(reps: $reps, stepper: repsBinding)
             Button("Добавить подход") {
-                guard let w = weight, let r = reps, w > 0, r > 0 else { return }
+                guard let w = weight, let r = reps, w >= 0, r > 0 else { return }
                 exercise.addSet(weight: w, reps: r, context: context)
             }
             .font(.sans(15))
             .buttonStyle(.borderedProminent)
             .tint(.plateBlue)
-            .disabled(weight == nil || reps == nil || (weight ?? 0) <= 0 || (reps ?? 0) <= 0)
+            .disabled(weight == nil || reps == nil || (reps ?? 0) <= 0)
         }
         .padding()
     }
