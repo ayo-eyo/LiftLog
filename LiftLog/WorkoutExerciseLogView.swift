@@ -69,7 +69,7 @@ struct WorkoutExerciseLogView: View {
             WeightInputRow(weight: $weight, stepper: weightBinding)
             RepsInputRow(reps: $reps, stepper: repsBinding)
             Button("Добавить подход") {
-                guard let w = weight, let r = reps, w > 0, r > 0 else { return }
+                guard let w = weight, let r = reps, w >= 0, r > 0 else { return }
                 workout.logSet(weight: w, reps: r, for: exercise, context: context)
 
                 if let nextWeight = workout.defaultWeight(for: exercise) {
@@ -84,7 +84,7 @@ struct WorkoutExerciseLogView: View {
             .font(.sans(15))
             .buttonStyle(.borderedProminent)
             .tint(.plateBlue)
-            .disabled(weight == nil || reps == nil || (weight ?? 0) <= 0 || (reps ?? 0) <= 0)
+            .disabled(weight == nil || reps == nil || (reps ?? 0) <= 0)
         }
         .padding()
     }

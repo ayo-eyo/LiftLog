@@ -1,17 +1,16 @@
 import XCTest
 
-/// Regression: viewing an unstarted plan that already shows its own «Начать»
-/// button also kept the global tab-bar accessory's «Начать тренировку» button
-/// visible underneath it — two buttons doing an overlapping "start" action on
-/// the same screen. The accessory should hide itself while the plan screen's
-/// own start button is showing, and reappear once it isn't.
+/// The global tab-bar accessory is a resume affordance only — it exists purely to get
+/// back to the one workout that's already active, never to start a new one from an
+/// arbitrary screen. It must stay absent whenever nothing is active (including while a
+/// plan screen shows its own «Начать» button), and appear only once a workout starts.
 final class WorkoutStartAccessoryUITests: XCTestCase {
     @MainActor
-    func test_единственнаяКнопкаНачатьНаЭкранеНезапущенногоПлана() throws {
+    func test_глобальнаяКнопкаТолькоДляВозвратаКАктивнойТренировке() throws {
         let app = AppLauncher.launch()
 
         let globalStartAccessory = app.buttons["root.startAccessory"]
-        XCTAssertTrue(globalStartAccessory.waitForExistence(timeout: 5), "На списке тренировок должна быть глобальная кнопка старта")
+        XCTAssertFalse(globalStartAccessory.exists, "Без активной тренировки глобальной кнопки старта быть не должно")
 
         app.buttons["workoutList.addWorkout"].tap()
 
@@ -38,14 +37,16 @@ final class WorkoutStartAccessoryUITests: XCTestCase {
         ownStartButton.waitUntilVisible()
         XCTAssertFalse(
             globalStartAccessory.exists,
-            "Глобальная кнопка старта должна быть скрыта, пока на экране уже есть своя кнопка «Начать»"
+            "Пока план ещё не начат, глобальной кнопки тоже не должно быть"
         )
+
+        ownStartButton.tap()
 
         app.navigationBars.buttons.element(boundBy: 0).tap()
 
         XCTAssertTrue(
             globalStartAccessory.waitForExistence(timeout: 5),
-            "После возврата к списку глобальная кнопка старта должна снова появиться"
+            "После старта тренировки глобальная кнопка должна появиться, чтобы можно было вернуться к ней"
         )
     }
 }

@@ -2,31 +2,7 @@ import Testing
 import SwiftData
 @testable import LiftLog
 
-@Suite("RootTabView.workoutToResume — начать/продолжить")
-struct RootTabViewResumeTests {
-    @Test("при наличии активной тренировки возвращается она, новая не создаётся")
-    func returnsExistingActiveWorkout() throws {
-        let store = try TestStore.open()
-        let active = Fixtures.workout(in: store.context)
-
-        let resumed = RootTabView.workoutToResume(activeWorkouts: [active], context: store.context)
-
-        #expect(resumed.persistentModelID == active.persistentModelID)
-        #expect(try store.count(Workout.self) == 1)
-    }
-
-    @Test("без активной тренировки создаётся новая, вставляется в контекст и сразу становится идущей")
-    func createsNewWorkoutWhenNoneActive() throws {
-        let store = try TestStore.open()
-
-        let created = RootTabView.workoutToResume(activeWorkouts: [], context: store.context)
-
-        #expect(try store.count(Workout.self) == 1)
-        #expect(created.isActive == true)
-    }
-}
-
-@Suite("RootTabView.accessoryText — три состояния")
+@Suite("RootTabView.accessoryText — два состояния")
 struct RootTabViewAccessoryTextTests {
     @Test("идёт отдых — показывает имя упражнения и таймер")
     func showsRestingState() {
@@ -34,7 +10,7 @@ struct RootTabViewAccessoryTextTests {
         let now = Fixtures.date(offset: 0)
         timer.start(duration: 65, exerciseName: "Присед", now: now)
 
-        let text = RootTabView.accessoryText(restTimer: timer, hasActiveWorkout: true, at: now)
+        let text = RootTabView.accessoryText(restTimer: timer, at: now)
 
         #expect(text == "Присед · 1:05")
     }
@@ -42,15 +18,8 @@ struct RootTabViewAccessoryTextTests {
     @Test("тренировка идёт, отдыха нет")
     func showsWorkoutInProgress() {
         let timer = Fixtures.restTimer()
-        let text = RootTabView.accessoryText(restTimer: timer, hasActiveWorkout: true, at: Fixtures.date(offset: 0))
+        let text = RootTabView.accessoryText(restTimer: timer, at: Fixtures.date(offset: 0))
         #expect(text == "Тренировка идёт")
-    }
-
-    @Test("нет активной тренировки — предлагает начать")
-    func showsStartPrompt() {
-        let timer = Fixtures.restTimer()
-        let text = RootTabView.accessoryText(restTimer: timer, hasActiveWorkout: false, at: Fixtures.date(offset: 0))
-        #expect(text == "Начать тренировку")
     }
 }
 

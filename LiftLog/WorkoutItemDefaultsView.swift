@@ -75,7 +75,7 @@ struct WorkoutItemDefaultsView: View {
                     .font(.sans(15))
                     .buttonStyle(.borderedProminent)
                     .tint(.plateBlue)
-                    .disabled(weight == nil || reps == nil || (weight ?? 0) <= 0 || (reps ?? 0) <= 0)
+                    .disabled(weight == nil || reps == nil || (reps ?? 0) <= 0)
                     Button("Отмена") {
                         self.editingItem = nil
                     }
@@ -84,13 +84,13 @@ struct WorkoutItemDefaultsView: View {
                 }
             } else {
                 Button("Добавить подход") {
-                    guard let weight, let reps, weight > 0, reps > 0 else { return }
+                    guard let weight, let reps, weight >= 0, reps > 0 else { return }
                     workout.addExercise(exercise, weight: weight, reps: reps, context: context)
                 }
                 .font(.sans(15))
                 .buttonStyle(.borderedProminent)
                 .tint(.plateBlue)
-                .disabled(weight == nil || reps == nil || (weight ?? 0) <= 0 || (reps ?? 0) <= 0)
+                .disabled(weight == nil || reps == nil || (reps ?? 0) <= 0)
             }
         }
         .padding()
