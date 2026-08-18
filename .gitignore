@@ -46,3 +46,8 @@ plans/
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Claude Code locally installed skills
+.agents/
+.claude/skills/
+skills-lock.json
