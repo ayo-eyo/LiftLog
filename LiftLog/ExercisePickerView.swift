@@ -7,7 +7,6 @@ struct ExercisePickerView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
-    @Query private var myExercises: [Exercise]
 
     @State private var searchText = ""
     private let groups = ExerciseCatalog.grouped()
@@ -73,7 +72,11 @@ struct ExercisePickerView: View {
     }
 
     private func select(_ catalogExercise: CatalogExercise) {
-        let exercise = ExerciseCatalog.exercise(for: catalogExercise, existing: myExercises, context: context)
+        // A one-off fetch instead of a live `@Query`: this screen is dismissed right
+        // after one selection, so a standing subscription over every `Exercise` buys
+        // nothing but an extra body re-evaluation whenever any exercise changes.
+        let existing = (try? context.fetch(FetchDescriptor<Exercise>())) ?? []
+        let exercise = ExerciseCatalog.exercise(for: catalogExercise, existing: existing, context: context)
         onSelect(exercise)
     }
 }

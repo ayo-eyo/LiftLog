@@ -7,6 +7,7 @@ import os
 /// (log a set, skip rest) it sends back. The watch has no SwiftData store of
 /// its own — this is the only place that touches the phone's ModelContext
 /// on the watch's behalf.
+@MainActor
 final class WatchSessionManager: NSObject, WCSessionDelegate {
     static let shared = WatchSessionManager()
 
@@ -50,6 +51,10 @@ final class WatchSessionManager: NSObject, WCSessionDelegate {
                 restExerciseName: restTimer?.exerciseName
             )
         } else {
+            // No active workout left — the dedup set exists only to protect a single
+            // in-progress session from a redelivered command, so it has no reason to
+            // outlive that session.
+            appliedCommandIDs.removeAll()
             snapshot = nil
         }
 
@@ -83,30 +88,42 @@ final class WatchSessionManager: NSObject, WCSessionDelegate {
 
     // MARK: WCSessionDelegate
 
-    func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
+    // WatchConnectivity calls these on its own delegate queue, not necessarily main.
+    // `modelContext`/`restTimer`/the snapshot state are all main-actor-isolated (the
+    // class is `@MainActor`), so each callback is `nonisolated` and hops explicitly —
+    // that keeps every read/write of that state on one thread instead of racing the
+    // views that write it from `onAppear`/`pushSnapshot`.
+
+    nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
         if let error {
             logger.error("activation failed: \(error.localizedDescription)")
         }
-        // `pushSnapshot` may have run (e.g. from `ActiveWorkoutView.onAppear`) before
-        // activation finished and silently dropped the send — resend it now so the
-        // watch isn't stuck waiting for the next unrelated workout change.
-        if activationState == .activated, hasPushedSnapshot {
-            send(lastSnapshot)
+        Task { @MainActor in
+            // `pushSnapshot` may have run (e.g. from `ActiveWorkoutView.onAppear`) before
+            // activation finished and silently dropped the send — resend it now so the
+            // watch isn't stuck waiting for the next unrelated workout change.
+            if activationState == .activated, self.hasPushedSnapshot {
+                self.send(self.lastSnapshot)
+            }
         }
     }
 
-    func sessionDidBecomeInactive(_ session: WCSession) {}
+    nonisolated func sessionDidBecomeInactive(_ session: WCSession) {}
 
-    func sessionDidDeactivate(_ session: WCSession) {
+    nonisolated func sessionDidDeactivate(_ session: WCSession) {
         session.activate()
     }
 
-    func session(_ session: WCSession, didReceiveMessage message: [String: Any], replyHandler: @escaping ([String: Any]) -> Void) {
-        handle(message, reply: replyHandler)
+    nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any], replyHandler: @escaping ([String: Any]) -> Void) {
+        Task { @MainActor in
+            self.handle(message, reply: replyHandler)
+        }
     }
 
-    func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
-        handle(userInfo, reply: nil)
+    nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
+        Task { @MainActor in
+            self.handle(userInfo, reply: nil)
+        }
     }
 
     private func handle(_ message: [String: Any], reply: (([String: Any]) -> Void)?) {
@@ -114,9 +131,7 @@ final class WatchSessionManager: NSObject, WCSessionDelegate {
             reply?(["ok": false])
             return
         }
-        DispatchQueue.main.async { [weak self] in
-            self?.apply(message, context: context, reply: reply)
-        }
+        apply(message, context: context, reply: reply)
     }
 
     func apply(_ message: [String: Any], context: ModelContext, reply: (([String: Any]) -> Void)?) {

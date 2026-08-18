@@ -22,4 +22,15 @@ final class WorkoutSet {
         self.createdAt = createdAt
         self.order = order
     }
+
+    /// Deletes `set` from the store and from both in-memory relationship arrays
+    /// it can belong to (`exercise.sets`, `workout.sets`) — `context.delete` alone
+    /// doesn't prune it out of an already-loaded relationship array until the next
+    /// save/fetch, same reasoning as `Workout.deleteExercise`. `workout` is nil for
+    /// a set logged outside any workout (`ExerciseDetailView`'s standalone flow).
+    static func delete(_ set: WorkoutSet, context: ModelContext) {
+        context.delete(set)
+        set.exercise?.sets.removeAll { $0.persistentModelID == set.persistentModelID }
+        set.workout?.sets.removeAll { $0.persistentModelID == set.persistentModelID }
+    }
 }

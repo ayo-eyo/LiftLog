@@ -14,11 +14,13 @@ struct HidesStartAccessoryPreferenceKey: PreferenceKey {
 enum WorkoutSheet: Identifiable {
     case picker
     case defaults(Exercise)
+    case editSet(WorkoutSet)
 
     var id: String {
         switch self {
         case .picker: return "picker"
         case .defaults(let exercise): return "defaults-\(exercise.persistentModelID)"
+        case .editSet(let set): return "editSet-\(set.persistentModelID)"
         }
     }
 }
@@ -37,8 +39,9 @@ struct WorkoutDetailView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var activeSheet: WorkoutSheet?
-    @State private var pendingDeleteExercise: Exercise?
-    @State private var editingSet: WorkoutSet?
+    /// Multiple rows can be swipe/edit-deleted in one gesture (`EditButton` mode) — every
+    /// one that already has logged sets needs its own confirmation, not just the last.
+    @State private var pendingDeleteExercises: [Exercise] = []
     /// Picking an exercise from `.picker` used to jump straight to
     /// `.defaults(exercise)` by reassigning `activeSheet` to a different non-nil
     /// value while its sheet was still on screen. `.sheet(item:)` doesn't treat
@@ -50,7 +53,6 @@ struct WorkoutDetailView: View {
 
     @Query(filter: #Predicate<Workout> { $0.startedAt != nil && $0.completedAt == nil })
     private var activeWorkouts: [Workout]
-    @Query(sort: \Workout.sortIndex) private var allWorkouts: [Workout]
 
     private var groupedItems: [(exercise: Exercise, items: [WorkoutItem])] {
         workout.groupedItems
@@ -63,7 +65,9 @@ struct WorkoutDetailView: View {
                 completedList
             } else {
                 editableList
-                bottomButtons
+                if workout.status == .plan {
+                    bottomButtons
+                }
             }
         }
         .background(.chalk)
@@ -78,21 +82,18 @@ struct WorkoutDetailView: View {
         }) { sheet in
             sheetContent(for: sheet)
         }
-        .sheet(item: $editingSet) { set in
-            EditSetView(set: set)
-        }
         .confirmationDialog(
-            "Удалить упражнение вместе с уже залогированными подходами?",
-            isPresented: Binding(get: { pendingDeleteExercise != nil }, set: { if !$0 { pendingDeleteExercise = nil } }),
+            pendingDeleteTitle,
+            isPresented: Binding(get: { !pendingDeleteExercises.isEmpty }, set: { if !$0 { pendingDeleteExercises = [] } }),
             titleVisibility: .visible
         ) {
             Button("Удалить", role: .destructive) {
-                if let exercise = pendingDeleteExercise {
+                for exercise in pendingDeleteExercises {
                     workout.deleteExercise(exercise, context: context)
                 }
-                pendingDeleteExercise = nil
+                pendingDeleteExercises = []
             }
-            Button("Отмена", role: .cancel) { pendingDeleteExercise = nil }
+            Button("Отмена", role: .cancel) { pendingDeleteExercises = [] }
         }
         .onAppear {
             if workout.isActive {
@@ -109,17 +110,31 @@ struct WorkoutDetailView: View {
         workout.startedAt == nil && !workout.items.isEmpty && activeWorkouts.isEmpty
     }
 
+    private var pendingDeleteTitle: String {
+        let count = pendingDeleteExercises.count
+        return "Удалить \(count) \(RussianPlural.form(count, "упражнение", "упражнения", "упражнений")) вместе с уже залогированными подходами?"
+    }
+
     // MARK: Header
 
     private var header: some View {
         VStack(spacing: 8) {
-            TextField("Название тренировки", text: $workout.name)
-                .font(.display(24))
-                .foregroundStyle(.ink)
-            DatePicker("Дата", selection: $workout.date, displayedComponents: [.date, .hourAndMinute])
-                .font(.sans(13))
-                .foregroundStyle(.steel)
-                .datePickerStyle(.compact)
+            if workout.status == .plan {
+                TextField("Название тренировки", text: $workout.name)
+                    .font(.display(24))
+                    .foregroundStyle(.ink)
+                DatePicker("Дата", selection: $workout.date, displayedComponents: [.date, .hourAndMinute])
+                    .font(.sans(13))
+                    .foregroundStyle(.steel)
+                    .datePickerStyle(.compact)
+            } else {
+                Text(workout.name.isEmpty ? workout.date.formatted(date: .abbreviated, time: .shortened) : workout.name)
+                    .font(.display(24))
+                    .foregroundStyle(.ink)
+                Text(workout.date.formatted(date: .abbreviated, time: .shortened))
+                    .font(.sans(13))
+                    .foregroundStyle(.steel)
+            }
         }
         .padding()
     }
@@ -128,24 +143,35 @@ struct WorkoutDetailView: View {
 
     private var editableList: some View {
         List {
-            ForEach(groupedItems, id: \.exercise.persistentModelID) { group in
-                NavigationLink {
-                    if workout.isActive {
-                        WorkoutExerciseLogView(workout: workout, exercise: group.exercise, restTimer: restTimer)
-                    } else {
-                        WorkoutItemDefaultsView(workout: workout, exercise: group.exercise)
-                    }
-                } label: {
-                    exerciseRow(group)
-                }
-                .listRowBackground(Color.chalk)
-                .listRowSeparatorTint(.hairline)
+            // Reordering stays available once a workout is active (the exercise
+            // list doesn't need to be locked to reorder), but add/delete are
+            // plan-only — so `.onDelete` is attached conditionally rather than
+            // unconditionally like `.onMove`.
+            if workout.status == .plan {
+                exerciseRows.onDelete(perform: deleteExercise)
+            } else {
+                exerciseRows
             }
-            .onMove(perform: moveExercise)
-            .onDelete(perform: deleteExercise)
         }
         .scrollContentBackground(.hidden)
         .background(.chalk)
+    }
+
+    private var exerciseRows: some DynamicViewContent {
+        ForEach(groupedItems, id: \.exercise.persistentModelID) { group in
+            NavigationLink {
+                if workout.isActive {
+                    WorkoutExerciseLogView(workout: workout, exercise: group.exercise, restTimer: restTimer)
+                } else {
+                    WorkoutItemDefaultsView(workout: workout, exercise: group.exercise)
+                }
+            } label: {
+                exerciseRow(group)
+            }
+            .listRowBackground(Color.chalk)
+            .listRowSeparatorTint(.hairline)
+        }
+        .onMove(perform: moveExercise)
     }
 
     private func exerciseRow(_ group: (exercise: Exercise, items: [WorkoutItem])) -> some View {
@@ -176,6 +202,9 @@ struct WorkoutDetailView: View {
         }.joined(separator: " · ")
     }
 
+    /// Only called when `workout.status == .plan` — an active/completed workout has
+    /// nothing to show here, so the caller skips this entirely rather than rendering
+    /// an empty padded `VStack`.
     private var bottomButtons: some View {
         VStack(spacing: 10) {
             Button("Добавить упражнение") { activeSheet = .picker }
@@ -183,7 +212,7 @@ struct WorkoutDetailView: View {
                 .buttonStyle(.bordered)
                 .tint(.plateBlue)
 
-            if workout.startedAt == nil && !workout.items.isEmpty {
+            if !workout.items.isEmpty {
                 if showsOwnStartButton {
                     Button("Начать") { start() }
                         .font(.sans(15))
@@ -215,7 +244,7 @@ struct WorkoutDetailView: View {
         Section {
             ForEach(workout.setsFor(exercise)) { set in
                 Button {
-                    editingSet = set
+                    activeSheet = .editSet(set)
                 } label: {
                     SetRow(weight: set.weight, reps: set.reps, fontSize: 14)
                 }
@@ -236,10 +265,10 @@ struct WorkoutDetailView: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         if workout.completedAt == nil && groupedItems.count > 1 {
-            ToolbarItem(placement: .navigationBarTrailing) { EditButton() }
+            ToolbarItem(placement: .topBarTrailing) { EditButton() }
         }
         if !workout.isActive {
-            ToolbarItem(placement: .navigationBarTrailing) {
+            ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     copyWorkout()
                 } label: {
@@ -262,20 +291,19 @@ struct WorkoutDetailView: View {
     private func sheetContent(for sheet: WorkoutSheet) -> some View {
         switch sheet {
         case .picker:
+            // Only reachable via the "Добавить упражнение" button, which is
+            // plan-only — so this always routes to setting planned defaults,
+            // never straight into `workout.addExercise`.
             ExercisePickerView(excluding: Set(workout.orderedExercises.compactMap { $0.catalogID })) { exercise in
-                if workout.isActive {
-                    workout.addExercise(exercise, context: context)
-                    activeSheet = nil
-                    WatchSessionManager.shared.pushSnapshot(for: workout)
-                } else {
-                    pendingDefaultsExercise = exercise
-                    activeSheet = nil
-                }
+                pendingDefaultsExercise = exercise
+                activeSheet = nil
             }
         case .defaults(let exercise):
             NavigationStack {
                 WorkoutItemDefaultsView(workout: workout, exercise: exercise)
             }
+        case .editSet(let set):
+            EditSetView(set: set)
         }
     }
 
@@ -289,7 +317,7 @@ struct WorkoutDetailView: View {
     private func finish() {
         restTimer.skip()
         workout.finish()
-        HealthKitManager.save(workout)
+        Task { await HealthKitManager.save(workout) }
         WatchSessionManager.shared.pushSnapshot(for: nil)
         dismiss()
     }
@@ -309,8 +337,13 @@ struct WorkoutDetailView: View {
     /// and having both live on the stack sent SwiftUI's view-graph diffing into
     /// a runaway loop, independent of the copy's exercise count.
     private func copyWorkout() {
-        let newSortIndex = (allWorkouts.map(\.sortIndex).min() ?? 0) - 1
-        _ = Workout.copy(of: workout, sortIndex: newSortIndex, context: context)
+        // A one-off fetch instead of a live `@Query` over every workout — this screen
+        // only needs the top sort index at the moment of copying, not a standing
+        // subscription that invalidates the whole screen on any workout's change.
+        var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.sortIndex)])
+        descriptor.fetchLimit = 1
+        let minSortIndex = (try? context.fetch(descriptor))?.first?.sortIndex ?? 0
+        _ = Workout.copy(of: workout, sortIndex: minSortIndex - 1, context: context)
         dismiss()
     }
 
@@ -320,13 +353,53 @@ struct WorkoutDetailView: View {
 
     private func deleteExercise(at offsets: IndexSet) {
         let groups = groupedItems
+        var needsConfirmation: [Exercise] = []
         for index in offsets {
             let exercise = groups[index].exercise
             if workout.setsFor(exercise).isEmpty {
                 workout.deleteExercise(exercise, context: context)
             } else {
-                pendingDeleteExercise = exercise
+                needsConfirmation.append(exercise)
             }
         }
+        if !needsConfirmation.isEmpty {
+            pendingDeleteExercises = needsConfirmation
+        }
     }
+}
+
+#Preview("План") {
+    let container = PreviewSupport.container()
+    let context = container.mainContext
+    let bench = Exercise(name: "Жим лёжа")
+    let squat = Exercise(name: "Присед")
+    context.insert(bench)
+    context.insert(squat)
+    let workout = Workout(name: "Грудь и ноги")
+    context.insert(workout)
+    workout.addExercise(bench, weight: 60, reps: 8, context: context)
+    workout.addExercise(squat, weight: 100, reps: 5, context: context)
+
+    return NavigationStack {
+        WorkoutDetailView(workout: workout, restTimer: PreviewSupport.restTimer())
+    }
+    .modelContainer(container)
+}
+
+#Preview("Идёт, крупный текст") {
+    let container = PreviewSupport.container()
+    let context = container.mainContext
+    let bench = Exercise(name: "Жим лёжа")
+    context.insert(bench)
+    let workout = Workout(name: "Грудь")
+    context.insert(workout)
+    workout.addExercise(bench, weight: 60, reps: 8, context: context)
+    workout.start()
+    workout.logSet(weight: 60, reps: 8, for: bench, context: context)
+
+    return NavigationStack {
+        WorkoutDetailView(workout: workout, restTimer: PreviewSupport.restTimer())
+    }
+    .modelContainer(container)
+    .dynamicTypeSize(.accessibility3)
 }

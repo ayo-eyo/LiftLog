@@ -47,8 +47,8 @@ struct WorkoutListView: View {
             .background(.chalk)
             .navigationTitle("Тренировки")
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) { EditButton() }
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .topBarLeading) { EditButton() }
+                ToolbarItem(placement: .topBarTrailing) {
                     Button { createWorkout() } label: { Image(systemName: "plus") }
                         .accessibilityIdentifier("workoutList.addWorkout")
                 }
@@ -139,5 +139,37 @@ private struct WorkoutRow: View {
                 Text("План").font(.mono(12)).foregroundStyle(.steel)
             }
         }
+        // Otherwise VoiceOver reads name, exercise/set counts, and status as three or
+        // four separate elements instead of one row.
+        .accessibilityElement(children: .combine)
     }
+}
+
+#Preview {
+    let container = PreviewSupport.container()
+    let context = container.mainContext
+    let bench = Exercise(name: "Жим лёжа")
+    let squat = Exercise(name: "Присед")
+    context.insert(bench)
+    context.insert(squat)
+
+    let plan = Workout(name: "Завтра — грудь", sortIndex: 0)
+    context.insert(plan)
+    plan.addExercise(bench, weight: 60, reps: 8, context: context)
+
+    let active = Workout(name: "", sortIndex: -1)
+    context.insert(active)
+    active.addExercise(squat, weight: 100, reps: 5, context: context)
+    active.start()
+    active.logSet(weight: 100, reps: 5, for: squat, context: context)
+
+    let finished = Workout(name: "Спина", sortIndex: 1)
+    context.insert(finished)
+    finished.addExercise(bench, weight: 60, reps: 8, context: context)
+    finished.start(now: Date(timeIntervalSinceNow: -3600))
+    finished.logSet(weight: 60, reps: 8, for: bench, context: context)
+    finished.finish()
+
+    return WorkoutListView(restTimer: PreviewSupport.restTimer())
+        .modelContainer(container)
 }

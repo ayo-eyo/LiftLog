@@ -1,15 +1,47 @@
 import HealthKit
 import os
 
-/// Seam over `HKHealthStore` so `HealthKitManager.save` is testable without touching
-/// real HealthKit — `HKHealthStore` itself can't be faked (it's a final system class),
-/// so tests substitute a fake conforming to this protocol instead.
+/// Seam over `HKWorkoutBuilder`'s begin/end/finish lifecycle so `HealthKitManager.save`
+/// is testable without touching real HealthKit — neither `HKHealthStore` nor
+/// `HKWorkoutBuilder` can be faked directly (both are final system classes), so tests
+/// substitute a fake conforming to this protocol instead. A fresh instance backs each
+/// `save` call (the default parameter expression below), since a builder is single-use:
+/// one begin/end/finish per workout, not a value that's safe to share across calls the
+/// way the old `HKHealthStore`-backed seam was.
 protocol WorkoutSavingStore {
     func authorizationStatus(for type: HKObjectType) -> HKAuthorizationStatus
-    func save(_ object: HKObject, withCompletion completion: @escaping @Sendable (Bool, Error?) -> Void)
+    func beginCollection(at date: Date) async throws
+    func endCollection(at date: Date) async throws
+    func finishWorkout() async throws
 }
 
-extension HKHealthStore: WorkoutSavingStore {}
+private final class HealthKitWorkoutBuildingStore: WorkoutSavingStore {
+    private let healthStore: HKHealthStore
+    private let builder: HKWorkoutBuilder
+
+    init(healthStore: HKHealthStore, activityType: HKWorkoutActivityType) {
+        self.healthStore = healthStore
+        let configuration = HKWorkoutConfiguration()
+        configuration.activityType = activityType
+        self.builder = HKWorkoutBuilder(healthStore: healthStore, configuration: configuration, device: nil)
+    }
+
+    func authorizationStatus(for type: HKObjectType) -> HKAuthorizationStatus {
+        healthStore.authorizationStatus(for: type)
+    }
+
+    func beginCollection(at date: Date) async throws {
+        try await builder.beginCollection(at: date)
+    }
+
+    func endCollection(at date: Date) async throws {
+        try await builder.endCollection(at: date)
+    }
+
+    func finishWorkout() async throws {
+        _ = try await builder.finishWorkout()
+    }
+}
 
 enum HealthKitManager {
     private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "LiftLog", category: "HealthKit")
@@ -21,18 +53,24 @@ enum HealthKitManager {
         try? await store.requestAuthorization(toShare: share, read: [])
     }
 
-    static func save(_ workout: Workout, to savingStore: WorkoutSavingStore = store) {
+    // `savingStore` defaults to `nil` and is constructed inside the body rather than as
+    // a default-parameter expression: `HealthKitWorkoutBuildingStore.init` and `store`
+    // are main-actor-isolated (the project defaults every type to `@MainActor`), and a
+    // default-parameter expression evaluates outside the function's own isolation, so
+    // building it eagerly there warned about a cross-actor call.
+    static func save(_ workout: Workout, to savingStore: WorkoutSavingStore? = nil) async {
         guard let end = workout.completedAt, !workout.sets.isEmpty else { return }
-        guard HKHealthStore.isHealthDataAvailable(),
-              savingStore.authorizationStatus(for: .workoutType()) == .sharingAuthorized else { return }
+        guard HKHealthStore.isHealthDataAvailable() else { return }
+        let savingStore = savingStore ?? HealthKitWorkoutBuildingStore(healthStore: store, activityType: .traditionalStrengthTraining)
+        guard savingStore.authorizationStatus(for: .workoutType()) == .sharingAuthorized else { return }
 
-        let hkWorkout = HKWorkout(activityType: .traditionalStrengthTraining, start: workout.startedAt ?? workout.date, end: end)
-        savingStore.save(hkWorkout, withCompletion: { success, error in
-            if let error {
-                logger.error("HealthKit save failed: \(error.localizedDescription)")
-            } else if !success {
-                logger.error("HealthKit save did not succeed, no error returned")
-            }
-        })
+        let start = workout.startedAt ?? workout.date
+        do {
+            try await savingStore.beginCollection(at: start)
+            try await savingStore.endCollection(at: end)
+            try await savingStore.finishWorkout()
+        } catch {
+            logger.error("HealthKit save failed: \(error.localizedDescription)")
+        }
     }
 }

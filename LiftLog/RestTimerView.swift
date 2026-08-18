@@ -4,6 +4,8 @@ struct RestTimerView: View {
     let restTimer: RestTimer
     let duration: TimeInterval
 
+    @ScaledMetric(relativeTo: .body) private var diameter = 88.0
+
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { timeline in
             let remaining = restTimer.remaining(at: timeline.date)
@@ -19,7 +21,7 @@ struct RestTimerView: View {
                     .font(.mono(22))
                     .foregroundStyle(.ink)
             }
-            .frame(width: 88, height: 88)
+            .frame(width: diameter, height: diameter)
         }
     }
 }

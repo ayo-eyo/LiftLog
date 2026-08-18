@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    @ObservedObject private var phone = PhoneSessionManager.shared
+    private let phone = PhoneSessionManager.shared
 
     var body: some View {
         WorkoutSetsView(phone: phone)

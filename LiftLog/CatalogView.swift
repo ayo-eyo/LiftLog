@@ -4,12 +4,13 @@ struct CatalogView: View {
     @State private var searchText = ""
     private let groups = ExerciseCatalog.grouped()
 
-    private var filteredGroups: [(muscle: String, exercises: [CatalogExercise])] {
-        guard !searchText.isEmpty else { return groups }
-        return groups.compactMap { group in
-            let filtered = group.exercises.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
-            return filtered.isEmpty ? nil : (group.muscle, filtered)
-        }
+    // Recomputed only when `searchText` actually changes (see .onChange below), instead
+    // of on every render — same reasoning, and the same tested filter, as
+    // `ExercisePickerView`, which filters this same ~870-entry catalog.
+    @State private var filteredGroups: [(muscle: String, exercises: [CatalogExercise])] = []
+
+    private func recomputeFilteredGroups() {
+        filteredGroups = ExercisePickerView.filteredGroups(groups, excluding: [], searchText: searchText)
     }
 
     var body: some View {
@@ -36,5 +37,7 @@ struct CatalogView: View {
             .searchable(text: $searchText, prompt: "Поиск упражнения")
             .navigationTitle("Каталог")
         }
+        .onAppear { recomputeFilteredGroups() }
+        .onChange(of: searchText) { recomputeFilteredGroups() }
     }
 }

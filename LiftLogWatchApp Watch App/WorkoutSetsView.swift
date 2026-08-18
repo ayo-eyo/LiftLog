@@ -1,16 +1,25 @@
 import SwiftUI
 
 struct WorkoutSetsView: View {
-    @ObservedObject var phone: PhoneSessionManager
+    let phone: PhoneSessionManager
 
     var body: some View {
         NavigationStack {
             Group {
                 if let snapshot = phone.snapshot, !snapshot.exercises.isEmpty {
                     List {
-                        TimelineView(.periodic(from: .now, by: 1)) { timeline in
-                            if let restEndDate = snapshot.restEndDate, restEndDate > timeline.date {
-                                restSection(remaining: restEndDate.timeIntervalSince(timeline.date), name: snapshot.restExerciseName)
+                        // Condition on the Section's presence, not on its content — this
+                        // way the ticking `TimelineView` only exists while actually
+                        // resting, instead of running at 1Hz for as long as the workout
+                        // screen is open, and the List's direct child is a stable
+                        // Section/nothing rather than always-present-but-sometimes-empty.
+                        if let restEndDate = snapshot.restEndDate {
+                            Section {
+                                TimelineView(.periodic(from: restEndDate, by: 1)) { timeline in
+                                    if restEndDate > timeline.date {
+                                        restRow(remaining: restEndDate.timeIntervalSince(timeline.date), name: snapshot.restExerciseName)
+                                    }
+                                }
                             }
                         }
                         ForEach(snapshot.exercises) { exercise in
@@ -38,19 +47,17 @@ struct WorkoutSetsView: View {
         }
     }
 
-    private func restSection(remaining: TimeInterval, name: String?) -> some View {
-        Section {
-            VStack(spacing: 4) {
-                Text(name ?? "Отдых")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                Text(clockString(remaining))
-                    .font(.title2.monospacedDigit())
-                Button("Пропустить") { phone.skipRest() }
-                    .font(.caption2)
-            }
-            .frame(maxWidth: .infinity)
+    private func restRow(remaining: TimeInterval, name: String?) -> some View {
+        VStack(spacing: 4) {
+            Text(name ?? "Отдых")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            Text(clockString(remaining))
+                .font(.title2.monospacedDigit())
+            Button("Пропустить") { phone.skipRest() }
+                .font(.caption2)
         }
+        .frame(maxWidth: .infinity)
     }
 }
 
@@ -60,7 +67,7 @@ private func clockString(_ interval: TimeInterval) -> String {
 }
 
 private struct LogSetView: View {
-    @ObservedObject var phone: PhoneSessionManager
+    let phone: PhoneSessionManager
     let exercise: WatchWorkoutSnapshot.ExerciseInfo
 
     @State private var weight: Double
@@ -79,7 +86,7 @@ private struct LogSetView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 6) {
-                Stepper(value: $weight, in: 0...500, step: 2.5) {
+                Stepper(value: $weight, in: 0...500, step: 0.25) {
                     Text("\(weight.formatted(.number)) кг")
                 }
                 .controlSize(.small)
@@ -89,11 +96,13 @@ private struct LogSetView: View {
                 }
                 .controlSize(.small)
 
-                TimelineView(.periodic(from: .now, by: 1)) { timeline in
-                    if let restEndDate = phone.snapshot?.restEndDate, restEndDate > timeline.date {
-                        Text(clockString(restEndDate.timeIntervalSince(timeline.date)))
-                            .font(.caption.monospacedDigit())
-                            .foregroundStyle(.secondary)
+                if let restEndDate = phone.snapshot?.restEndDate {
+                    TimelineView(.periodic(from: restEndDate, by: 1)) { timeline in
+                        if restEndDate > timeline.date {
+                            Text(clockString(restEndDate.timeIntervalSince(timeline.date)))
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
 

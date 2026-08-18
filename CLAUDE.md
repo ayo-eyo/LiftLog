@@ -62,22 +62,49 @@ Test setup in the repo:
   messages the watch sends, plus `SourcePaths` for the two-copy parity check).
   `LiftLogUITests/Support/AppLauncher.swift` launches the app with `-uiTestInMemoryStore`,
   which `LiftLogApp` honors in DEBUG to start UI tests from an empty store.
-- **No test cases are written yet** — only the helpers above. Adding one is the first step of
-  any behavioral change, per the skill.
 - Both test targets use file-system-synchronized groups: a new file in `LiftLogTests/` or
   `LiftLogUITests/` is picked up automatically — do not edit `project.pbxproj` for it.
+- Suites exist and are expected to stay green: domain (`WorkoutModelTests`, `WorkoutOrderTests`,
+  `WorkoutCopyTests`, `WorkoutDefaultsTests`, `PersistenceTests`, `DataIntegrityTests`), sync
+  (`WatchSessionManagerTests`, `WatchWireFormatTests`), and UI (`WorkoutActiveScreenUITests`,
+  `WorkoutCopyUITests`, `WorkoutSetEditUITests`, `WorkoutStartAccessoryUITests`). Extend the
+  matching suite rather than starting a parallel one.
 
-`plan/` (gitignored, local only) holds `test-suites.md` — the full catalog of suites and
-checks worth writing — and `review.md` — defects found while reading the code, with file and
-line references. Consult them when they exist; don't rely on them being there.
+Local-only notes, both gitignored — consult them when they exist, don't rely on it:
+
+- `plan/` — `test-suites.md` (catalog of suites and checks worth writing) and `review.md`
+  (defects found while reading the code, with file/line references).
+- `plans/features/<name>/` — per-feature `requirements.md` + `technical-notes.md`. Code comments
+  reference these by path (e.g. `Workout.startedAt` points at `plans/features/delete-fixture`).
 
 ## Architecture
 
 ### Data model (SwiftData, iOS target only)
 
-`Workout` —(cascade)→ `WorkoutSet`, and separately holds an unmanaged `[Exercise]` array (the exercises added to that workout) plus an optional `template: WorkoutTemplate?`. `WorkoutTemplate` —(cascade)→ `TemplateItem` (ordered list of exercise + default weight/reps). `Exercise` optionally points at a `CatalogExercise.id` (`catalogID`) to link back to the built-in exercise database; when nil, it's a user-defined exercise (this path exists in the model but has no dedicated creation UI — all current UI flows go through `ExerciseCatalog.exercise(for:)`).
+**`Workout` is the only top-level entity — there are no templates.** (`WorkoutTemplate`/`TemplateItem` were removed; copying a workout is what "repeat this workout" means now. Don't reintroduce a template type.)
 
-Matching a logged `WorkoutSet` back to its planned `TemplateItem` is positional: `Workout.templateItem(for:)` counts how many sets are already logged for an exercise and indexes into `template.sortedItems` at that position. This is how `defaultWeight(for:)`/`defaultReps(for:)` pre-fill the next set's inputs.
+`Workout` —(cascade)→ `WorkoutItem` (the *plan*) and —(cascade)→ `WorkoutSet` (what was actually *logged*). A `WorkoutItem` is one planned position: one exercise plus optional planned weight/reps. One exercise can occupy several consecutive positions — that's a plan for several sets. `Exercise` optionally points at a `CatalogExercise.id` (`catalogID`) to link back to the built-in exercise database; when nil, it's a user-defined exercise (this path exists in the model but has no dedicated creation UI — all current UI flows go through `ExerciseCatalog.exercise(for:)`).
+
+A workout lives in three states, derived from two timestamps (`isActive == startedAt != nil && completedAt == nil`):
+
+| State | `startedAt` | `completedAt` |
+|---|---|---|
+| План — created/copied, not started | nil | nil |
+| Идёт — at most one at a time | set | nil |
+| Завершена — goes to history and HealthKit | set | set |
+
+`start()` also moves `date` to the actual start time, so a copy that sat around as a plan doesn't carry its creation date into the list/HealthKit.
+
+Matching a logged `WorkoutSet` back to its planned `WorkoutItem` is positional: `Workout.plannedItem(for:)` counts how many sets are already logged for an exercise and indexes into that exercise's planned positions at the same offset. This is how `defaultWeight(for:)`/`defaultReps(for:)` pre-fill the next set's inputs.
+
+Ordering, and the invariants that hold it together:
+
+- `WorkoutItem.order` and `WorkoutSet.order` are assigned as `max(existing) + 1`, never `count` — deletion doesn't renumber, so `count` can collide with a surviving row. Gaps are harmless.
+- `Workout.sortIndex` is the manual order in the workout list, left at 0 until the user drags a row; while every row is 0 the list falls back to date order (`WorkoutListView`).
+- `moveExercise(from:to:)` moves whole exercise *groups* (all of an exercise's positions travel together) and then renumbers `order` sequentially; it reimplements `move(fromOffsets:toOffset:)` semantics so the model layer doesn't import SwiftUI.
+- `deleteExercise(_:context:)` removes from the in-memory `items`/`sets` arrays as well as calling `context.delete` — SwiftData won't prune a deleted object out of an already-loaded relationship array until the next save/fetch.
+
+`Workout.copy(of:sortIndex:now:context:)` builds a plan from an existing workout: same ordered exercises, `Exercise` objects **shared, not duplicated** (so exercise history stays unified), source never mutated, sets and both timestamps never copied. Per exercise, already-logged sets become the copy's plan when there are any (copy "what was actually done"); otherwise the source's own planned positions are copied.
 
 `Exercise` and `Workout` both carry a `syncID: UUID` used as the `Identifiable` id in the watch wire format (see below), independent of SwiftData's own `persistentModelID`. **`DataIntegrity.deduplicateSyncIDs`** runs once on every launch (`RootTabView.onAppear`) to repair a historical bug where SwiftData's default-value expression for `syncID` was captured once at the schema level rather than per-insert, causing older records to share one UUID — read the doc comment on `DataIntegrity.swift` before touching `syncID` defaults again.
 
@@ -103,7 +130,7 @@ The watch app has no SwiftData store and no App Group — the two entitlements f
 
 ### Reusable input/display components
 
-`SetInputViews.swift` holds the shared weight/reps entry control and set-row display used across `ExerciseDetailView`, `WorkoutExerciseLogView`, `EditSetView`, `TemplateItemDefaultsView`, `WorkoutSummaryView`, and `TemplateDetailView` — prefer extending these over re-adding another inline copy of the weight/reps UI.
+`SetInputViews.swift` holds the shared weight/reps entry controls (`WeightInputRow`, `RepsInputRow`) and the set-row display (`SetRow`), used across `ExerciseDetailView`, `WorkoutDetailView`, `WorkoutExerciseLogView`, `WorkoutItemDefaultsView`, and `EditSetView` — prefer extending these over re-adding another inline copy of the weight/reps UI.
 
 ### Placeholders
 
