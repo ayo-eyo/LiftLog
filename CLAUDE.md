@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 LiftLog is a SwiftUI + SwiftData workout-tracking app for iOS with a companion watchOS app. Two Xcode targets in one project (`LiftLog.xcodeproj`):
 
 - **LiftLog** — the iOS app. Owns all persistence (SwiftData) and business logic.
-- **LiftLogWatchApp Watch App** — a thin remote control with no persistence of its own; it mirrors state pushed from the phone over WatchConnectivity and sends commands back.
+- **LiftLogWatchApp Watch App** — a remote control with no store of the workouts themselves; it mirrors state pushed from the phone over WatchConnectivity and sends commands back. The one thing it does persist is its outgoing command queue, so sets logged (and workouts started) with the phone out of range aren't lost.
 
 UI strings are in Russian.
 
@@ -66,7 +66,7 @@ Test setup in the repo:
   `LiftLogUITests/` is picked up automatically — do not edit `project.pbxproj` for it.
 - Suites exist and are expected to stay green: domain (`WorkoutModelTests`, `WorkoutOrderTests`,
   `WorkoutCopyTests`, `WorkoutDefaultsTests`, `PersistenceTests`, `DataIntegrityTests`), sync
-  (`WatchSessionManagerTests`, `WatchWireFormatTests`), and UI (`WorkoutActiveScreenUITests`,
+  (`WatchSessionManagerTests`, `WatchWireFormatTests`, `WatchSyncMergeTests`), and UI (`WorkoutActiveScreenUITests`,
   `WorkoutCopyUITests`, `WorkoutSetEditUITests`, `WorkoutStartAccessoryUITests`). Extend the
   matching suite rather than starting a parallel one.
 
@@ -106,6 +106,8 @@ Ordering, and the invariants that hold it together:
 
 `Workout.copy(of:sortIndex:now:context:)` builds a plan from an existing workout: same ordered exercises, `Exercise` objects **shared, not duplicated** (so exercise history stays unified), source never mutated, sets and both timestamps never copied. Per exercise, already-logged sets become the copy's plan when there are any (copy "what was actually done"); otherwise the source's own planned positions are copied.
 
+`Workout.version` is a monotonic counter bumped by `bumpVersion()` on every change to the workout's contents — one logged set is exactly +1, and plan edits/start/finish bump it too so the counter never goes backwards. It rides in the watch snapshot and is how the watch decides whether the phone has caught up with what it logged offline. Anything that mutates a workout outside the model layer (currently only `EditSetView`) has to bump it by hand.
+
 `Exercise` and `Workout` both carry a `syncID: UUID` used as the `Identifiable` id in the watch wire format (see below), independent of SwiftData's own `persistentModelID`. **`DataIntegrity.deduplicateSyncIDs`** runs once on every launch (`RootTabView.onAppear`) to repair a historical bug where SwiftData's default-value expression for `syncID` was captured once at the schema level rather than per-insert, causing older records to share one UUID — read the doc comment on `DataIntegrity.swift` before touching `syncID` defaults again.
 
 ### Exercise catalog
@@ -120,8 +122,9 @@ Ordering, and the invariants that hold it together:
 
 The watch app has no SwiftData store and no App Group — the two entitlements files only grant HealthKit. All state flows through `WatchConnectivity`, using plain `Codable` DTOs in `WorkoutSyncModels.swift` (duplicated verbatim in both targets — `LiftLog/WorkoutSyncModels.swift` and `LiftLogWatchApp Watch App/WorkoutSyncModels.swift` — since the targets don't share a framework; keep them in sync by hand when the wire format changes):
 
-- **Phone → watch**: `WatchSessionManager` (iOS target) pushes a `WatchContext { snapshot: WatchWorkoutSnapshot? }` via `updateApplicationContext` whenever the active workout changes. `WatchWorkoutSnapshot` is nil when there's no active workout.
-- **Watch → phone**: `PhoneSessionManager` (watch target) sends `["logSet": WatchLogSetCommand]` or `["skipRest": true]` via `sendMessage` (falling back to `transferUserInfo` when unreachable, which queues but gives no reply). `WatchSessionManager.apply(_:context:reply:)` is the *only* place on the phone that mutates the `ModelContext` on the watch's behalf — it looks up the workout/exercise by `syncID` (falling back to matching by exercise name if the ID is stale) and calls `Workout.logSet`.
+- **Phone → watch**: `WatchSessionManager` (iOS target) pushes a `WatchContext { snapshot, plans, appliedCommandIDs }` via `updateApplicationContext`. `snapshot` is the active workout (nil when none) plus rest-timer state; `plans` are the not-yet-started workouts the watch can list and start, capped at 20 and carrying their full `plannedSets` so the watch can advance through a plan with no phone in range; `appliedCommandIDs` is a bounded FIFO of commands the phone has applied, echoed back as acknowledgements. `refresh()` rebuilds the whole thing from the store; `pushSnapshot(for:)` is for the cases where a fetch would lie (a row deleted but not yet saved).
+- **Watch → phone**: `PhoneSessionManager` (watch target) sends `["command": WatchCommand]` — `.logSet` / `.start` / `.finish` — via `sendMessage`, plus live-only `["skipRest": true]`. `WatchSessionManager.apply(_:context:reply:)` is the *only* place on the phone that mutates the `ModelContext` on the watch's behalf: it looks up the workout/exercise by `syncID` (falling back to matching by exercise name if the ID is stale), applies the command, and replies with the freshly pushed context. Commands are deduplicated by `commandID`, which is what makes redelivery safe. A `.start` while a *different* workout is running is refused with `["conflict": syncID]` rather than resolved.
+- **Offline queue (watch)**: commands are not thrown at the phone when it isn't reachable. They go into a queue persisted by `PendingCommandStore` (JSON in Application Support, survives the app being killed), flushed one at a time in order — order matters, a `.start` has to land before the sets logged into it — on reachability changes, on context arrival, and on foreground. What the watch UI shows is the phone's context with that queue folded in: `WatchSyncMerge` (pure functions living in the shared `WorkoutSyncModels.swift`, so they can be tested from `LiftLogTests` — the watch target has no test target). A command leaves the queue when the phone acknowledges its `commandID`, or, if that ack aged out of the bounded window, when the workout's `version` on the phone has already reached what the command expected to produce. On the way to the background, whatever is still queued is also handed to `transferUserInfo` so the system delivers it while the app isn't running; the double delivery is harmless because of the `commandID` dedup.
 - Rest timer state (`endDate`/`exerciseName`) rides inside the same snapshot. Both sides independently schedule a local notification for the timer's end — `NotificationManager` (phone) and `RestNotificationManager` (watch) — because notification mirroring from phone to watch only works when the phone is locked/idle, not during an active hands-on-watch workout. If you change rest-duration or notification content, update both.
 
 ### Theming and assets

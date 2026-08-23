@@ -3,10 +3,10 @@ import WatchConnectivity
 import SwiftData
 import os
 
-/// Pushes the active workout to the paired Watch app and applies commands
-/// (log a set, skip rest) it sends back. The watch has no SwiftData store of
-/// its own — this is the only place that touches the phone's ModelContext
-/// on the watch's behalf.
+/// Pushes the active workout and the startable plans to the paired Watch app and
+/// applies the commands (log a set, start, finish, skip rest) it sends back. The watch
+/// has no SwiftData store of its own — this is the only place that touches the phone's
+/// ModelContext on the watch's behalf.
 @MainActor
 final class WatchSessionManager: NSObject, WCSessionDelegate {
     static let shared = WatchSessionManager()
@@ -17,18 +17,29 @@ final class WatchSessionManager: NSObject, WCSessionDelegate {
     private var started = false
     private var currentWorkout: Workout?
 
-    /// The most recently computed snapshot, kept even when `WCSession` isn't activated
+    /// The most recently computed context, kept even when `WCSession` isn't activated
     /// yet or `updateApplicationContext` fails, so it can be resent once activation
     /// completes instead of being lost until the next unrelated workout change.
-    private(set) var lastSnapshot: WatchWorkoutSnapshot?
-    private var hasPushedSnapshot = false
+    private(set) var lastContext: WatchContext?
+    private var hasPushedContext = false
+
+    var lastSnapshot: WatchWorkoutSnapshot? { lastContext?.snapshot }
+    var lastPlans: [WatchWorkoutSummary] { lastContext?.plans ?? [] }
 
     /// Commands already applied, so a redelivery (watch retries after the reply leg of
-    /// `sendMessage` fails, having already applied on the phone, or `transferUserInfo`
-    /// redelivers) doesn't log the same set twice.
-    private var appliedCommandIDs = Set<UUID>()
+    /// `sendMessage` fails, having already applied on the phone, or the watch reflushes
+    /// its offline queue) doesn't apply the same command twice. Also echoed back in the
+    /// pushed context, which is how the watch knows what to drop from that queue —
+    /// hence a bounded FIFO that outlives the workout, rather than being cleared when
+    /// the workout ends (a queued `finish` has to stay deduplicated after it lands).
+    private var appliedCommandIDs: [UUID] = []
+    private var appliedCommandIDSet: Set<UUID> = []
 
     static let restDuration: TimeInterval = RestTimer.defaultDuration
+    /// `updateApplicationContext` has a payload limit (~262 KB) and every plan carries
+    /// its full exercise list, so the list the watch sees is capped.
+    static let planLimit = 20
+    static let appliedCommandHistoryLimit = 50
 
     func start(modelContext: ModelContext, restTimer: RestTimer) {
         self.modelContext = modelContext
@@ -39,37 +50,74 @@ final class WatchSessionManager: NSObject, WCSessionDelegate {
         WCSession.default.activate()
     }
 
+    /// Pushes a context built around an explicitly named active workout. Used where the
+    /// store can't answer the question itself — right after `context.delete`, where a
+    /// fetch would still return the deleted row, or before the caller's own changes are
+    /// saved.
     func pushSnapshot(for workout: Workout?) {
         currentWorkout = workout
-
-        let snapshot: WatchWorkoutSnapshot?
-        if let workout, workout.isActive {
-            snapshot = WatchWorkoutSnapshot(
-                workoutID: workout.syncID,
-                exercises: workout.orderedExercises.map { self.exerciseInfo(for: $0, in: workout) },
-                restEndDate: restTimer?.endDate,
-                restExerciseName: restTimer?.exerciseName
-            )
-        } else {
-            // No active workout left — the dedup set exists only to protect a single
-            // in-progress session from a redelivered command, so it has no reason to
-            // outlive that session.
-            appliedCommandIDs.removeAll()
-            snapshot = nil
-        }
-
-        lastSnapshot = snapshot
-        hasPushedSnapshot = true
-        send(snapshot)
+        push(snapshot: snapshot(of: workout))
     }
 
-    private func send(_ snapshot: WatchWorkoutSnapshot?) {
+    /// Rebuilds the whole context — active workout *and* plans — from the store. Called
+    /// wherever the plan list changes, since those screens don't otherwise think about
+    /// the watch.
+    func refresh() {
+        let active = modelContext.flatMap { activeWorkout(context: $0) }
+        currentWorkout = active
+        push(snapshot: snapshot(of: active))
+    }
+
+    private func push(snapshot: WatchWorkoutSnapshot?) {
+        let context = WatchContext(snapshot: snapshot, plans: plans(), appliedCommandIDs: appliedCommandIDs)
+        lastContext = context
+        hasPushedContext = true
+        send(context)
+    }
+
+    private func send(_ context: WatchContext) {
         guard WCSession.default.activationState == .activated,
-              let data = try? JSONEncoder().encode(WatchContext(snapshot: snapshot)) else { return }
+              let data = try? JSONEncoder().encode(context) else { return }
         do {
             try WCSession.default.updateApplicationContext(["data": data])
         } catch {
-            logger.error("failed to push context: \(error.localizedDescription)")
+            logger.error("failed to push context (\(data.count) bytes): \(error.localizedDescription)")
+        }
+    }
+
+    // MARK: Building the context
+
+    private func snapshot(of workout: Workout?) -> WatchWorkoutSnapshot? {
+        guard let workout, workout.isActive else { return nil }
+        return WatchWorkoutSnapshot(
+            workoutID: workout.syncID,
+            name: workout.name,
+            date: workout.date,
+            version: workout.version,
+            exercises: workout.orderedExercises.map { self.exerciseInfo(for: $0, in: workout) },
+            restEndDate: restTimer?.endDate,
+            restExerciseName: restTimer?.exerciseName
+        )
+    }
+
+    private func plans() -> [WatchWorkoutSummary] {
+        guard let modelContext else { return [] }
+        var descriptor = FetchDescriptor<Workout>(
+            predicate: #Predicate { $0.startedAt == nil },
+            sortBy: [SortDescriptor(\.sortIndex), SortDescriptor(\.date, order: .reverse)]
+        )
+        descriptor.fetchLimit = Self.planLimit
+        guard let workouts = try? modelContext.fetch(descriptor) else { return [] }
+        // A row deleted but not yet saved still comes back from a fetch — sending it
+        // would offer the watch a workout it can never start.
+        return workouts.filter { !$0.isDeleted }.map { workout in
+            WatchWorkoutSummary(
+                id: workout.syncID,
+                name: workout.name,
+                date: workout.date,
+                version: workout.version,
+                exercises: workout.orderedExercises.map { self.exerciseInfo(for: $0, in: workout) }
+            )
         }
     }
 
@@ -77,19 +125,25 @@ final class WatchSessionManager: NSObject, WCSessionDelegate {
         let sets = workout.setsFor(exercise)
         let weight = workout.defaultWeight(for: exercise) ?? sets.last?.weight
         let reps = workout.defaultReps(for: exercise) ?? sets.last?.reps
+        // The whole plan, not just the next position: offline the watch has to advance
+        // through it itself, the way `Workout.plannedItem(for:)` does here.
+        let plannedSets = workout.sortedItems
+            .filter { $0.exercise?.persistentModelID == exercise.persistentModelID }
+            .map { WatchWorkoutSnapshot.PlannedSet(weight: $0.plannedWeight, reps: $0.plannedReps) }
         return WatchWorkoutSnapshot.ExerciseInfo(
             id: exercise.syncID,
             name: exercise.name,
             setsLoggedCount: sets.count,
             weight: weight,
-            reps: reps
+            reps: reps,
+            plannedSets: plannedSets
         )
     }
 
     // MARK: WCSessionDelegate
 
     // WatchConnectivity calls these on its own delegate queue, not necessarily main.
-    // `modelContext`/`restTimer`/the snapshot state are all main-actor-isolated (the
+    // `modelContext`/`restTimer`/the context state are all main-actor-isolated (the
     // class is `@MainActor`), so each callback is `nonisolated` and hops explicitly —
     // that keeps every read/write of that state on one thread instead of racing the
     // views that write it from `onAppear`/`pushSnapshot`.
@@ -102,8 +156,8 @@ final class WatchSessionManager: NSObject, WCSessionDelegate {
             // `pushSnapshot` may have run (e.g. from `ActiveWorkoutView.onAppear`) before
             // activation finished and silently dropped the send — resend it now so the
             // watch isn't stuck waiting for the next unrelated workout change.
-            if activationState == .activated, self.hasPushedSnapshot {
-                self.send(self.lastSnapshot)
+            if activationState == .activated, self.hasPushedContext, let context = self.lastContext {
+                self.send(context)
             }
         }
     }
@@ -128,36 +182,79 @@ final class WatchSessionManager: NSObject, WCSessionDelegate {
 
     private func handle(_ message: [String: Any], reply: (([String: Any]) -> Void)?) {
         guard let context = modelContext else {
-            reply?(["ok": false])
+            reply?([WatchMessageKey.ok: false])
             return
         }
         apply(message, context: context, reply: reply)
     }
 
+    // MARK: Applying commands
+
     func apply(_ message: [String: Any], context: ModelContext, reply: (([String: Any]) -> Void)?) {
-        if let data = message["logSet"] as? Data,
-           let command = try? JSONDecoder().decode(WatchLogSetCommand.self, from: data) {
+        if let data = message[WatchMessageKey.command] as? Data,
+           let command = try? JSONDecoder().decode(WatchCommand.self, from: data) {
+            perform(command, context: context, reply: reply)
+        } else if let data = message[WatchMessageKey.legacyLogSet] as? Data,
+                  let command = try? JSONDecoder().decode(WatchLogSetCommand.self, from: data) {
+            // Pre-`command` wire format: a watch build older than this phone build.
             guard let info = logSet(command, context: context), let infoData = try? JSONEncoder().encode(info) else {
-                reply?(["ok": false])
+                reply?([WatchMessageKey.ok: false])
                 return
             }
-            reply?(["ok": true, "exercise": infoData])
-        } else if message["skipRest"] != nil {
+            reply?([WatchMessageKey.ok: true, "exercise": infoData])
+        } else if message[WatchMessageKey.skipRest] != nil {
             restTimer?.skip()
             pushSnapshot(for: currentWorkout)
-            reply?(["ok": true])
+            reply?(successReply())
         } else {
-            reply?(["ok": false])
+            reply?([WatchMessageKey.ok: false])
         }
     }
 
+    private func perform(_ command: WatchCommand, context: ModelContext, reply: (([String: Any]) -> Void)?) {
+        switch command {
+        case .logSet(let logSetCommand):
+            guard logSet(logSetCommand, context: context) != nil else {
+                reply?([WatchMessageKey.ok: false])
+                return
+            }
+        case .start(let startCommand):
+            switch start(startCommand, context: context) {
+            case .applied:
+                break
+            case .conflict(let activeID):
+                reply?([WatchMessageKey.ok: false, WatchMessageKey.conflict: activeID.uuidString])
+                return
+            case .notFound:
+                reply?([WatchMessageKey.ok: false])
+                return
+            }
+        case .finish(let finishCommand):
+            guard finish(finishCommand, context: context) else {
+                reply?([WatchMessageKey.ok: false])
+                return
+            }
+        }
+        reply?(successReply())
+    }
+
+    /// The reply carries the freshly pushed context so the watch can reconcile its queue
+    /// straight from the round trip, without waiting for the separate
+    /// `updateApplicationContext` delivery.
+    private func successReply() -> [String: Any] {
+        var reply: [String: Any] = [WatchMessageKey.ok: true]
+        if let lastContext, let data = try? JSONEncoder().encode(lastContext) {
+            reply[WatchMessageKey.context] = data
+        }
+        return reply
+    }
+
     func logSet(_ command: WatchLogSetCommand, context: ModelContext) -> WatchWorkoutSnapshot.ExerciseInfo? {
-        let workoutID = command.workoutID
-        let exerciseID = command.exerciseID
-        guard let workout = try? context.fetch(FetchDescriptor<Workout>(predicate: #Predicate { $0.syncID == workoutID })).first else {
+        guard let workout = workout(with: command.workoutID, context: context) else {
             logger.error("logSet: workout not found for command from watch")
             return nil
         }
+        let exerciseID = command.exerciseID
         let exercise: Exercise?
         if let byID = try? context.fetch(FetchDescriptor<Exercise>(predicate: #Predicate { $0.syncID == exerciseID })).first {
             exercise = byID
@@ -171,12 +268,79 @@ final class WatchSessionManager: NSObject, WCSessionDelegate {
             logger.error("logSet: exercise not found for command from watch")
             return nil
         }
-        if !appliedCommandIDs.contains(command.commandID) {
+        if !appliedCommandIDSet.contains(command.commandID) {
             workout.logSet(weight: command.weight, reps: command.reps, for: exercise, context: context)
-            appliedCommandIDs.insert(command.commandID)
+            markApplied(command.commandID)
             restTimer?.start(duration: Self.restDuration, exerciseName: exercise.name)
             pushSnapshot(for: workout)
         }
         return exerciseInfo(for: exercise, in: workout)
+    }
+
+    enum StartResult: Equatable {
+        case applied
+        /// Another workout is already running — only one can be active at a time, and
+        /// resolving that is the user's call, not this method's.
+        case conflict(UUID)
+        case notFound
+    }
+
+    func start(_ command: WatchStartWorkoutCommand, context: ModelContext) -> StartResult {
+        guard let workout = workout(with: command.workoutID, context: context) else {
+            logger.error("start: workout not found for command from watch")
+            return .notFound
+        }
+        if let active = activeWorkout(context: context), active.syncID != workout.syncID {
+            return .conflict(active.syncID)
+        }
+        if !appliedCommandIDSet.contains(command.commandID) {
+            // Already started (or already finished) — the command is stale, but it still
+            // counts as applied so a redelivery doesn't re-stamp `startedAt`.
+            if workout.startedAt == nil {
+                workout.start()
+            }
+            markApplied(command.commandID)
+        }
+        pushSnapshot(for: workout)
+        return .applied
+    }
+
+    @discardableResult
+    func finish(_ command: WatchFinishWorkoutCommand, context: ModelContext) -> Bool {
+        guard let workout = workout(with: command.workoutID, context: context) else {
+            logger.error("finish: workout not found for command from watch")
+            return false
+        }
+        if !appliedCommandIDSet.contains(command.commandID) {
+            markApplied(command.commandID)
+            if workout.isActive {
+                // Same sequence as `WorkoutDetailView.finish()`.
+                restTimer?.skip()
+                workout.finish()
+                Task { await HealthKitManager.save(workout) }
+            }
+        }
+        pushSnapshot(for: nil)
+        return true
+    }
+
+    // MARK: Lookups
+
+    private func workout(with syncID: UUID, context: ModelContext) -> Workout? {
+        try? context.fetch(FetchDescriptor<Workout>(predicate: #Predicate { $0.syncID == syncID })).first
+    }
+
+    private func activeWorkout(context: ModelContext) -> Workout? {
+        var descriptor = FetchDescriptor<Workout>(predicate: #Predicate { $0.startedAt != nil && $0.completedAt == nil })
+        descriptor.fetchLimit = 1
+        return (try? context.fetch(descriptor))?.first { !$0.isDeleted }
+    }
+
+    private func markApplied(_ commandID: UUID) {
+        appliedCommandIDs.append(commandID)
+        appliedCommandIDSet.insert(commandID)
+        while appliedCommandIDs.count > Self.appliedCommandHistoryLimit {
+            appliedCommandIDSet.remove(appliedCommandIDs.removeFirst())
+        }
     }
 }

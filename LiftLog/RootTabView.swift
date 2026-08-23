@@ -45,6 +45,10 @@ struct RootTabView: View {
                 DataIntegrity.restoreWorkoutComposition(context: context)
             }
             WatchSessionManager.shared.start(modelContext: context, restTimer: restTimer)
+            // The watch lists plans and can start one without the phone ever opening a
+            // workout screen, so the first context has to go out at launch. The send is
+            // dropped while `WCSession` is still activating and replayed on activation.
+            WatchSessionManager.shared.refresh()
         }
     }
 
