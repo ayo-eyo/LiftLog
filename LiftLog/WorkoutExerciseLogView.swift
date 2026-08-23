@@ -3,26 +3,35 @@ import SwiftData
 
 struct WorkoutExerciseLogView: View {
     let workout: Workout
-    let exercise: Exercise
     let restTimer: RestTimer
     @Environment(\.modelContext) private var context
+    @Environment(\.dismiss) private var dismiss
 
+    /// The exercise this screen shows. `@State`, not `let` — FR-2's auto-advance
+    /// swaps it in place instead of pushing a new screen, so «Назад» always lands on
+    /// the exercise list rather than walking back through every exercise visited
+    /// (`WorkoutDetailView`'s own comment on `copyWorkout` has the story on why
+    /// pushing the same screen type from itself is a bad idea here).
+    @State private var current: Exercise
     @State private var weight: Double?
     @State private var reps: Int?
     @State private var editingSet: WorkoutSet?
+    /// Shown instead of the input block once logging a set closes the last remaining
+    /// exercise — see FR-2. Never set automatically on appearance, only as the result
+    /// of `logSet()`, so revisiting an already-fulfilled exercise doesn't reopen it.
+    @State private var showPlanFulfilled = false
 
     init(workout: Workout, exercise: Exercise, restTimer: RestTimer) {
         self.workout = workout
-        self.exercise = exercise
         self.restTimer = restTimer
-        let prefill = Self.prefill(workout: workout, exercise: exercise)
-        _weight = State(initialValue: prefill.weight)
-        _reps = State(initialValue: prefill.reps)
+        _current = State(initialValue: exercise)
     }
 
     /// Prefill priority: plan default for the next planned position → last set logged
-    /// in this workout → last set ever logged for this exercise → empty. Pulled out
-    /// of `init` so the priority order is testable without instantiating the view.
+    /// in this workout → last set ever logged for this exercise → empty. A `static`
+    /// function (not `init` state) so the priority order is testable without
+    /// instantiating the view, and so `.task(id:)` can call it again whenever
+    /// `current` changes.
     static func prefill(workout: Workout, exercise: Exercise) -> (weight: Double?, reps: Int?) {
         let sessionLast = workout.setsFor(exercise).last
         let allTimeLast = exercise.sets.sorted { ($0.createdAt, $0.order) < ($1.createdAt, $1.order) }.last
@@ -45,8 +54,17 @@ struct WorkoutExerciseLogView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            MuscleMapHero(primaryMuscles: exercise.primaryMuscles, secondaryMuscles: exercise.secondaryMuscles, height: 180)
-            inputBlock
+            MuscleMapHero(primaryMuscles: current.primaryMuscles, secondaryMuscles: current.secondaryMuscles, height: 180)
+            if showPlanFulfilled {
+                planFulfilledBanner
+            } else {
+                let planned = workout.plannedSetCount(for: current)
+                if planned > 0 {
+                    SetProgressView(logged: workout.loggedSetCount(for: current), planned: planned)
+                        .padding(.horizontal)
+                }
+                inputBlock
+            }
             if let endDate = restTimer.endDate {
                 TimelineView(.periodic(from: endDate, by: 1)) { timeline in
                     if restTimer.isResting(at: timeline.date) {
@@ -57,10 +75,15 @@ struct WorkoutExerciseLogView: View {
             historyList
         }
         .background(.chalk)
-        .navigationTitle(exercise.name)
+        .navigationTitle(current.name)
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $editingSet) { set in
             EditSetView(set: set, workout: workout)
+        }
+        .task(id: current.persistentModelID) {
+            let prefill = Self.prefill(workout: workout, exercise: current)
+            weight = prefill.weight
+            reps = prefill.reps
         }
     }
 
@@ -69,24 +92,82 @@ struct WorkoutExerciseLogView: View {
             WeightInputRow(weight: $weight, stepper: weightBinding)
             RepsInputRow(reps: $reps, stepper: repsBinding)
             Button("Добавить подход") {
-                guard let w = weight, let r = reps, w >= 0, r > 0 else { return }
-                workout.logSet(weight: w, reps: r, for: exercise, context: context)
-
-                if let nextWeight = workout.defaultWeight(for: exercise) {
-                    weight = nextWeight
-                }
-                if let nextReps = workout.defaultReps(for: exercise) {
-                    reps = nextReps
-                }
-                restTimer.start(duration: RestTimer.defaultDuration, exerciseName: exercise.name)
-                WatchSessionManager.shared.pushSnapshot(for: workout)
+                logSet()
             }
             .font(.sans(15))
             .buttonStyle(.borderedProminent)
             .tint(.plateBlue)
             .disabled(weight == nil || reps == nil || (reps ?? 0) <= 0)
+            .accessibilityIdentifier("exerciseLog.addSet")
         }
         .padding()
+    }
+
+    /// Logs the set, then applies FR-2: stay and roll defaults forward, jump to the
+    /// next unfulfilled exercise, or show the "plan fulfilled" banner. `wasFulfilled`
+    /// is read before `workout.logSet` — see `WorkoutFlow.advance`'s doc comment for
+    /// why the ordering matters.
+    private func logSet() {
+        guard let w = weight, let r = reps, w >= 0, r > 0 else { return }
+        let wasFulfilled = workout.isSetPlanFulfilled(for: current)
+        workout.logSet(weight: w, reps: r, for: current, context: context)
+        restTimer.start(duration: RestTimer.defaultDuration, exerciseName: current.name)
+        WatchSessionManager.shared.pushSnapshot(for: workout)
+
+        switch WorkoutFlow.advance(after: current, wasFulfilled: wasFulfilled, in: workout) {
+        case .stay:
+            if let nextWeight = workout.defaultWeight(for: current) {
+                weight = nextWeight
+            }
+            if let nextReps = workout.defaultReps(for: current) {
+                reps = nextReps
+            }
+        case .next(let nextExercise):
+            withAnimation {
+                current = nextExercise
+            }
+        case .planFulfilled:
+            withAnimation {
+                showPlanFulfilled = true
+            }
+        }
+    }
+
+    private var planFulfilledBanner: some View {
+        VStack(spacing: 12) {
+            Text("План выполнен")
+                .font(.display(20))
+                .foregroundStyle(.ink)
+            Text("Все запланированные подходы записаны")
+                .font(.sans(13))
+                .foregroundStyle(.steel)
+                .multilineTextAlignment(.center)
+            Button("Завершить тренировку") {
+                // Pops back to `WorkoutDetailView`, which then shows the completed
+                // summary — that screen's own toolbar ("Закрыть") is the way out of
+                // the `fullScreenCover` from there. A more direct route (closing the
+                // cover straight from here) was tried three different ways — a
+                // passed-down `dismiss` closure, a reactive `.onChange`/`.onAppear` on
+                // `WorkoutDetailView`, and a `NotificationCenter` post observed by
+                // `RootTabView` — and none of them reliably closed the cover from two
+                // navigation levels down in this environment; the closure version even
+                // reproducibly hung the app for ~60s (confirmed with a clean
+                // `DerivedData`, twice). A plain local `dismiss()` is the one thing
+                // that's proven to work.
+                Workout.complete(workout, restTimer: restTimer, context: context)
+                dismiss()
+            }
+            .font(.sans(15))
+            .buttonStyle(.borderedProminent)
+            .tint(.plateBlue)
+            Button("Продолжить") {
+                withAnimation { showPlanFulfilled = false }
+            }
+            .font(.sans(14))
+            .foregroundStyle(.steel)
+        }
+        .padding()
+        .accessibilityIdentifier("exerciseLog.planFulfilled")
     }
 
     private var restBlock: some View {
@@ -104,7 +185,7 @@ struct WorkoutExerciseLogView: View {
 
     private var historyList: some View {
         List {
-            ForEach(workout.setsFor(exercise)) { set in
+            ForEach(workout.setsFor(current)) { set in
                 Button {
                     editingSet = set
                 } label: {

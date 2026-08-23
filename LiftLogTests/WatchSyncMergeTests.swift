@@ -78,6 +78,32 @@ struct WatchSyncMergeOverlayTests {
         #expect(exercise.reps == 5)
     }
 
+    @Test("неотправленная очередь уменьшает остаток и закрывает упражнение — офлайн-счётчик на часах")
+    func pendingQueueClosesTheExerciseOffline() throws {
+        let exerciseID = UUID()
+        let workoutID = UUID()
+        let snapshot = WatchSyncFixtures.snapshot(
+            workoutID: workoutID,
+            exercises: [WatchSyncFixtures.exerciseInfo(
+                id: exerciseID,
+                setsLoggedCount: 1,
+                plannedSets: WatchSyncFixtures.plannedSets([(60, 8), (60, 8), (60, 8)])
+            )]
+        )
+        let context = WatchSyncFixtures.context(snapshot: snapshot)
+        let pending = [
+            WatchSyncFixtures.pending(.logSet(WatchSyncFixtures.logSetCommand(workoutID: workoutID, exerciseID: exerciseID)), expectedVersion: 1),
+            WatchSyncFixtures.pending(.logSet(WatchSyncFixtures.logSetCommand(workoutID: workoutID, exerciseID: exerciseID)), expectedVersion: 2)
+        ]
+
+        let merged = try #require(WatchSyncMerge.activeSnapshot(in: context, pending: pending))
+        let exercise = try #require(merged.exercises.first)
+
+        #expect(exercise.setsLoggedCount == 3)
+        #expect(exercise.remainingSetCount == 0)
+        #expect(exercise.isSetPlanFulfilled)
+    }
+
     @Test("очередь другой тренировки не влияет на активную")
     func pendingForAnotherWorkoutIsIgnored() throws {
         let exerciseID = UUID()
@@ -153,6 +179,18 @@ struct WatchSyncMergeLifecycleTests {
         let pending = [WatchSyncFixtures.pending(.finish(WatchSyncFixtures.finishCommand(workoutID: workoutID)), expectedVersion: 1)]
 
         #expect(WatchSyncMerge.activeSnapshot(in: context, pending: pending) == nil)
+    }
+
+    @Test("завершение остаётся скрытым и после подтверждения по commandID — снапшот телефона тоже уже nil")
+    func acknowledgedFinishStaysHidden() throws {
+        let workoutID = UUID()
+        let commandID = UUID()
+        // No active snapshot on the phone any more — same as after it actually finished.
+        let context = WatchSyncFixtures.context(snapshot: nil, appliedCommandIDs: [commandID])
+        let pending = [WatchSyncFixtures.pending(.finish(WatchSyncFixtures.finishCommand(workoutID: workoutID, commandID: commandID)), expectedVersion: 1)]
+
+        #expect(WatchSyncMerge.activeSnapshot(in: context, pending: pending) == nil)
+        #expect(WatchSyncMerge.reconcile(pending: pending, with: context).isEmpty)
     }
 }
 
@@ -310,6 +348,27 @@ struct WatchSyncMergeReconcileTests {
         let context = WatchSyncFixtures.context(plans: [plan])
 
         #expect(WatchSyncMerge.reconcile(pending: [start, set], with: context).count == 2)
+    }
+
+    @Test("неподтверждённое завершение остаётся в очереди, даже если телефон прислал контекст без активной тренировки")
+    func unacknowledgedFinishStaysQueuedDespiteNoActiveSnapshot() throws {
+        // Regression (technical-notes.md §5.3): `context.snapshot == nil` isn't proof
+        // this specific `.finish` landed — a push can go out with no active workout for
+        // all sorts of unrelated reasons (a race before the command even arrived,
+        // another workout's push). Only the explicit ack settles it.
+        let entry = WatchSyncFixtures.pending(.finish(WatchSyncFixtures.finishCommand(workoutID: UUID())), expectedVersion: 1)
+        let context = WatchSyncFixtures.context(snapshot: nil)
+
+        #expect(WatchSyncMerge.reconcile(pending: [entry], with: context).count == 1)
+    }
+
+    @Test("завершение уходит из очереди по подтверждению commandID")
+    func finishLeavesTheQueueOnceAcknowledged() throws {
+        let commandID = UUID()
+        let entry = WatchSyncFixtures.pending(.finish(WatchSyncFixtures.finishCommand(workoutID: UUID(), commandID: commandID)), expectedVersion: 1)
+        let context = WatchSyncFixtures.context(snapshot: nil, appliedCommandIDs: [commandID])
+
+        #expect(WatchSyncMerge.reconcile(pending: [entry], with: context).isEmpty)
     }
 
     @Test("локальная версия = версия телефона плюс всё, что стоит в очереди по этой тренировке")

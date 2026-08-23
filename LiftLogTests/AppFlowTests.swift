@@ -1,4 +1,5 @@
 import Testing
+import Foundation
 import SwiftData
 @testable import LiftLog
 
@@ -79,6 +80,41 @@ struct WorkoutExerciseLogViewPrefillTests {
 
         #expect(prefill.weight == nil)
         #expect(prefill.reps == nil)
+    }
+}
+
+@Suite("Полный цикл тренировки: план → старт → план отработан → завершение")
+struct WorkoutFullCycleTests {
+    @Test("план отрабатывается ровно на последнем подходе, завершение переживает перечитывание стора")
+    func fullCycleSurvivesReload() throws {
+        let store = try TestStore.open()
+        let bench = Fixtures.exercise("Жим лёжа", in: store.context)
+        let squat = Fixtures.exercise("Присед", in: store.context)
+        let workout = Fixtures.workout(
+            startedAt: nil,
+            items: [(bench, 60, 8), (bench, 60, 8), (squat, 100, 5), (squat, 100, 5)],
+            in: store.context
+        )
+
+        workout.start()
+        #expect(workout.isActive)
+
+        workout.logSet(weight: 60, reps: 8, for: bench, context: store.context)
+        #expect(workout.isSetPlanFulfilled == false)
+        workout.logSet(weight: 60, reps: 8, for: bench, context: store.context)
+        #expect(workout.isSetPlanFulfilled == false)
+        workout.logSet(weight: 100, reps: 5, for: squat, context: store.context)
+        #expect(workout.isSetPlanFulfilled == false)
+        workout.logSet(weight: 100, reps: 5, for: squat, context: store.context)
+        #expect(workout.isSetPlanFulfilled)
+
+        Workout.complete(workout, restTimer: nil, context: store.context, watchSession: WatchSessionManager())
+
+        let freshContext = try store.reload()
+        let stillActive = try freshContext.fetch(FetchDescriptor<Workout>(
+            predicate: #Predicate { $0.startedAt != nil && $0.completedAt == nil }
+        ))
+        #expect(stillActive.isEmpty)
     }
 }
 

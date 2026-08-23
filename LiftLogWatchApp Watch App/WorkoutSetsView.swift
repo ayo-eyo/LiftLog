@@ -30,11 +30,18 @@ struct WorkoutSetsView: View {
                         NavigationLink {
                             LogSetView(phone: phone, exerciseID: exercise.id)
                         } label: {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(exercise.name)
-                                Text("\(exercise.setsLoggedCount) \(RussianPlural.form(exercise.setsLoggedCount, "подход", "подхода", "подходов"))")
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(exercise.name)
+                                    Text(countLabel(for: exercise))
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                if exercise.isSetPlanFulfilled {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(.green)
+                                }
                             }
                         }
                     }
@@ -70,6 +77,14 @@ struct WorkoutSetsView: View {
     private var title: String {
         guard let snapshot = phone.snapshot else { return "Подходы" }
         return snapshot.name.isEmpty ? "Подходы" : snapshot.name
+    }
+
+    /// «2/4» when there's a plan (FR-1); a bare count for an exercise added
+    /// mid-workout, which has nothing to be "of".
+    private func countLabel(for exercise: WatchWorkoutSnapshot.ExerciseInfo) -> String {
+        exercise.plannedSetCount > 0
+            ? "\(exercise.setsLoggedCount)/\(exercise.plannedSetCount)"
+            : "\(exercise.setsLoggedCount)"
     }
 
     private func restRow(remaining: TimeInterval, name: String?) -> some View {
@@ -125,11 +140,26 @@ func clockString(_ interval: TimeInterval) -> String {
 
 private struct LogSetView: View {
     let phone: PhoneSessionManager
-    let exerciseID: UUID
-
-    @State private var weight: Double = 0
-    @State private var reps: Int = 0
+    /// `@State`, not `let` — FR-2's auto-advance swaps this in place instead of
+    /// pushing a new screen, same reasoning as `WorkoutExerciseLogView.current` on the
+    /// phone.
+    @State private var exerciseID: UUID
+    /// `Double`, not `Int` — `digitalCrownRotation` requires `BinaryFloatingPoint`;
+    /// converted to `Int` only where it leaves this view (`phone.logSet`, the label).
+    @State private var weight: Double = 20
+    @State private var reps: Double = 10
     @State private var didLoadDefaults = false
+    /// Shown instead of the input tiles once logging a set closes the last remaining
+    /// exercise — see FR-2. Mirrors `WorkoutExerciseLogView.showPlanFulfilled`.
+    @State private var showPlanFulfilled = false
+
+    private enum Field: Hashable { case weight, reps }
+    @FocusState private var field: Field?
+
+    init(phone: PhoneSessionManager, exerciseID: UUID) {
+        self.phone = phone
+        _exerciseID = State(initialValue: exerciseID)
+    }
 
     /// Always read through the merged snapshot rather than holding a copy: logging a set
     /// changes the next set's defaults, and this is where the new ones come from —
@@ -138,18 +168,20 @@ private struct LogSetView: View {
         phone.snapshot?.exercises.first { $0.id == exerciseID }
     }
 
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 6) {
-                Stepper(value: $weight, in: 0...500, step: 0.25) {
-                    Text("\(weight.formatted(.number)) кг")
-                }
-                .controlSize(.small)
+    private var title: String {
+        guard let exercise else { return "Подход" }
+        guard exercise.plannedSetCount > 0 else { return exercise.name }
+        let setNumber = max(exercise.setsLoggedCount, min(exercise.setsLoggedCount + 1, exercise.plannedSetCount))
+        return "Подход \(setNumber) из \(exercise.plannedSetCount)"
+    }
 
-                Stepper(value: $reps, in: 1...50) {
-                    Text("× \(reps)")
-                }
-                .controlSize(.small)
+    var body: some View {
+        VStack(spacing: 6) {
+            if showPlanFulfilled {
+                planFulfilledBanner
+            } else {
+                weightTile
+                repsTile
 
                 if let restEndDate = phone.snapshot?.restEndDate {
                     TimelineView(.periodic(from: restEndDate, by: 1)) { timeline in
@@ -163,20 +195,16 @@ private struct LogSetView: View {
 
                 QueueStatusView(phone: phone)
 
-                Button("Записать подход") {
-                    guard let exercise, reps > 0 else { return }
-                    phone.logSet(exerciseID: exercise.id, exerciseName: exercise.name, weight: weight, reps: reps)
-                    applyDefaults()
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-                .disabled(exercise == nil || reps <= 0)
+                Button("Записать подход") { logSet() }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    .disabled(exercise == nil || reps <= 0)
             }
-            .padding(.horizontal, 6)
         }
-        .navigationTitle(exercise?.name ?? "Подход")
+        .padding(.horizontal, 6)
+        .navigationTitle(title)
         .onAppear {
-            // Once: after that the steppers hold whatever the user dialed in, and
+            // Once: after that the tiles hold whatever the user dialed in, and
             // `applyDefaults()` moves them on only when a set is actually logged.
             guard !didLoadDefaults else { return }
             didLoadDefaults = true
@@ -184,8 +212,88 @@ private struct LogSetView: View {
         }
     }
 
+    private var weightTile: some View {
+        Text("\(weight.formatted(.number)) кг")
+            .font(.title3.monospacedDigit())
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 6)
+            .background(field == .weight ? Color.accentColor.opacity(0.2) : Color.clear, in: .rect(cornerRadius: 8))
+            .focusable(true)
+            .focused($field, equals: .weight)
+            .digitalCrownRotation($weight, from: 0, through: 500, by: 1.25, sensitivity: .medium, isContinuous: false, isHapticFeedbackEnabled: true)
+            .onTapGesture { field = .weight }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Вес")
+            .accessibilityValue("\(weight.formatted(.number)) килограмм")
+            .accessibilityAdjustableAction { direction in
+                switch direction {
+                case .increment: weight = min(500, weight + 1.25)
+                case .decrement: weight = max(0, weight - 1.25)
+                @unknown default: break
+                }
+            }
+    }
+
+    private var repsTile: some View {
+        Text("× \(Int(reps.rounded()))")
+            .font(.title3.monospacedDigit())
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 6)
+            .background(field == .reps ? Color.accentColor.opacity(0.2) : Color.clear, in: .rect(cornerRadius: 8))
+            .focusable(true)
+            .focused($field, equals: .reps)
+            .digitalCrownRotation($reps, from: 1, through: 50, by: 1, sensitivity: .low, isContinuous: false, isHapticFeedbackEnabled: true)
+            .onTapGesture { field = .reps }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Повторы")
+            .accessibilityValue("\(Int(reps.rounded()))")
+            .accessibilityAdjustableAction { direction in
+                switch direction {
+                case .increment: reps = min(50, reps + 1)
+                case .decrement: reps = max(1, reps - 1)
+                @unknown default: break
+                }
+            }
+    }
+
+    private var planFulfilledBanner: some View {
+        VStack(spacing: 8) {
+            Text("План выполнен").font(.headline)
+            Button("Завершить", role: .destructive) { phone.finishWorkout() }
+                .font(.caption)
+            Button("Продолжить") { withAnimation { showPlanFulfilled = false } }
+                .font(.caption2)
+        }
+    }
+
+    /// Logs the set, then applies FR-2 from the merged snapshot — `phone.logSet`
+    /// enqueues synchronously, so `phone.snapshot` already reflects the new count
+    /// right after the call, with no need to wait for the phone (technical-notes.md
+    /// §2 "Навигация на часах").
+    private func logSet() {
+        guard let exercise, reps > 0 else { return }
+        let wasFulfilled = exercise.isSetPlanFulfilled
+        phone.logSet(exerciseID: exercise.id, exerciseName: exercise.name, weight: weight, reps: Int(reps.rounded()))
+
+        // A queued `.finish` (or any other reason the workout just disappeared) makes
+        // `phone.snapshot` nil — nothing to advance into.
+        guard let snapshot = phone.snapshot,
+              let updated = snapshot.exercises.first(where: { $0.id == exercise.id }),
+              !wasFulfilled, updated.isSetPlanFulfilled else {
+            applyDefaults()
+            return
+        }
+        if let next = snapshot.nextUnfulfilledExercise(after: exercise.id) {
+            exerciseID = next.id
+            applyDefaults()
+        } else {
+            withAnimation { showPlanFulfilled = true }
+        }
+    }
+
     private func applyDefaults() {
         weight = exercise?.weight ?? 20
-        reps = exercise?.reps ?? 10
+        reps = Double(exercise?.reps ?? 10)
+        field = .weight
     }
 }

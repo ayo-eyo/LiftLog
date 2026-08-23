@@ -191,7 +191,7 @@ final class Workout {
     /// positional scheme as the old `Workout.templateItem(for:)`.
     private func plannedItem(for exercise: Exercise) -> WorkoutItem? {
         let planned = sortedItems.filter { $0.exercise?.persistentModelID == exercise.persistentModelID }
-        let logged = setsFor(exercise).count
+        let logged = loggedSetCount(for: exercise)
         guard logged < planned.count else { return nil }
         return planned[logged]
     }
@@ -202,6 +202,78 @@ final class Workout {
 
     func defaultReps(for exercise: Exercise) -> Int? {
         plannedItem(for: exercise)?.plannedReps
+    }
+
+    // MARK: Set counters (FR-1)
+    //
+    // No new stored fields — everything here is derived from `items`/`sets`, which
+    // `plannedItem(for:)` above already counted; these just expose that counting.
+    // `remainingSetCount(for:) == 0` ⟺ `plannedItem(for:) == nil` ⟺ `defaultWeight`/
+    // `defaultReps` stop reading from the plan — see the invariant test.
+
+    /// Number of planned positions for `exercise` — how many sets the plan calls for.
+    func plannedSetCount(for exercise: Exercise) -> Int {
+        sortedItems.filter { $0.exercise?.persistentModelID == exercise.persistentModelID }.count
+    }
+
+    /// Sets actually logged for `exercise` **in this workout** — not the exercise's
+    /// whole history, which several workouts can share (see `Workout.copy`).
+    func loggedSetCount(for exercise: Exercise) -> Int {
+        setsFor(exercise).count
+    }
+
+    /// `max(0, planned - logged)` — sets logged beyond the plan don't push this
+    /// negative.
+    func remainingSetCount(for exercise: Exercise) -> Int {
+        max(0, plannedSetCount(for: exercise) - loggedSetCount(for: exercise))
+    }
+
+    /// Whether `exercise`'s plan is fully worked. An exercise with no planned
+    /// positions (added mid-workout) is never considered fulfilled — there's nothing
+    /// to fulfill, so it can't block auto-advance or count toward `isSetPlanFulfilled`.
+    func isSetPlanFulfilled(for exercise: Exercise) -> Bool {
+        let planned = plannedSetCount(for: exercise)
+        return planned > 0 && loggedSetCount(for: exercise) >= planned
+    }
+
+    /// Whether every planned exercise in the workout is fully worked. Exercises with
+    /// no plan don't count either way.
+    var isSetPlanFulfilled: Bool {
+        orderedExercises.allSatisfy { exercise in
+            let planned = plannedSetCount(for: exercise)
+            return planned == 0 || loggedSetCount(for: exercise) >= planned
+        }
+    }
+
+    // MARK: Auto-advance (FR-2)
+
+    /// The next exercise auto-advance should move to after `exercise`'s plan closes:
+    /// the nearest unfulfilled, planned exercise **after** `exercise` in workout
+    /// order, wrapping to the start of the list if none is left ahead — a skipped
+    /// exercise earlier in the list isn't lost. `exercise` itself is never offered,
+    /// and an exercise with no plan never is either (there's nothing to "arrive" at
+    /// automatically, though it stays reachable by hand). `nil` once nothing is left
+    /// unfulfilled. Kept in lockstep with `WatchWorkoutSnapshot.nextUnfulfilledExercise`
+    /// (see the parity test) — the watch has to make the same decision offline, from
+    /// its own DTO, with no shared code between the two targets.
+    func nextUnfulfilledExercise(after exercise: Exercise) -> Exercise? {
+        let ordered = orderedExercises
+        let candidates = ordered.filter { candidate in
+            candidate.persistentModelID != exercise.persistentModelID
+                && plannedSetCount(for: candidate) > 0
+                && remainingSetCount(for: candidate) > 0
+        }
+        guard !candidates.isEmpty else { return nil }
+        guard let currentIndex = ordered.firstIndex(where: { $0.persistentModelID == exercise.persistentModelID }) else {
+            return candidates.first
+        }
+        if let forward = candidates.first(where: { candidate in
+            guard let index = ordered.firstIndex(where: { $0.persistentModelID == candidate.persistentModelID }) else { return false }
+            return index > currentIndex
+        }) {
+            return forward
+        }
+        return candidates.first
     }
 }
 

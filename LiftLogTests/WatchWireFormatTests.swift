@@ -64,6 +64,54 @@ struct WatchWireFormatDateStrategyTests {
     }
 }
 
+@Suite("ExerciseInfo — счётчики подходов (FR-1)")
+struct WatchWireFormatSetCounterTests {
+    @Test(
+        "ожидание считается по plannedSets, а остаток не уходит в минус",
+        arguments: [
+            (setsLoggedCount: 0, plannedCount: 3, expectedRemaining: 3, expectedFulfilled: false),
+            (setsLoggedCount: 3, plannedCount: 3, expectedRemaining: 0, expectedFulfilled: true),
+            (setsLoggedCount: 4, plannedCount: 3, expectedRemaining: 0, expectedFulfilled: true),
+        ]
+    )
+    func remainingAndFulfilledFromPlannedSets(case: (setsLoggedCount: Int, plannedCount: Int, expectedRemaining: Int, expectedFulfilled: Bool)) throws {
+        let info = WatchSyncFixtures.exerciseInfo(
+            setsLoggedCount: `case`.setsLoggedCount,
+            plannedSets: WatchSyncFixtures.plannedSets(Array(repeating: (weight: 60.0, reps: 8), count: `case`.plannedCount))
+        )
+
+        #expect(info.plannedSetCount == `case`.plannedCount)
+        #expect(info.remainingSetCount == `case`.expectedRemaining)
+        #expect(info.isSetPlanFulfilled == `case`.expectedFulfilled)
+    }
+
+    @Test("упражнение без плановых позиций не считается закрытым, даже с залогированными подходами")
+    func noPlanIsNeverFulfilled() throws {
+        let info = WatchSyncFixtures.exerciseInfo(setsLoggedCount: 1, plannedSets: [])
+
+        #expect(info.plannedSetCount == 0)
+        #expect(info.remainingSetCount == 0)
+        #expect(info.isSetPlanFulfilled == false)
+    }
+
+    @Test("счётчики переживают round-trip провода")
+    func countersSurviveRoundTrip() throws {
+        let snapshot = WatchSyncFixtures.snapshot(
+            exercises: [WatchSyncFixtures.exerciseInfo(
+                setsLoggedCount: 2,
+                plannedSets: WatchSyncFixtures.plannedSets([(60, 8), (60, 8), (65, 6)])
+            )]
+        )
+
+        let decoded = try #require(try WatchSyncFixtures.roundTrip(snapshot))
+        let info = try #require(decoded.exercises.first)
+
+        #expect(info.plannedSetCount == 3)
+        #expect(info.remainingSetCount == 1)
+        #expect(info.isSetPlanFulfilled == false)
+    }
+}
+
 @Suite("Планы, версия и конверт команд на проводе")
 struct WatchWireFormatCommandTests {
     @Test("контекст с планами переживает round-trip целиком: версия, план подходов, подтверждения")

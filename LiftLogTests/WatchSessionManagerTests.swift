@@ -314,6 +314,129 @@ struct WatchSessionManagerLifecycleTests {
 
         #expect(workout.setsFor(exercise).count == 1)
     }
+
+    @Test("завершение с часов переживает перечитывание стора")
+    func finishSurvivesReload() throws {
+        // Regression (technical-notes.md §5.1): nothing called `context.save()`, so a
+        // command applied right before iOS suspends the backgrounded app never reached
+        // disk — this test fails before the fix by finding `completedAt == nil` after
+        // `reload()`.
+        let store = try TestStore.open()
+        let exercise = Fixtures.exercise(in: store.context)
+        let workout = Fixtures.workout(exercises: [exercise], in: store.context)
+        let workoutSyncID = workout.syncID
+
+        let manager = WatchSessionManager()
+        manager.start(modelContext: store.context, restTimer: Fixtures.restTimer())
+
+        var reply: [String: Any]?
+        let command = WatchCommand.finish(WatchSyncFixtures.finishCommand(workoutID: workoutSyncID))
+        manager.apply(try WatchSyncFixtures.commandMessage(command), context: store.context) { reply = $0 }
+        #expect((reply?["ok"] as? Bool) == true)
+
+        let freshContext = try store.reload()
+        let reloaded = try freshContext.fetch(FetchDescriptor<Workout>()).first { $0.syncID == workoutSyncID }
+        #expect(reloaded?.completedAt != nil)
+    }
+
+    @Test("подход с часов переживает перечитывание стора")
+    func logSetSurvivesReload() throws {
+        let store = try TestStore.open()
+        let exercise = Fixtures.exercise(in: store.context)
+        let workout = Fixtures.workout(exercises: [exercise], in: store.context)
+        let workoutSyncID = workout.syncID
+
+        let manager = WatchSessionManager()
+        manager.start(modelContext: store.context, restTimer: Fixtures.restTimer())
+
+        let command = WatchCommand.logSet(WatchSyncFixtures.logSetCommand(workoutID: workoutSyncID, exerciseID: exercise.syncID, weight: 72.5, reps: 5))
+        var reply: [String: Any]?
+        manager.apply(try WatchSyncFixtures.commandMessage(command), context: store.context) { reply = $0 }
+        #expect((reply?["ok"] as? Bool) == true)
+
+        let freshContext = try store.reload()
+        let reloaded = try freshContext.fetch(FetchDescriptor<Workout>()).first { $0.syncID == workoutSyncID }
+        #expect(reloaded?.sets.count == 1)
+        #expect(reloaded?.sets.first?.weight == 72.5)
+        #expect(reloaded?.sets.first?.reps == 5)
+    }
+
+    @Test("завершение с неизвестным workoutID завершает идущую тренировку — активной может быть только одна")
+    func finishWithUnknownWorkoutIDFallsBackToTheActiveWorkout() throws {
+        let store = try TestStore.open()
+        let exercise = Fixtures.exercise(in: store.context)
+        let active = Fixtures.workout(exercises: [exercise], in: store.context)
+
+        let manager = WatchSessionManager()
+        manager.start(modelContext: store.context, restTimer: Fixtures.restTimer())
+
+        let applied = manager.finish(WatchSyncFixtures.finishCommand(workoutID: UUID()), context: store.context)
+
+        #expect(applied)
+        #expect(active.completedAt != nil)
+    }
+
+    @Test("завершение, когда завершать нечего, считается успехом и ничего не меняет")
+    func finishWithNothingActiveIsANoOpSuccess() throws {
+        let store = try TestStore.open()
+        let exercise = Fixtures.exercise(in: store.context)
+        // A finished workout, not an active one — nothing for the command to act on.
+        Fixtures.workout(completedAt: Fixtures.date(offset: 3600), exercises: [exercise], in: store.context)
+        let countBefore = try store.count(Workout.self)
+
+        let manager = WatchSessionManager()
+        manager.start(modelContext: store.context, restTimer: Fixtures.restTimer())
+
+        let applied = manager.finish(WatchSyncFixtures.finishCommand(workoutID: UUID()), context: store.context)
+
+        #expect(applied)
+        #expect(try store.count(Workout.self) == countBefore)
+        #expect(manager.lastSnapshot == nil)
+    }
+
+    @Test("подтверждение завершения уезжает на часы в контексте")
+    func finishAcknowledgementRidesInTheContext() throws {
+        let store = try TestStore.open()
+        let exercise = Fixtures.exercise(in: store.context)
+        let workout = Fixtures.workout(exercises: [exercise], in: store.context)
+
+        let manager = WatchSessionManager()
+        manager.start(modelContext: store.context, restTimer: Fixtures.restTimer())
+
+        let command = WatchSyncFixtures.finishCommand(workoutID: workout.syncID)
+        _ = manager.finish(command, context: store.context)
+
+        #expect(manager.lastContext?.appliedCommandIDs.contains(command.commandID) == true)
+    }
+}
+
+@Suite("Workout.complete — общий путь завершения")
+struct WorkoutCompletionTests {
+    @Test("гасит отдых, проставляет время завершения, сохраняет на диск и снимает снапшот с часов")
+    func completeRunsTheFullSequence() throws {
+        let store = try TestStore.open()
+        let exercise = Fixtures.exercise(in: store.context)
+        let workout = Fixtures.workout(exercises: [exercise], in: store.context)
+        Fixtures.log([(60, 8)], for: exercise, in: workout, context: store.context)
+        let workoutSyncID = workout.syncID
+
+        let restTimer = Fixtures.restTimer()
+        restTimer.start(duration: 120, exerciseName: exercise.name)
+
+        let manager = WatchSessionManager()
+        manager.start(modelContext: store.context, restTimer: Fixtures.restTimer())
+        manager.pushSnapshot(for: workout)
+
+        Workout.complete(workout, restTimer: restTimer, context: store.context, watchSession: manager)
+
+        #expect(restTimer.endDate == nil)
+        #expect(workout.completedAt != nil)
+        #expect(manager.lastSnapshot == nil)
+
+        let freshContext = try store.reload()
+        let reloaded = try freshContext.fetch(FetchDescriptor<Workout>()).first { $0.syncID == workoutSyncID }
+        #expect(reloaded?.completedAt != nil)
+    }
 }
 
 @Suite("WatchSessionManager — список планов для часов")
