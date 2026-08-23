@@ -90,6 +90,12 @@ struct WorkoutDetailView: View {
                 WatchSessionManager.shared.pushSnapshot(for: workout)
             }
         }
+        // Everything editable on this screen — name, date, exercises, their planned
+        // weight/reps — is part of what the watch lists and can start, so the watch gets
+        // the result once, on the way out, instead of on every keystroke.
+        .onDisappear {
+            WatchSessionManager.shared.refresh()
+        }
     }
 
     /// Whether this screen is showing its own «Начать» button, vs. the "another

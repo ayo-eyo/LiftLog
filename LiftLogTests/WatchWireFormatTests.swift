@@ -64,8 +64,118 @@ struct WatchWireFormatDateStrategyTests {
     }
 }
 
+@Suite("Планы, версия и конверт команд на проводе")
+struct WatchWireFormatCommandTests {
+    @Test("контекст с планами переживает round-trip целиком: версия, план подходов, подтверждения")
+    func contextWithPlansRoundTrips() throws {
+        let commandID = UUID()
+        let plan = WatchSyncFixtures.summary(
+            name: "Грудь",
+            date: Fixtures.date(offset: 600),
+            version: 4,
+            exercises: [WatchSyncFixtures.exerciseInfo(
+                name: "Жим лёжа",
+                plannedSets: WatchSyncFixtures.plannedSets([(60, 8), (nil, 12)])
+            )]
+        )
+        let context = WatchSyncFixtures.context(
+            snapshot: WatchSyncFixtures.snapshot(name: "Идёт", version: 7),
+            plans: [plan],
+            appliedCommandIDs: [commandID]
+        )
+
+        let decoded = try WatchSyncFixtures.roundTrip(context)
+
+        #expect(decoded.snapshot?.version == 7)
+        #expect(decoded.snapshot?.name == "Идёт")
+        #expect(decoded.plans.map(\.id) == [plan.id])
+        #expect(decoded.plans.first?.version == 4)
+        #expect(decoded.plans.first?.date == Fixtures.date(offset: 600))
+        #expect(decoded.plans.first?.exercises.first?.plannedSets.map(\.weight) == [60, nil])
+        #expect(decoded.plans.first?.exercises.first?.plannedSets.map(\.reps) == [8, 12])
+        #expect(decoded.appliedCommandIDs == [commandID])
+    }
+
+    @Test("каждый вид команды переживает round-trip и сохраняет свой commandID", arguments: [0, 1, 2])
+    func everyCommandKindRoundTrips(kind: Int) throws {
+        let commandID = UUID()
+        let workoutID = UUID()
+        let command: WatchCommand = switch kind {
+        case 0: .logSet(WatchSyncFixtures.logSetCommand(workoutID: workoutID, exerciseID: UUID(), commandID: commandID))
+        case 1: .start(WatchSyncFixtures.startCommand(workoutID: workoutID, commandID: commandID))
+        default: .finish(WatchSyncFixtures.finishCommand(workoutID: workoutID, commandID: commandID))
+        }
+
+        let data = try JSONEncoder().encode(command)
+        let decoded = try JSONDecoder().decode(WatchCommand.self, from: data)
+
+        #expect(decoded.commandID == commandID)
+        #expect(decoded.workoutID == workoutID)
+    }
+
+    @Test("очередь часов сериализуется вместе с ожидаемой версией")
+    func pendingQueueRoundTrips() throws {
+        let entry = WatchSyncFixtures.pending(
+            .logSet(WatchSyncFixtures.logSetCommand(workoutID: UUID(), exerciseID: UUID())),
+            expectedVersion: 9
+        )
+
+        let data = try JSONEncoder().encode([entry])
+        let decoded = try JSONDecoder().decode([WatchPendingCommand].self, from: data)
+
+        #expect(decoded.first?.expectedVersion == 9)
+        #expect(decoded.first?.id == entry.id)
+        #expect(decoded.first?.queuedAt == entry.queuedAt)
+    }
+
+    @Test("сохранённая очередь без queuedAt (запись прошлой сборки) читается, а не выбрасывается вместе с неотправленными подходами")
+    func persistedQueueWithoutQueuedAtStillDecodes() throws {
+        let json = """
+        [{
+            "expectedVersion": 2,
+            "command": { "logSet": { "_0": {
+                "commandID": "\(UUID().uuidString)",
+                "workoutID": "\(UUID().uuidString)",
+                "exerciseID": "\(UUID().uuidString)",
+                "exerciseName": "Жим лёжа",
+                "weight": 60,
+                "reps": 8
+            }}}
+        }]
+        """
+
+        let decoded = try JSONDecoder().decode([WatchPendingCommand].self, from: Data(json.utf8))
+
+        #expect(decoded.count == 1)
+        #expect(decoded.first?.expectedVersion == 2)
+    }
+}
+
 @Suite("Обратная совместимость: JSON без нового поля")
 struct WatchWireFormatBackwardCompatibilityTests {
+    @Test("контекст без plans/appliedCommandIDs (старая версия телефона) декодируется как пустые списки, а не падает")
+    func contextWithoutNewKeysStillDecodes() throws {
+        let json = """
+        {
+            "snapshot": {
+                "workoutID": "\(UUID().uuidString)",
+                "name": "",
+                "date": 0,
+                "version": 0,
+                "exercises": [],
+                "restEndDate": null,
+                "restExerciseName": null
+            }
+        }
+        """
+
+        let decoded = try JSONDecoder().decode(WatchContext.self, from: Data(json.utf8))
+
+        #expect(decoded.snapshot != nil)
+        #expect(decoded.plans.isEmpty)
+        #expect(decoded.appliedCommandIDs.isEmpty)
+    }
+
     @Test("WatchLogSetCommand без commandID (старая версия часов) не декодируется — явный отказ, а не тихий дефолт")
     func missingCommandIDFailsToDecode() throws {
         let json = """

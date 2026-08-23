@@ -21,6 +21,10 @@ final class Workout {
     /// Manual order in the workout list. Left at 0 until the user drags a row;
     /// while everything is 0 the list falls back to date order (see `WorkoutListView`).
     var sortIndex: Int = 0
+    /// Monotonic counter bumped by one on every change to the workout's contents —
+    /// see `bumpVersion()`. Rides in the watch snapshot so the watch can tell whether
+    /// the phone has caught up with the sets it logged offline.
+    var version: Int = 0
     @Relationship(deleteRule: .cascade, inverse: \WorkoutItem.workout) var items: [WorkoutItem] = []
     @Relationship(deleteRule: .cascade, inverse: \WorkoutSet.workout) var sets: [WorkoutSet] = []
 
@@ -38,6 +42,14 @@ final class Workout {
     }
 
     var isActive: Bool { status == .active }
+
+    /// Bumps `version` by one. The rule the watch relies on is "one logged set = +1";
+    /// the other call sites (plan edits, start/finish) only have to keep the counter
+    /// monotonic, since the watch clears its queue by `commandID` and reads the version
+    /// only to decide whether the phone has caught up with it.
+    func bumpVersion() {
+        version += 1
+    }
 
     var sortedItems: [WorkoutItem] {
         items.sorted { $0.order < $1.order }
@@ -87,6 +99,7 @@ final class Workout {
         let item = WorkoutItem(exercise: exercise, plannedWeight: weight, plannedReps: reps, order: order)
         context.insert(item)
         items.append(item)
+        bumpVersion()
     }
 
     /// Removes `exercise` from the workout entirely: its planned positions and
@@ -107,6 +120,7 @@ final class Workout {
             context.delete(set)
         }
         sets.removeAll { setIDs.contains($0.persistentModelID) }
+        bumpVersion()
     }
 
     /// Reorders whole exercise groups (all of an exercise's planned positions move
@@ -130,6 +144,7 @@ final class Workout {
                 order += 1
             }
         }
+        bumpVersion()
     }
 
     /// Removes a single planned position — as opposed to `deleteExercise`, which
@@ -139,6 +154,7 @@ final class Workout {
     func deleteItem(_ item: WorkoutItem, context: ModelContext) {
         context.delete(item)
         items.removeAll { $0.persistentModelID == item.persistentModelID }
+        bumpVersion()
     }
 
     func logSet(weight: Double, reps: Int, for exercise: Exercise, context: ModelContext) {
@@ -147,6 +163,7 @@ final class Workout {
         context.insert(new)
         sets.append(new)
         exercise.sets.append(new)
+        bumpVersion()
     }
 
     func setsFor(_ exercise: Exercise) -> [WorkoutSet] {
@@ -161,10 +178,12 @@ final class Workout {
     func start(now: Date = .now) {
         startedAt = now
         date = now
+        bumpVersion()
     }
 
     func finish(now: Date = .now) {
         completedAt = now
+        bumpVersion()
     }
 
     /// The next unlogged planned position for `exercise`: the N-th logged set for

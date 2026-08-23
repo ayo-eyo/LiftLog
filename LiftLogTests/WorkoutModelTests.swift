@@ -317,3 +317,87 @@ struct ExerciseDeleteCascadeTests {
         #expect(try store.count(WorkoutSet.self) == 0)
     }
 }
+
+@Suite("Workout.version — счётчик для синхронизации с часами")
+struct WorkoutVersionTests {
+    @Test("новая тренировка начинается с нулевой версии")
+    func newWorkoutStartsAtZero() throws {
+        let store = try TestStore.open()
+        let workout = Workout(date: Fixtures.epoch)
+        store.context.insert(workout)
+
+        #expect(workout.version == 0)
+    }
+
+    @Test("каждая запись подхода поднимает версию ровно на единицу")
+    func eachLoggedSetBumpsVersionByOne() throws {
+        let store = try TestStore.open()
+        let exercise = Fixtures.exercise(in: store.context)
+        let workout = Fixtures.workout(exercises: [exercise], in: store.context)
+        let before = workout.version
+
+        Fixtures.log([(60, 8), (65, 6), (70, 4)], for: exercise, in: workout, context: store.context)
+
+        #expect(workout.version == before + 3)
+    }
+
+    @Test("старт и завершение тоже двигают версию — она монотонна для любого изменения")
+    func startAndFinishBumpVersion() throws {
+        let store = try TestStore.open()
+        let exercise = Fixtures.exercise(in: store.context)
+        let plan = Fixtures.workout(startedAt: nil, items: [(exercise, 60, 8)], in: store.context)
+        let afterPlanning = plan.version
+
+        plan.start(now: Fixtures.date(offset: 60))
+        let afterStart = plan.version
+        plan.finish(now: Fixtures.date(offset: 3600))
+
+        #expect(afterStart == afterPlanning + 1)
+        #expect(plan.version == afterStart + 1)
+    }
+
+    @Test("удаление упражнения и удаление позиции плана тоже поднимают версию")
+    func deletionsBumpVersion() throws {
+        let store = try TestStore.open()
+        let bench = Fixtures.exercise("Жим лёжа", in: store.context)
+        let squat = Fixtures.exercise("Присед", in: store.context)
+        let workout = Fixtures.workout(items: [(bench, 60, 8), (squat, 100, 5)], in: store.context)
+        let afterPlanning = workout.version
+
+        workout.deleteExercise(bench, context: store.context)
+        let afterExerciseDelete = workout.version
+        let item = try #require(workout.sortedItems.first)
+        workout.deleteItem(item, context: store.context)
+
+        #expect(afterExerciseDelete == afterPlanning + 1)
+        #expect(workout.version == afterExerciseDelete + 1)
+    }
+
+    @Test("версия переживает сохранение и перечитывание из стора")
+    func versionSurvivesReload() throws {
+        let store = try TestStore.open()
+        let exercise = Fixtures.exercise(in: store.context)
+        let workout = Fixtures.workout(exercises: [exercise], in: store.context)
+        Fixtures.log([(60, 8), (65, 6)], for: exercise, in: workout, context: store.context)
+        let expected = workout.version
+        let syncID = workout.syncID
+
+        let reloaded = try store.reload()
+        let fetched = try #require(try reloaded.fetch(FetchDescriptor<Workout>()).first { $0.syncID == syncID })
+
+        #expect(fetched.version == expected)
+    }
+
+    @Test("копия тренировки не наследует версию источника")
+    func copyStartsWithOwnVersion() throws {
+        let store = try TestStore.open()
+        let exercise = Fixtures.exercise(in: store.context)
+        let source = Fixtures.workout(exercises: [exercise], in: store.context)
+        Fixtures.log([(60, 8), (65, 6)], for: exercise, in: source, context: store.context)
+
+        let copy = Workout.copy(of: source, sortIndex: 0, now: Fixtures.date(offset: 100), context: store.context)
+
+        #expect(copy.version == 0)
+        #expect(source.version > 0)
+    }
+}

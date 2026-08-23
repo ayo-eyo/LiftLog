@@ -76,6 +76,9 @@ struct WorkoutListView: View {
 
     private func copyWorkout(_ workout: Workout) {
         _ = Workout.copy(of: workout, sortIndex: Self.topSortIndex(among: workouts), context: context)
+        // The watch lists plans and can start them, so every change to the plan list is
+        // a change it needs to see.
+        WatchSessionManager.shared.refresh()
     }
 
     private func delete(at offsets: IndexSet) {
@@ -85,14 +88,20 @@ struct WorkoutListView: View {
     }
 
     private func delete(_ workout: Workout) {
-        if workout.isActive {
-            WatchSessionManager.shared.pushSnapshot(for: nil)
-        }
+        let wasActive = workout.isActive
         context.delete(workout)
+        // `pushSnapshot(for: nil)` rather than `refresh()` for the active one: a fetch
+        // still returns a deleted-but-unsaved row, so the store can't be asked yet.
+        if wasActive {
+            WatchSessionManager.shared.pushSnapshot(for: nil)
+        } else {
+            WatchSessionManager.shared.refresh()
+        }
     }
 
     private func move(from source: IndexSet, to destination: Int) {
         Self.reorder(workouts, from: source, to: destination)
+        WatchSessionManager.shared.refresh()
     }
 
     /// A brand-new/copied workout sorts above everything else without renumbering

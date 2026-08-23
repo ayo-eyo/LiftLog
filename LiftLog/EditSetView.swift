@@ -16,6 +16,9 @@ struct EditSetView: View {
     // (bodyweight exercises), reps must stay positive.
     @State private var weight: Double?
     @State private var reps: Int?
+    /// Whether anything was actually written to the model, so closing the sheet without
+    /// touching a field doesn't bump `Workout.version` for nothing.
+    @State private var didEdit = false
 
     init(set: WorkoutSet, workout: Workout? = nil) {
         self.set = set
@@ -39,6 +42,7 @@ struct EditSetView: View {
                 RepsInputRow(reps: $reps, stepper: repsStepper, accessibilityID: "editSet.reps")
                 Button("Удалить подход", role: .destructive) {
                     WorkoutSet.delete(set, context: context)
+                    didEdit = true
                     pushWatchUpdate()
                     dismiss()
                 }
@@ -54,10 +58,16 @@ struct EditSetView: View {
             }
         }
         .onChange(of: weight) { _, newValue in
-            if let newValue, newValue >= 0 { set.weight = newValue }
+            if let newValue, newValue >= 0, newValue != set.weight {
+                set.weight = newValue
+                didEdit = true
+            }
         }
         .onChange(of: reps) { _, newValue in
-            if let newValue, newValue > 0 { set.reps = newValue }
+            if let newValue, newValue > 0, newValue != set.reps {
+                set.reps = newValue
+                didEdit = true
+            }
         }
         .onDisappear {
             pushWatchUpdate()
@@ -65,13 +75,22 @@ struct EditSetView: View {
     }
 
     private func commitAndDismiss() {
-        if let weight, weight >= 0 { set.weight = weight }
-        if let reps, reps > 0 { set.reps = reps }
+        if let weight, weight >= 0, weight != set.weight {
+            set.weight = weight
+            didEdit = true
+        }
+        if let reps, reps > 0, reps != set.reps {
+            set.reps = reps
+            didEdit = true
+        }
         dismiss()
     }
 
     private func pushWatchUpdate() {
         guard let workout else { return }
+        // An edited set changes what the watch shows, so it moves the version the same
+        // way logging one does — see `Workout.bumpVersion`.
+        if didEdit { workout.bumpVersion() }
         WatchSessionManager.shared.pushSnapshot(for: workout)
     }
 }
