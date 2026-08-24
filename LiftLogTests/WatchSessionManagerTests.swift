@@ -1,7 +1,26 @@
 import Testing
 import Foundation
 import SwiftData
+import WatchConnectivity
 @testable import LiftLog
+
+/// Records what `WatchSessionManager.send` did without touching a real `WCSession` —
+/// see the seam declared next to `WatchConnectivitySession` in `WatchSessionManager.swift`.
+@MainActor
+private final class FakeWatchConnectivitySession: WatchConnectivitySession {
+    var activationState: WCSessionActivationState = .activated
+    var isReachable = false
+    private(set) var applicationContexts: [[String: Any]] = []
+    private(set) var sentMessages: [[String: Any]] = []
+
+    func updateApplicationContext(_ applicationContext: [String: Any]) throws {
+        applicationContexts.append(applicationContext)
+    }
+
+    func sendMessage(_ message: [String: Any], replyHandler: (([String: Any]) -> Void)?, errorHandler: ((Error) -> Void)?) {
+        sentMessages.append(message)
+    }
+}
 
 /// Exercises `WatchSessionManager`'s message handling directly (`apply`/`logSet`/
 /// `pushSnapshot` are `internal`, not `private`, exactly so tests can reach them —
@@ -499,5 +518,63 @@ struct WatchSessionManagerPlanListTests {
         manager.pushSnapshot(for: workout)
 
         #expect(manager.lastSnapshot?.version == workout.version)
+    }
+}
+
+@Suite("WatchSessionManager — живой пуш через sendMessage")
+struct WatchSessionManagerLivePushTests {
+    @Test("когда часы на связи, снапшот уходит и через updateApplicationContext, и как живое сообщение")
+    func reachableWatchGetsBothChannels() throws {
+        // Regression: `updateApplicationContext` alone can sit undelivered for a long
+        // while against an already-foreground watch app, which is what forced a relaunch
+        // to see a set logged on the phone. Before the fix, `sentMessages` stayed empty
+        // here.
+        let store = try TestStore.open()
+        let workout = Fixtures.workout(in: store.context)
+        let session = FakeWatchConnectivitySession()
+        session.isReachable = true
+
+        let manager = WatchSessionManager()
+        manager.session = session
+        manager.start(modelContext: store.context, restTimer: Fixtures.restTimer())
+        manager.pushSnapshot(for: workout)
+
+        #expect(session.applicationContexts.count == 1)
+        #expect(session.sentMessages.count == 1)
+        #expect(session.sentMessages.first?[WatchMessageKey.push] is Data)
+    }
+
+    @Test("когда часы не на связи, живое сообщение не отправляется — только updateApplicationContext")
+    func unreachableWatchGetsOnlyApplicationContext() throws {
+        let store = try TestStore.open()
+        let workout = Fixtures.workout(in: store.context)
+        let session = FakeWatchConnectivitySession()
+        session.isReachable = false
+
+        let manager = WatchSessionManager()
+        manager.session = session
+        manager.start(modelContext: store.context, restTimer: Fixtures.restTimer())
+        manager.pushSnapshot(for: workout)
+
+        #expect(session.applicationContexts.count == 1)
+        #expect(session.sentMessages.isEmpty)
+    }
+
+    @Test("живое сообщение несёт тот же WatchContext, что и updateApplicationContext")
+    func livePushCarriesTheSameContext() throws {
+        let store = try TestStore.open()
+        let exercise = Fixtures.exercise(in: store.context)
+        let workout = Fixtures.workout(exercises: [exercise], in: store.context)
+        let session = FakeWatchConnectivitySession()
+        session.isReachable = true
+
+        let manager = WatchSessionManager()
+        manager.session = session
+        manager.start(modelContext: store.context, restTimer: Fixtures.restTimer())
+        manager.pushSnapshot(for: workout)
+
+        let pushed = try #require(session.sentMessages.first?[WatchMessageKey.push] as? Data)
+        let decoded = try JSONDecoder().decode(WatchContext.self, from: pushed)
+        #expect(decoded.snapshot?.workoutID == workout.syncID)
     }
 }

@@ -212,23 +212,33 @@ private struct LogSetView: View {
         }
     }
 
+    private static let weightStep: Double = 0.25
+    private static let weightFormat: FloatingPointFormatStyle<Double> = .number.precision(.fractionLength(0...2))
+
     private var weightTile: some View {
-        Text("\(weight.formatted(.number)) кг")
+        Text("\(weight.formatted(Self.weightFormat)) кг")
             .font(.title3.monospacedDigit())
             .frame(maxWidth: .infinity)
             .padding(.vertical, 6)
             .background(field == .weight ? Color.accentColor.opacity(0.2) : Color.clear, in: .rect(cornerRadius: 8))
             .focusable(true)
             .focused($field, equals: .weight)
-            .digitalCrownRotation($weight, from: 0, through: 500, by: 1.25, sensitivity: .medium, isContinuous: false, isHapticFeedbackEnabled: true)
+            .digitalCrownRotation($weight, from: 0, through: 500, by: Self.weightStep, sensitivity: .medium, isContinuous: false, isHapticFeedbackEnabled: true)
+            // The crown drives `weight` continuously under the hood even with `by:` set —
+            // rotation deltas accumulate float error, so left alone the binding drifts to
+            // values like 20.000000000004 (which is what was rendering as fractions down
+            // to the ten-thousandths). Snap back onto the step grid on every change.
+            .onChange(of: weight) { _, newValue in
+                weight = CrownStepping.snapped(newValue, step: Self.weightStep)
+            }
             .onTapGesture { field = .weight }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Вес")
-            .accessibilityValue("\(weight.formatted(.number)) килограмм")
+            .accessibilityValue("\(weight.formatted(Self.weightFormat)) килограмм")
             .accessibilityAdjustableAction { direction in
                 switch direction {
-                case .increment: weight = min(500, weight + 1.25)
-                case .decrement: weight = max(0, weight - 1.25)
+                case .increment: weight = min(500, weight + Self.weightStep)
+                case .decrement: weight = max(0, weight - Self.weightStep)
                 @unknown default: break
                 }
             }

@@ -207,6 +207,10 @@ enum WatchMessageKey {
     static let legacyLogSet = "logSet"
     /// Live-only: skipping rest after the fact is meaningless, so it never queues.
     static let skipRest = "skipRest"
+    /// A `WatchContext` pushed as a live message (not `updateApplicationContext`) when
+    /// the watch is reachable, so an already-open watch screen updates immediately
+    /// instead of waiting for a relaunch — see `WatchSessionManager.send`.
+    static let push = "push"
 
     static let ok = "ok"
     static let context = "context"
@@ -385,5 +389,20 @@ enum WatchSyncMerge {
             restEndDate: nil,
             restExerciseName: nil
         )
+    }
+}
+
+// MARK: - Crown input
+
+/// Snapping the watch's weight-entry Digital Crown onto a fixed step. Lives here (not in
+/// the watch-only `WorkoutSetsView.swift`) purely so it's testable — the watch target has
+/// no test target of its own, same reasoning as `WatchSyncMerge` above.
+enum CrownStepping {
+    /// `digitalCrownRotation`'s `by:` parameter sets the crown's rotational resolution,
+    /// but the bound value it produces still accumulates ordinary floating-point error
+    /// as rotation deltas add up (e.g. 20.000000000000004) — left alone, that renders as
+    /// a value with several stray decimal digits. Rounding onto the step grid clears it.
+    static func snapped(_ value: Double, step: Double) -> Double {
+        (value / step).rounded() * step
     }
 }
