@@ -78,6 +78,46 @@ struct WatchWorkoutSummary: Codable, Identifiable {
     let exercises: [WatchWorkoutSnapshot.ExerciseInfo]
 }
 
+// MARK: - Set counters (FR-1)
+//
+// Derived from `plannedSets`/`setsLoggedCount`, which the wire format already carries —
+// no new field, so a watch build older than these extensions still decodes everything.
+// Mirrors `Workout.plannedSetCount`/`loggedSetCount`/`remainingSetCount`/
+// `isSetPlanFulfilled(for:)` on the phone; see the parity test (T-17 in tests.md) for
+// why the two copies of this logic have to move in lockstep.
+extension WatchWorkoutSnapshot.ExerciseInfo {
+    var plannedSetCount: Int { plannedSets.count }
+    /// Sets beyond the plan don't push this negative — see `Workout.remainingSetCount`.
+    var remainingSetCount: Int { max(0, plannedSets.count - setsLoggedCount) }
+    /// An exercise with no plan is never "fulfilled" — there's nothing to fulfill.
+    var isSetPlanFulfilled: Bool { !plannedSets.isEmpty && setsLoggedCount >= plannedSets.count }
+}
+
+extension WatchWorkoutSnapshot {
+    /// FR-2's auto-advance rule, evaluated over the merged (phone + offline queue)
+    /// exercise list so it works with no phone in range. Kept in exact lockstep with
+    /// `Workout.nextUnfulfilledExercise(after:)` — see the parity test.
+    func nextUnfulfilledExercise(after exerciseID: UUID) -> ExerciseInfo? {
+        let candidates = exercises.filter { candidate in
+            candidate.id != exerciseID && candidate.plannedSetCount > 0 && candidate.remainingSetCount > 0
+        }
+        guard !candidates.isEmpty else { return nil }
+        guard let currentIndex = exercises.firstIndex(where: { $0.id == exerciseID }) else {
+            return candidates.first
+        }
+        // `candidates` keeps `exercises`' relative order (`filter` preserves order), so
+        // the first one whose position in `exercises` is past `currentIndex` is the
+        // nearest candidate forward; wrap to the first candidate otherwise.
+        if let forward = candidates.first(where: { candidate in
+            guard let index = exercises.firstIndex(where: { $0.id == candidate.id }) else { return false }
+            return index > currentIndex
+        }) {
+            return forward
+        }
+        return candidates.first
+    }
+}
+
 // MARK: - Watch → phone
 
 struct WatchLogSetCommand: Codable {
@@ -216,7 +256,14 @@ enum WatchSyncMerge {
             // longer being offered as a plan.
             return !context.plans.contains { $0.id == entry.workoutID }
         case .finish:
-            return context.snapshot?.workoutID != entry.workoutID
+            // Unlike `.start`, there's no structural signal here: a workout that's
+            // merely still active (not yet finished) also isn't in `plans` — started
+            // workouts never are — so "no snapshot for this ID right now" is true for
+            // all sorts of unrelated reasons (a context pushed before the command even
+            // arrived, a different workout's push) and isn't proof this one landed. The
+            // explicit ack (`context.appliedCommandIDs`, checked by the caller before
+            // this) is the only safe signal for `.finish`.
+            return false
         case .logSet:
             // A logged set is exactly what the version counts, so here the version is
             // the signal — the phone reaching the expected version means it applied it.

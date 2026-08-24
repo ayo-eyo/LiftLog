@@ -83,6 +83,39 @@ struct RepsInputRow: View {
     }
 }
 
+/// «Подход 3 из 4» plus a segmented bar — how many of the planned sets are logged.
+/// Only meaningful when there's a plan (`planned > 0`); callers skip it entirely for
+/// an exercise added mid-workout, same as `WorkoutItem`'s own "без плана" case.
+struct SetProgressView: View {
+    let logged: Int
+    let planned: Int
+
+    /// The set about to be logged, `logged + 1`, capped at `planned` once the plan is
+    /// fulfilled — beyond that it tracks `logged` itself, so a set beyond the plan
+    /// reads as "5 из 4" rather than freezing at "4 из 4".
+    private var setNumber: Int {
+        max(logged, min(logged + 1, planned))
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Подход \(setNumber) из \(planned)")
+                .font(.sans(13))
+                .foregroundStyle(.steel)
+            HStack(spacing: 4) {
+                ForEach(0..<planned, id: \.self) { index in
+                    Capsule()
+                        .fill(index < logged ? Color.plateBlue : Color.chalkDeep)
+                        .frame(height: 4)
+                }
+            }
+        }
+        .accessibilityIdentifier("exerciseLog.progress")
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Подход \(setNumber) из \(planned)")
+    }
+}
+
 struct SetRow: View {
     let weight: Double
     let reps: Int

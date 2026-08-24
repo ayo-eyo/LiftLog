@@ -39,11 +39,19 @@ final class WatchSessionManager: NSObject, WCSessionDelegate {
     /// `updateApplicationContext` has a payload limit (~262 KB) and every plan carries
     /// its full exercise list, so the list the watch sees is capped.
     static let planLimit = 20
-    static let appliedCommandHistoryLimit = 50
+    /// `.finish` now leaves the watch's queue only on an explicit ack (see
+    /// `WatchSyncMerge.hasLanded`), so that ack surviving in this history until the
+    /// watch actually sees it matters more than it used to — a generous window costs
+    /// little (each ID is 16 bytes).
+    static let appliedCommandHistoryLimit = 200
 
-    func start(modelContext: ModelContext, restTimer: RestTimer) {
+    /// `restTimer` is optional so `LiftLogApp`'s app-delegate can activate the
+    /// `WCSession` at process launch — before any view exists to own a `RestTimer` —
+    /// and `RootTabView.onAppear` can hand one in afterwards without re-triggering
+    /// activation. See technical-notes.md §5.4.
+    func start(modelContext: ModelContext, restTimer: RestTimer? = nil) {
         self.modelContext = modelContext
-        self.restTimer = restTimer
+        if let restTimer { self.restTimer = restTimer }
         guard !started, WCSession.isSupported() else { return }
         started = true
         WCSession.default.delegate = self
@@ -201,6 +209,7 @@ final class WatchSessionManager: NSObject, WCSessionDelegate {
                 reply?([WatchMessageKey.ok: false])
                 return
             }
+            saveContext(context)
             reply?([WatchMessageKey.ok: true, "exercise": infoData])
         } else if message[WatchMessageKey.skipRest] != nil {
             restTimer?.skip()
@@ -230,12 +239,25 @@ final class WatchSessionManager: NSObject, WCSessionDelegate {
                 return
             }
         case .finish(let finishCommand):
-            guard finish(finishCommand, context: context) else {
-                reply?([WatchMessageKey.ok: false])
-                return
-            }
+            // `finish` no longer fails outright — an unmatched workoutID falls back to
+            // whatever's active, and "nothing to finish" is a successful no-op (see
+            // technical-notes.md §5.2) — so there's nothing to guard here.
+            finish(finishCommand, context: context)
         }
+        saveContext(context)
         reply?(successReply())
+    }
+
+    /// One save point for every command applied from the watch. `perform` is reached
+    /// after `WCSession` wakes the app in the background, where nothing guarantees the
+    /// process survives long enough for SwiftData's autosave to run — see
+    /// technical-notes.md §5.1.
+    private func saveContext(_ context: ModelContext) {
+        do {
+            try context.save()
+        } catch {
+            logger.error("не удалось сохранить команду с часов: \(error.localizedDescription)")
+        }
     }
 
     /// The reply carries the freshly pushed context so the watch can reconcile its queue
@@ -305,19 +327,28 @@ final class WatchSessionManager: NSObject, WCSessionDelegate {
         return .applied
     }
 
+    /// Always returns `true`: a finish from the watch is idempotent by design, per
+    /// technical-notes.md §5.2. Only one workout can be active at a time, so a
+    /// `workoutID` that doesn't resolve (`syncID` reassigned by
+    /// `DataIntegrity.deduplicateSyncIDs`, or a stale watch cache) unambiguously means
+    /// "finish whatever's running"; and finishing when nothing is active — the watch
+    /// redelivering after it already landed — is a successful no-op, not an error.
     @discardableResult
     func finish(_ command: WatchFinishWorkoutCommand, context: ModelContext) -> Bool {
-        guard let workout = workout(with: command.workoutID, context: context) else {
-            logger.error("finish: workout not found for command from watch")
-            return false
+        var target = workout(with: command.workoutID, context: context)
+        if target == nil, let active = activeWorkout(context: context) {
+            logger.error("finish: workoutID \(command.workoutID) not found on phone, falling back to the active workout — only one can be active at a time")
+            target = active
+        }
+        guard let target else {
+            pushSnapshot(for: nil)
+            return true
         }
         if !appliedCommandIDSet.contains(command.commandID) {
             markApplied(command.commandID)
-            if workout.isActive {
-                // Same sequence as `WorkoutDetailView.finish()`.
-                restTimer?.skip()
-                workout.finish()
-                Task { await HealthKitManager.save(workout) }
+            if target.isActive {
+                Workout.complete(target, restTimer: restTimer, context: context, watchSession: self)
+                return true
             }
         }
         pushSnapshot(for: nil)

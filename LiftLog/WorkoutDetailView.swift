@@ -157,7 +157,7 @@ struct WorkoutDetailView: View {
     }
 
     private var exerciseRows: some DynamicViewContent {
-        ForEach(groupedItems, id: \.exercise.persistentModelID) { group in
+        ForEach(Array(groupedItems.enumerated()), id: \.element.exercise.persistentModelID) { index, group in
             NavigationLink {
                 if workout.isActive {
                     WorkoutExerciseLogView(workout: workout, exercise: group.exercise, restTimer: restTimer)
@@ -165,7 +165,7 @@ struct WorkoutDetailView: View {
                     WorkoutItemDefaultsView(workout: workout, exercise: group.exercise)
                 }
             } label: {
-                exerciseRow(group)
+                exerciseRow(group, index: index)
             }
             .listRowBackground(Color.chalk)
             .listRowSeparatorTint(.hairline)
@@ -173,16 +173,17 @@ struct WorkoutDetailView: View {
         .onMove(perform: moveExercise)
     }
 
-    private func exerciseRow(_ group: (exercise: Exercise, items: [WorkoutItem])) -> some View {
-        HStack(spacing: 11) {
+    private func exerciseRow(_ group: (exercise: Exercise, items: [WorkoutItem]), index: Int) -> some View {
+        let closed = workout.isSetPlanFulfilled(for: group.exercise)
+        return HStack(spacing: 11) {
             ExerciseThumbnail(primaryMuscles: group.exercise.primaryMuscles, secondaryMuscles: group.exercise.secondaryMuscles, size: 44, cornerRadius: 9)
             VStack(alignment: .leading, spacing: 4) {
                 Text(group.exercise.name).font(.sans(16)).foregroundStyle(.ink)
                 if workout.isActive {
-                    let count = workout.setsFor(group.exercise).count
-                    Text("\(count) \(RussianPlural.form(count, "подход", "подхода", "подходов"))")
+                    Text(activeSetsSummary(for: group.exercise))
                         .font(.mono(13))
                         .foregroundStyle(.steel)
+                        .accessibilityIdentifier("workoutDetail.exerciseProgress.\(index)")
                 } else {
                     Text(plannedSummary(group.items))
                         .font(.mono(12))
@@ -191,14 +192,36 @@ struct WorkoutDetailView: View {
                 }
             }
             Spacer()
+            if workout.isActive && closed {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.plateBlue)
+            }
         }
+        .opacity(workout.isActive && closed ? 0.6 : 1)
+    }
+
+    /// «N из M подходов» when there's a plan; a bare count for an exercise added
+    /// mid-workout, which has nothing to be "of".
+    private func activeSetsSummary(for exercise: Exercise) -> String {
+        let logged = workout.loggedSetCount(for: exercise)
+        let planned = workout.plannedSetCount(for: exercise)
+        guard planned > 0 else {
+            return "\(logged) \(RussianPlural.form(logged, "подход", "подхода", "подходов"))"
+        }
+        // "N из M X" always takes the genitive-plural-like form of X once M > 1 — the
+        // ordinary 1/2-4/5+ counting rule (`RussianPlural.form`) doesn't apply here.
+        let word = planned == 1 ? "подхода" : "подходов"
+        return "\(logged) из \(planned) \(word)"
     }
 
     private func plannedSummary(_ items: [WorkoutItem]) -> String {
-        items.map { item -> String in
+        let count = items.count
+        let countText = "\(count) \(RussianPlural.form(count, "подход", "подхода", "подходов"))"
+        let details = items.map { item -> String in
             guard let weight = item.plannedWeight, let reps = item.plannedReps else { return "без плана" }
             return "\(weight.formatted(.number)) кг × \(reps)"
         }.joined(separator: " · ")
+        return details.isEmpty ? countText : "\(countText) · \(details)"
     }
 
     /// Only called when `workout.status == .plan` — an active/completed workout has
@@ -254,7 +277,16 @@ struct WorkoutDetailView: View {
             .font(.sans(14))
             .foregroundStyle(.plateBlue)
         } header: {
-            Text(exercise.name).font(.sans(15)).foregroundStyle(.ink)
+            HStack {
+                Text(exercise.name).font(.sans(15)).foregroundStyle(.ink)
+                Spacer()
+                let planned = workout.plannedSetCount(for: exercise)
+                if planned > 0 {
+                    Text("\(workout.loggedSetCount(for: exercise)) из \(planned)")
+                        .font(.mono(13))
+                        .foregroundStyle(.steel)
+                }
+            }
         }
         .listRowBackground(Color.chalk)
     }
@@ -282,6 +314,23 @@ struct WorkoutDetailView: View {
             }
             ToolbarItem(placement: .primaryAction) {
                 Button("Завершить") { finish() }
+            }
+        }
+        // Reachable two ways: pushed from `WorkoutListView` to browse history (which
+        // already has a system back chevron via its own `NavigationStack` — this is
+        // just a second, equally obvious way out) and, now, popped back to from the
+        // plan-fulfilled banner on `WorkoutExerciseLogView` after finishing there —
+        // which has *no* other way out, since this screen doesn't push itself inside
+        // a `fullScreenCover` and never did (`finish()` above dismisses immediately,
+        // before this state ever renders, for the direct path).
+        // Labeled "Закрыть", not "Готово": `EditSetView`'s own sheet also has a
+        // "Готово" button, and the two are reachable on screen at the same time
+        // (editing a set from this screen's own completed-sets list) — same text
+        // would make `app.buttons["Готово"]` ambiguous in a UI test.
+        if workout.completedAt != nil {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Закрыть") { dismiss() }
+                    .accessibilityIdentifier("workoutDetail.doneButton")
             }
         }
     }
@@ -314,10 +363,7 @@ struct WorkoutDetailView: View {
     }
 
     private func finish() {
-        restTimer.skip()
-        workout.finish()
-        Task { await HealthKitManager.save(workout) }
-        WatchSessionManager.shared.pushSnapshot(for: nil)
+        Workout.complete(workout, restTimer: restTimer, context: context)
         dismiss()
     }
 
