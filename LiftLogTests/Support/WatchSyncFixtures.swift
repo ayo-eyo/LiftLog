@@ -128,7 +128,9 @@ enum WatchSyncFixtures {
         setsLoggedCount: Int = 0,
         weight: Double? = 60,
         reps: Int? = 8,
-        plannedSets: [WatchWorkoutSnapshot.PlannedSet] = []
+        plannedSets: [WatchWorkoutSnapshot.PlannedSet] = [],
+        recordWeight: Double? = nil,
+        tracksRecords: Bool = false
     ) -> WatchWorkoutSnapshot.ExerciseInfo {
         WatchWorkoutSnapshot.ExerciseInfo(
             id: id,
@@ -136,7 +138,9 @@ enum WatchSyncFixtures {
             setsLoggedCount: setsLoggedCount,
             weight: weight,
             reps: reps,
-            plannedSets: plannedSets
+            plannedSets: plannedSets,
+            recordWeight: recordWeight,
+            tracksRecords: tracksRecords
         )
     }
 
