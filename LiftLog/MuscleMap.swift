@@ -26,6 +26,10 @@ enum MuscleAtlas {
         "triceps": (["triceps-left-front", "triceps-right-front"], ["triceps-left-back", "triceps-right-back"]),
     ]
 
+    /// Every muscle name the atlas can draw, alphabetical — the checklist behind the
+    /// Analytics tab's «Мало нагружены».
+    static let muscles: [String] = slugs.keys.sorted()
+
     static func frontSlugs(for muscles: [String]) -> Set<String> {
         Set(muscles.flatMap { slugs[$0]?.front ?? [] })
     }
@@ -70,6 +74,9 @@ struct MuscleMapView: View {
     /// of the whole body — used for small thumbnails where a full 724x1448 figure
     /// would render as a sliver.
     var zoomToHighlight = false
+    /// Heat-map mode (Analytics tab): region slug → load in 0…1, drawn as plate blue of
+    /// matching strength. When set, `primaryMuscles`/`secondaryMuscles` are ignored.
+    var intensities: [String: Double]? = nil
 
     private var primarySlugs: Set<String> {
         side == .front ? MuscleAtlas.frontSlugs(for: primaryMuscles) : MuscleAtlas.backSlugs(for: primaryMuscles)
@@ -128,6 +135,15 @@ struct MuscleMapView: View {
             context.transform = CGAffineTransform(a: scale, b: 0, c: 0, d: scale, tx: tx, ty: ty)
 
             for region in regions {
+                if let intensities {
+                    // Chalk ground first, then blue laid over it by load — so a lightly
+                    // loaded region reads as a tint of the ground, not as translucent grey.
+                    context.fill(region.path, with: .color(.chalkDeep))
+                    if let intensity = intensities[region.slug], intensity > 0 {
+                        context.fill(region.path, with: .color(Color.plateBlue.opacity(0.15 + 0.85 * min(intensity, 1))))
+                    }
+                    continue
+                }
                 let color: Color
                 if primary.contains(region.slug) {
                     color = .plateBlue

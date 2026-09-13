@@ -32,6 +32,9 @@ struct SetSample: Hashable {
     let sessionKey: SessionKey
     /// The workout's name; nil for a set logged outside any workout.
     let workoutName: String?
+    /// Logged in the workout that's still running. Such sets count toward record marks
+    /// (the banner needs them) but not toward the Analytics tab's aggregates (decision 8).
+    let inProgress: Bool
 }
 
 struct WeightRecordInfo: Equatable {
@@ -160,7 +163,8 @@ enum ExerciseStats {
                     date: set.createdAt,
                     order: set.order,
                     sessionKey: key,
-                    workoutName: set.workout?.name
+                    workoutName: set.workout?.name,
+                    inProgress: set.workout?.isActive == true
                 )
             }
             .sorted { ($0.date, $0.order) < ($1.date, $1.order) }

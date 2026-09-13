@@ -76,9 +76,11 @@ Test setup in the repo:
 - Both test targets use file-system-synchronized groups: a new file in `LiftLogTests/` or
   `LiftLogUITests/` is picked up automatically — do not edit `project.pbxproj` for it.
 - Suites exist and are expected to stay green: domain (`WorkoutModelTests`, `WorkoutOrderTests`,
-  `WorkoutCopyTests`, `WorkoutDefaultsTests`, `PersistenceTests`, `DataIntegrityTests`), sync
+  `WorkoutCopyTests`, `WorkoutDefaultsTests`, `PersistenceTests`, `DataIntegrityTests`), progress
+  (`ExerciseStatsTests`, `TrainingAnalyticsTests`), sync
   (`WatchSessionManagerTests`, `WatchWireFormatTests`, `WatchSyncMergeTests`), and UI (`WorkoutActiveScreenUITests`,
-  `WorkoutCopyUITests`, `WorkoutSetEditUITests`, `WorkoutStartAccessoryUITests`). Extend the
+  `WorkoutCopyUITests`, `WorkoutSetEditUITests`, `WorkoutStartAccessoryUITests`, `ExerciseProgressUITests`,
+  `WorkoutRecordsUITests`, `AnalyticsUITests`). Extend the
   matching suite rather than starting a parallel one.
 
 Local-only notes, both gitignored — consult them when they exist, don't rely on it:
@@ -127,7 +129,7 @@ Ordering, and the invariants that hold it together:
 
 ### Muscle map rendering
 
-`MuscleMapData.swift` holds raw SVG path strings for ~35 body regions (front+back, from a body-highlighter atlas) at a fixed 724×1448 canvas (back paths pre-offset +724 in x so front/back share one coordinate space). `SVGPath.swift` parses those path strings into `Path` once at load (`MuscleMap.frontRegions`/`backRegions`), not per render. `MuscleAtlas` maps the catalog's muscle-name strings (`primaryMuscles`/`secondaryMuscles`, e.g. `"lats"`, `"lower back"`) to the atlas's region slugs, split by which side of the body actually shows them — a muscle can have slugs on only one side. `MuscleMapView` draws one side via `Canvas`, with an optional `zoomToHighlight` mode that frames on the highlighted regions' bounding box (used for thumbnails) instead of the full body.
+`MuscleMapData.swift` holds raw SVG path strings for ~35 body regions (front+back, from a body-highlighter atlas) at a fixed 724×1448 canvas (back paths pre-offset +724 in x so front/back share one coordinate space). `SVGPath.swift` parses those path strings into `Path` once at load (`MuscleMap.frontRegions`/`backRegions`), not per render. `MuscleAtlas` maps the catalog's muscle-name strings (`primaryMuscles`/`secondaryMuscles`, e.g. `"lats"`, `"lower back"`) to the atlas's region slugs, split by which side of the body actually shows them — a muscle can have slugs on only one side. `MuscleMapView` draws one side via `Canvas`, with an optional `zoomToHighlight` mode that frames on the highlighted regions' bounding box (used for thumbnails) instead of the full body, and an `intensities` heat-map mode (slug → 0…1) used by the Analytics tab.
 
 ### Watch connectivity (no shared data store)
 
@@ -147,6 +149,6 @@ The watch app has no SwiftData store and no App Group — the two entitlements f
 
 `SetInputViews.swift` holds the shared weight/reps entry controls (`WeightInputRow`, `RepsInputRow`) and the set-row display (`SetRow`), used across `ExerciseDetailView`, `WorkoutDetailView`, `WorkoutExerciseLogView`, `WorkoutItemDefaultsView`, and `EditSetView` — prefer extending these over re-adding another inline copy of the weight/reps UI.
 
-### Placeholders
+### Progress, records and analytics
 
-`AnalyticsPlaceholderView` is a stub for a not-yet-built analytics tab (wired into `RootTabView`'s "Аналитика" tab).
+Nothing about progress is stored — it's all derived from logged `WorkoutSet`s, so editing or deleting a set re-derives it (decisions and requirements in `plans/features/progress-analytics`). `ExerciseStats` flattens an exercise's sets into `SetSample`s and derives weight records, sessions, chart points and «Прошлый раз»; `TrainingAnalytics` builds the «Аналитика» tab (`AnalyticsView`) from the same samples. **Records are by weight only**: a set is a record when it's strictly heavier than every earlier set of the exercise; the first weighted set and bodyweight sets never are. The rule itself (`WeightRecord`) lives in the shared `WorkoutSyncModels.swift` so the watch can apply it offline. Record marks count the running workout; the Analytics aggregates don't (only finished workouts and sets logged outside a workout).
