@@ -8,7 +8,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-PHONE="LiftLog/WorkoutSyncModels.swift"
+PHONE="LiftLog/Sync/WorkoutSyncModels.swift"
 WATCH="LiftLogWatchApp Watch App/WorkoutSyncModels.swift"
 
 if diff -u "$PHONE" "$WATCH"; then

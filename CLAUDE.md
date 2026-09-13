@@ -92,6 +92,24 @@ Local-only notes, both gitignored — consult them when they exist, don't rely o
 
 ## Architecture
 
+### Project layout
+
+The iOS app's sources are grouped by feature, with the shared domain model on its own. All four targets use file-system-synchronized groups, so moving or adding a file is just a filesystem change — never edit `project.pbxproj` for it.
+
+| Folder (under `LiftLog/`) | What goes there |
+|---|---|
+| `App/` | Entry point and tab shell: `LiftLogApp`, `RootTabView`, `PreviewSupport` |
+| `Models/` | SwiftData models and the logic on them: `Workout`, `WorkoutItem`, `WorkoutSet`, `Exercise`, `WorkoutCompletion`, `WorkoutFlow`, `DataIntegrity` |
+| `Workouts/` | Workout list, plan/active/completed screens, set logging and editing, shared set inputs, rest timer |
+| `Catalog/` | Bundled exercise catalog and its screens, exercise picker, thumbnails |
+| `MuscleMap/` | Muscle atlas data, SVG path parsing, `MuscleMapView` |
+| `Progress/` | `ExerciseStats`, the exercise progress screen, `TrainingAnalytics` and the Analytics tab |
+| `Sync/` | `WatchSessionManager` and the phone's copy of `WorkoutSyncModels.swift` |
+| `Services/` | System integrations: `HealthKitManager`, `NotificationManager` |
+| `DesignSystem/` | `Theme`, `Fonts`, `RussianPlural` |
+
+`Assets.xcassets`, `Info.plist` and `LiftLog.entitlements` stay at the `LiftLog/` root — the build settings point at those paths. The watch app (`LiftLogWatchApp Watch App/`) and both test targets are flat. `WorkoutSyncModels.swift`'s two paths are hardcoded in `Scripts/check-watch-sync-parity.sh` and `SourcePaths` (`LiftLogTests/Support/WatchSyncFixtures.swift`) — move it and update both.
+
 ### Data model (SwiftData, iOS target only)
 
 **`Workout` is the only top-level entity — there are no templates.** (`WorkoutTemplate`/`TemplateItem` were removed; copying a workout is what "repeat this workout" means now. Don't reintroduce a template type.)
@@ -133,7 +151,7 @@ Ordering, and the invariants that hold it together:
 
 ### Watch connectivity (no shared data store)
 
-The watch app has no SwiftData store and no App Group — the two entitlements files only grant HealthKit. All state flows through `WatchConnectivity`, using plain `Codable` DTOs in `WorkoutSyncModels.swift` (duplicated verbatim in both targets — `LiftLog/WorkoutSyncModels.swift` and `LiftLogWatchApp Watch App/WorkoutSyncModels.swift` — since the targets don't share a framework; keep them in sync by hand when the wire format changes):
+The watch app has no SwiftData store and no App Group — the two entitlements files only grant HealthKit. All state flows through `WatchConnectivity`, using plain `Codable` DTOs in `WorkoutSyncModels.swift` (duplicated verbatim in both targets — `LiftLog/Sync/WorkoutSyncModels.swift` and `LiftLogWatchApp Watch App/WorkoutSyncModels.swift` — since the targets don't share a framework; keep them in sync by hand when the wire format changes):
 
 - **Phone → watch**: `WatchSessionManager` (iOS target) pushes a `WatchContext { snapshot, plans, appliedCommandIDs }` via `updateApplicationContext`. `snapshot` is the active workout (nil when none) plus rest-timer state; `plans` are the not-yet-started workouts the watch can list and start, capped at 20 and carrying their full `plannedSets` so the watch can advance through a plan with no phone in range; `appliedCommandIDs` is a bounded FIFO of commands the phone has applied, echoed back as acknowledgements. `refresh()` rebuilds the whole thing from the store; `pushSnapshot(for:)` is for the cases where a fetch would lie (a row deleted but not yet saved).
 - **Watch → phone**: `PhoneSessionManager` (watch target) sends `["command": WatchCommand]` — `.logSet` / `.start` / `.finish` — via `sendMessage`, plus live-only `["skipRest": true]` and `["requestContext": true]` (the watch's only way to *pull* state — every other delivery is a push the phone decides to make, so without it a lost push leaves the watch on a stale plan list forever; sent on activation, on regained reachability and on foreground). `WatchSessionManager.apply(_:context:reply:)` is the *only* place on the phone that mutates the `ModelContext` on the watch's behalf: it looks up the workout/exercise by `syncID` (falling back to matching by exercise name if the ID is stale), applies the command, and replies with the freshly pushed context. Commands are deduplicated by `commandID`, which is what makes redelivery safe. A `.start` while a *different* workout is running is refused with `["conflict": syncID]` rather than resolved.
