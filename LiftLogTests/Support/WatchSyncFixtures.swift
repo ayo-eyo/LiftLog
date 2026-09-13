@@ -187,6 +187,6 @@ enum SourcePaths {
         .deletingLastPathComponent() // LiftLogTests
         .deletingLastPathComponent() // repo root
 
-    static let phoneSyncModels = repoRoot.appending(path: "LiftLog/WorkoutSyncModels.swift")
+    static let phoneSyncModels = repoRoot.appending(path: "LiftLog/Sync/WorkoutSyncModels.swift")
     static let watchSyncModels = repoRoot.appending(path: "LiftLogWatchApp Watch App/WorkoutSyncModels.swift")
 }
