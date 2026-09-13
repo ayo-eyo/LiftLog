@@ -40,6 +40,10 @@ enum WatchSyncFixtures {
         WatchFinishWorkoutCommand(commandID: commandID, workoutID: workoutID)
     }
 
+    static func healthRecordedCommand(workoutID: UUID, commandID: UUID = UUID()) -> WatchHealthRecordedCommand {
+        WatchHealthRecordedCommand(commandID: commandID, workoutID: workoutID)
+    }
+
     /// The exact `[String: Any]` a watch `sendMessage` / `transferUserInfo` carries.
     static func commandMessage(_ command: WatchCommand) throws -> [String: Any] {
         [WatchMessageKey.command: try encoder.encode(command)]
@@ -52,6 +56,12 @@ enum WatchSyncFixtures {
 
     static func skipRestMessage() -> [String: Any] {
         [WatchMessageKey.skipRest: true]
+    }
+
+    /// The "send me what you have now" message the watch puts on the wire when it can't
+    /// trust the last context it was pushed (activation, reachability, foreground).
+    static func requestContextMessage() -> [String: Any] {
+        [WatchMessageKey.requestContext: true]
     }
 
     /// A payload the phone must reject without crashing or mutating the store.

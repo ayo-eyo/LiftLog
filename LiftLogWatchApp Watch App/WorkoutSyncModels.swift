@@ -54,6 +54,30 @@ struct WatchWorkoutSnapshot: Codable {
         let weight: Double?
         let reps: Int?
         let plannedSets: [PlannedSet]
+
+        init(id: UUID, name: String, setsLoggedCount: Int, weight: Double?, reps: Int?, plannedSets: [PlannedSet]) {
+            self.id = id
+            self.name = name
+            self.setsLoggedCount = setsLoggedCount
+            self.weight = weight
+            self.reps = reps
+            self.plannedSets = plannedSets
+        }
+
+        // Same reasoning as `WatchContext.init(from:)`: everything a later build added
+        // decodes as its empty value instead of taking the whole context down. A field
+        // missing costs one feature (here: advancing through the plan offline); a failed
+        // decode costs *every* update — the watch silently keeps showing the last
+        // context it managed to read, for as long as the two builds differ.
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            id = try container.decode(UUID.self, forKey: .id)
+            name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+            setsLoggedCount = try container.decodeIfPresent(Int.self, forKey: .setsLoggedCount) ?? 0
+            weight = try container.decodeIfPresent(Double.self, forKey: .weight)
+            reps = try container.decodeIfPresent(Int.self, forKey: .reps)
+            plannedSets = try container.decodeIfPresent([PlannedSet].self, forKey: .plannedSets) ?? []
+        }
     }
 
     let workoutID: UUID
@@ -65,6 +89,36 @@ struct WatchWorkoutSnapshot: Codable {
     let exercises: [ExerciseInfo]
     let restEndDate: Date?
     let restExerciseName: String?
+
+    init(
+        workoutID: UUID,
+        name: String,
+        date: Date,
+        version: Int,
+        exercises: [ExerciseInfo],
+        restEndDate: Date?,
+        restExerciseName: String?
+    ) {
+        self.workoutID = workoutID
+        self.name = name
+        self.date = date
+        self.version = version
+        self.exercises = exercises
+        self.restEndDate = restEndDate
+        self.restExerciseName = restExerciseName
+    }
+
+    // Lenient for the same reason as `ExerciseInfo` above.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        workoutID = try container.decode(UUID.self, forKey: .workoutID)
+        name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+        date = try container.decode(Date.self, forKey: .date)
+        version = try container.decodeIfPresent(Int.self, forKey: .version) ?? 0
+        exercises = try container.decodeIfPresent([ExerciseInfo].self, forKey: .exercises) ?? []
+        restEndDate = try container.decodeIfPresent(Date.self, forKey: .restEndDate)
+        restExerciseName = try container.decodeIfPresent(String.self, forKey: .restExerciseName)
+    }
 }
 
 /// A workout the watch can list and start, but which isn't running yet. Carries the
@@ -76,6 +130,24 @@ struct WatchWorkoutSummary: Codable, Identifiable {
     let date: Date
     let version: Int
     let exercises: [WatchWorkoutSnapshot.ExerciseInfo]
+
+    init(id: UUID, name: String, date: Date, version: Int, exercises: [WatchWorkoutSnapshot.ExerciseInfo]) {
+        self.id = id
+        self.name = name
+        self.date = date
+        self.version = version
+        self.exercises = exercises
+    }
+
+    // Lenient for the same reason as `WatchWorkoutSnapshot` above.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+        date = try container.decode(Date.self, forKey: .date)
+        version = try container.decodeIfPresent(Int.self, forKey: .version) ?? 0
+        exercises = try container.decodeIfPresent([WatchWorkoutSnapshot.ExerciseInfo].self, forKey: .exercises) ?? []
+    }
 }
 
 // MARK: - Set counters (FR-1)
@@ -144,6 +216,16 @@ struct WatchFinishWorkoutCommand: Codable {
     let workoutID: UUID
 }
 
+/// "This watch is recording the workout into Health" — sent once its
+/// `HKLiveWorkoutBuilder` has actually begun collecting, so the phone knows not to
+/// save its own heart-rate-less copy (and to delete one it already saved). Queued like
+/// every other command: it has to survive the phone being out of range and land after
+/// the `start` it belongs to.
+struct WatchHealthRecordedCommand: Codable {
+    let commandID: UUID
+    let workoutID: UUID
+}
+
 /// One envelope for every mutating command, so the watch can keep them in a single
 /// ordered queue while offline — order matters (`start` has to land before the sets
 /// logged into it).
@@ -151,12 +233,14 @@ enum WatchCommand: Codable {
     case logSet(WatchLogSetCommand)
     case start(WatchStartWorkoutCommand)
     case finish(WatchFinishWorkoutCommand)
+    case healthRecorded(WatchHealthRecordedCommand)
 
     var commandID: UUID {
         switch self {
         case .logSet(let command): command.commandID
         case .start(let command): command.commandID
         case .finish(let command): command.commandID
+        case .healthRecorded(let command): command.commandID
         }
     }
 
@@ -165,6 +249,7 @@ enum WatchCommand: Codable {
         case .logSet(let command): command.workoutID
         case .start(let command): command.workoutID
         case .finish(let command): command.workoutID
+        case .healthRecorded(let command): command.workoutID
         }
     }
 }
@@ -211,6 +296,11 @@ enum WatchMessageKey {
     /// the watch is reachable, so an already-open watch screen updates immediately
     /// instead of waiting for a relaunch — see `WatchSessionManager.send`.
     static let push = "push"
+    /// Watch → phone: "send me what you have now". Every other delivery is a push the
+    /// phone decides to make, so a context lost on the way (or a plan list that changed
+    /// while the phone app wasn't running) leaves the watch showing a stale list with no
+    /// way out of it. The reply carries a freshly rebuilt `context`.
+    static let requestContext = "requestContext"
 
     static let ok = "ok"
     static let context = "context"
@@ -268,9 +358,10 @@ enum WatchSyncMerge {
             // explicit ack (`context.appliedCommandIDs`, checked by the caller before
             // this) is the only safe signal for `.finish`.
             return false
-        case .logSet:
+        case .logSet, .healthRecorded:
             // A logged set is exactly what the version counts, so here the version is
             // the signal — the phone reaching the expected version means it applied it.
+            // Marking a workout as recorded on the watch is the same +1.
             guard let remote = remoteVersion(of: entry.workoutID, in: context) else { return false }
             return remote >= entry.expectedVersion
         }
@@ -389,6 +480,53 @@ enum WatchSyncMerge {
             restEndDate: nil,
             restExerciseName: nil
         )
+    }
+}
+
+// MARK: - Health recording
+
+/// When the watch's live workout session (`WorkoutRecorder`) should start and stop, and
+/// the metadata both sides stamp on what they save to Health. Here rather than in the
+/// watch target for the same reason as `WatchSyncMerge`: it's testable from here.
+enum WatchHealthRecording {
+    /// Carries `Workout.syncID`, so the phone can find its own copy of a workout.
+    static let workoutIDMetadataKey = "LiftLogWorkoutID"
+    static let recordedOnMetadataKey = "LiftLogRecordedOn"
+    static let recordedOnPhone = "phone"
+    static let recordedOnWatch = "watch"
+
+    enum Action: Equatable {
+        case none
+        case start(UUID)
+        case end
+        /// A different workout is active than the one being recorded: end, then start.
+        case restart(UUID)
+    }
+
+    /// `isTrusted` is false while all the watch has is the context cached from an earlier
+    /// run — it can be days old. Starting from it records a workout that's long over;
+    /// ending from it cuts short a session recovered after a crash. Better to wait the
+    /// second it takes the phone to answer.
+    static func action(recording: UUID?, active: UUID?, isTrusted: Bool) -> Action {
+        guard isTrusted else { return .none }
+        switch (recording, active) {
+        case (nil, nil): return .none
+        case (nil, let active?): return .start(active)
+        case (_?, nil): return .end
+        case (let recording?, let active?): return recording == active ? .none : .restart(active)
+        }
+    }
+
+    /// Opening the watch app mid-workout shouldn't cut the first half out of the duration
+    /// in Health. Beyond this, a date is more likely wrong than a workout that long.
+    static let maxBackdate: TimeInterval = 3 * 60 * 60
+
+    /// Where collection starts: the workout's own start when it's a plausible one, now
+    /// otherwise. A workout started on this watch while offline still carries its plan's
+    /// *creation* date (see `WatchSyncMerge.promote`), so that one always starts now.
+    static func collectionStart(workoutDate: Date, startedLocally: Bool, now: Date) -> Date {
+        guard !startedLocally, workoutDate <= now, now.timeIntervalSince(workoutDate) <= maxBackdate else { return now }
+        return workoutDate
     }
 }
 

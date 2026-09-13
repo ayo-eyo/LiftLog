@@ -18,10 +18,21 @@ Build the iOS app for the simulator:
 ```bash
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 xcodebuild -project LiftLog.xcodeproj -scheme LiftLog -sdk iphonesimulator \
-  -destination 'generic/platform=iOS Simulator' -configuration Debug build
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -configuration Debug build
 ```
 
-To build/run the watch target, use the `LiftLogWatchApp Watch App` scheme with a watchOS simulator destination instead.
+Building the `LiftLog` scheme (it embeds the watch app as a dependency) against a
+*generic* destination — `-destination 'generic/platform=iOS Simulator'`, or Xcode's "Any
+iOS Simulator Device"/"Any iOS Device" placeholders in the destination picker — fails the
+whole build with a bogus `WCSessionDelegate` conformance error on `PhoneSessionManager`,
+because the embedded watch target gets compiled under the iOS SDK instead of watchOS. Use
+a concrete, named simulator or device instead, as above — `Scripts/test.sh` already does
+this (`platform=iOS Simulator,name=$DEVICE`). This also bites a real device run in Xcode:
+if the destination picker falls back to "Any iOS Device" (e.g. the paired
+device/watch dropped its connection), the build fails the same way and nothing installs.
+
+To build/run the watch target on its own, use the `LiftLogWatchApp Watch App` scheme with
+a watchOS simulator destination instead.
 
 Run tests:
 
@@ -123,8 +134,9 @@ Ordering, and the invariants that hold it together:
 The watch app has no SwiftData store and no App Group — the two entitlements files only grant HealthKit. All state flows through `WatchConnectivity`, using plain `Codable` DTOs in `WorkoutSyncModels.swift` (duplicated verbatim in both targets — `LiftLog/WorkoutSyncModels.swift` and `LiftLogWatchApp Watch App/WorkoutSyncModels.swift` — since the targets don't share a framework; keep them in sync by hand when the wire format changes):
 
 - **Phone → watch**: `WatchSessionManager` (iOS target) pushes a `WatchContext { snapshot, plans, appliedCommandIDs }` via `updateApplicationContext`. `snapshot` is the active workout (nil when none) plus rest-timer state; `plans` are the not-yet-started workouts the watch can list and start, capped at 20 and carrying their full `plannedSets` so the watch can advance through a plan with no phone in range; `appliedCommandIDs` is a bounded FIFO of commands the phone has applied, echoed back as acknowledgements. `refresh()` rebuilds the whole thing from the store; `pushSnapshot(for:)` is for the cases where a fetch would lie (a row deleted but not yet saved).
-- **Watch → phone**: `PhoneSessionManager` (watch target) sends `["command": WatchCommand]` — `.logSet` / `.start` / `.finish` — via `sendMessage`, plus live-only `["skipRest": true]`. `WatchSessionManager.apply(_:context:reply:)` is the *only* place on the phone that mutates the `ModelContext` on the watch's behalf: it looks up the workout/exercise by `syncID` (falling back to matching by exercise name if the ID is stale), applies the command, and replies with the freshly pushed context. Commands are deduplicated by `commandID`, which is what makes redelivery safe. A `.start` while a *different* workout is running is refused with `["conflict": syncID]` rather than resolved.
+- **Watch → phone**: `PhoneSessionManager` (watch target) sends `["command": WatchCommand]` — `.logSet` / `.start` / `.finish` — via `sendMessage`, plus live-only `["skipRest": true]` and `["requestContext": true]` (the watch's only way to *pull* state — every other delivery is a push the phone decides to make, so without it a lost push leaves the watch on a stale plan list forever; sent on activation, on regained reachability and on foreground). `WatchSessionManager.apply(_:context:reply:)` is the *only* place on the phone that mutates the `ModelContext` on the watch's behalf: it looks up the workout/exercise by `syncID` (falling back to matching by exercise name if the ID is stale), applies the command, and replies with the freshly pushed context. Commands are deduplicated by `commandID`, which is what makes redelivery safe. A `.start` while a *different* workout is running is refused with `["conflict": syncID]` rather than resolved.
 - **Offline queue (watch)**: commands are not thrown at the phone when it isn't reachable. They go into a queue persisted by `PendingCommandStore` (JSON in Application Support, survives the app being killed), flushed one at a time in order — order matters, a `.start` has to land before the sets logged into it — on reachability changes, on context arrival, and on foreground. What the watch UI shows is the phone's context with that queue folded in: `WatchSyncMerge` (pure functions living in the shared `WorkoutSyncModels.swift`, so they can be tested from `LiftLogTests` — the watch target has no test target). A command leaves the queue when the phone acknowledges its `commandID`, or, if that ack aged out of the bounded window, when the workout's `version` on the phone has already reached what the command expected to produce. On the way to the background, whatever is still queued is also handed to `transferUserInfo` so the system delivers it while the app isn't running; the double delivery is harmless because of the `commandID` dedup.
+- **Health recording**: heart rate and energy only exist when the watch records the workout with a live `HKWorkoutSession` — `WorkoutRecorder` (watch target), which follows the merged snapshot: a workout appearing starts a session, the workout going away ends it and saves. What to do is decided by `WatchHealthRecording.action` in the shared file (tested from `LiftLogTests`); it ignores the context cached from an earlier run (`PhoneSessionManager.isSnapshotTrusted`), or a days-old context would start a bogus recording. Starting a workout on the phone launches the watch app for it (`HealthKitManager.startWatchWorkout` → `WatchAppDelegate.handle(_:)`). Once collection begins the watch queues `.healthRecorded`; the phone sets `Workout.healthRecordedOnWatch` (+1 version, lands by version like `.logSet`), `HealthKitManager.save` then skips its bare start/end fallback, and if the fallback was already saved it's deleted by its `LiftLogWorkoutID` + `LiftLogRecordedOn = phone` metadata. A workout done without the watch still gets the phone's fallback, with no heart rate.
 - Rest timer state (`endDate`/`exerciseName`) rides inside the same snapshot. Both sides independently schedule a local notification for the timer's end — `NotificationManager` (phone) and `RestNotificationManager` (watch) — because notification mirroring from phone to watch only works when the phone is locked/idle, not during an active hands-on-watch workout. If you change rest-duration or notification content, update both.
 
 ### Theming and assets

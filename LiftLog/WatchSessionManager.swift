@@ -242,6 +242,13 @@ final class WatchSessionManager: NSObject, WCSessionDelegate {
             }
             saveContext(context)
             reply?([WatchMessageKey.ok: true, "exercise": infoData])
+        } else if message[WatchMessageKey.requestContext] != nil {
+            // The watch asking for the current state. Rebuilt from the store rather
+            // than answered from `lastContext`: what the watch is missing is exactly
+            // the changes made while it wasn't listening — including any that happened
+            // with this app not running at all, where nothing ever called `refresh`.
+            refresh()
+            reply?(successReply())
         } else if message[WatchMessageKey.skipRest] != nil {
             restTimer?.skip()
             pushSnapshot(for: currentWorkout)
@@ -274,6 +281,8 @@ final class WatchSessionManager: NSObject, WCSessionDelegate {
             // whatever's active, and "nothing to finish" is a successful no-op (see
             // technical-notes.md §5.2) — so there's nothing to guard here.
             finish(finishCommand, context: context)
+        case .healthRecorded(let healthCommand):
+            healthRecorded(healthCommand, context: context)
         }
         saveContext(context)
         reply?(successReply())
@@ -384,6 +393,34 @@ final class WatchSessionManager: NSObject, WCSessionDelegate {
         }
         pushSnapshot(for: nil)
         return true
+    }
+
+    /// The watch is recording this workout into Health with heart rate and energy, so the
+    /// phone's bare copy has to go: skipped if the workout is still running
+    /// (`HealthKitManager.save` checks the flag), deleted if the phone already finished
+    /// and saved it — the watch reports in when collection *begins*, but offline that
+    /// report can arrive long after the finish.
+    ///
+    /// An unknown workout is a successful no-op: there's nothing of the phone's to remove,
+    /// and refusing would surface an error on the watch for a recording that did save.
+    func healthRecorded(_ command: WatchHealthRecordedCommand, context: ModelContext) {
+        if !appliedCommandIDSet.contains(command.commandID) {
+            markApplied(command.commandID)
+            if let workout = workout(with: command.workoutID, context: context), !workout.healthRecordedOnWatch {
+                workout.healthRecordedOnWatch = true
+                workout.bumpVersion()
+                if workout.completedAt != nil {
+                    deletePhoneHealthCopy(workout.syncID)
+                }
+            }
+        }
+        // Pushed either way, so the ack reaches the watch in the reply.
+        pushSnapshot(for: activeWorkout(context: context))
+    }
+
+    /// Seam so tests can see the deletion without touching HealthKit.
+    var deletePhoneHealthCopy: (UUID) -> Void = { syncID in
+        Task { await HealthKitManager.deletePhoneCopy(of: syncID) }
     }
 
     // MARK: Lookups

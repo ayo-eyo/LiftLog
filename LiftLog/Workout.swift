@@ -25,6 +25,11 @@ final class Workout {
     /// see `bumpVersion()`. Rides in the watch snapshot so the watch can tell whether
     /// the phone has caught up with the sets it logged offline.
     var version: Int = 0
+    /// Set when the watch reports it is recording this workout into Health with a live
+    /// workout session (heart rate, energy). The phone's own save carries only start and
+    /// end, so it steps aside — see `HealthKitManager.save` and
+    /// `WatchSessionManager.healthRecorded`.
+    var healthRecordedOnWatch: Bool = false
     @Relationship(deleteRule: .cascade, inverse: \WorkoutItem.workout) var items: [WorkoutItem] = []
     @Relationship(deleteRule: .cascade, inverse: \WorkoutSet.workout) var sets: [WorkoutSet] = []
 
