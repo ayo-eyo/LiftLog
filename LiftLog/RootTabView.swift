@@ -20,7 +20,7 @@ struct RootTabView: View {
                 CatalogView()
             }
             Tab("Аналитика", systemImage: "chart.xyaxis.line") {
-                AnalyticsPlaceholderView()
+                AnalyticsView()
             }
         }
         .tint(.plateBlue)
