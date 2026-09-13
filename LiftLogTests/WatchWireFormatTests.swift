@@ -312,3 +312,30 @@ struct WatchWireFormatPayloadSizeTests {
         #expect(data.count < 16_384)
     }
 }
+
+@Suite("ExerciseInfo — порог рекорда веса на проводе")
+struct WatchWireFormatRecordWeightTests {
+    @Test("recordWeight и tracksRecords переживают round-trip")
+    func recordFieldsRoundTrip() throws {
+        let snapshot = WatchSyncFixtures.snapshot(
+            exercises: [WatchSyncFixtures.exerciseInfo(recordWeight: 82.5, tracksRecords: true)]
+        )
+
+        let decoded = try #require(try WatchSyncFixtures.roundTrip(snapshot))
+
+        #expect(decoded.exercises.first?.recordWeight == 82.5)
+        #expect(decoded.exercises.first?.tracksRecords == true)
+    }
+
+    @Test("упражнение от старого телефона без порога декодируется и рекордов не объявляет")
+    func payloadWithoutRecordFieldsDecodesWithoutRecords() throws {
+        let payload: [String: Any] = ["id": UUID().uuidString, "name": "Жим лёжа", "setsLoggedCount": 3]
+        let data = try JSONSerialization.data(withJSONObject: payload)
+
+        let info = try WatchSyncFixtures.decoder.decode(WatchWorkoutSnapshot.ExerciseInfo.self, from: data)
+
+        #expect(info.recordWeight == nil)
+        #expect(!info.tracksRecords)
+        #expect(!info.isWeightRecord(500))
+    }
+}

@@ -160,7 +160,9 @@ final class WatchSessionManager: NSObject, WCSessionDelegate {
         }
     }
 
-    private func exerciseInfo(for exercise: Exercise, in workout: Workout) -> WatchWorkoutSnapshot.ExerciseInfo {
+    // Internal, not private: `WatchSessionManagerRecordWeightTests` checks the watch's
+    // record call made from this DTO against the phone's own.
+    func exerciseInfo(for exercise: Exercise, in workout: Workout) -> WatchWorkoutSnapshot.ExerciseInfo {
         let sets = workout.setsFor(exercise)
         let weight = workout.defaultWeight(for: exercise) ?? sets.last?.weight
         let reps = workout.defaultReps(for: exercise) ?? sets.last?.reps
@@ -175,7 +177,10 @@ final class WatchSessionManager: NSObject, WCSessionDelegate {
             setsLoggedCount: sets.count,
             weight: weight,
             reps: reps,
-            plannedSets: plannedSets
+            plannedSets: plannedSets,
+            // Plans carry it too: the watch can start a plan offline and log into it.
+            recordWeight: ExerciseStats.currentRecord(ExerciseStats.samples(for: exercise))?.weight,
+            tracksRecords: true
         )
     }
 

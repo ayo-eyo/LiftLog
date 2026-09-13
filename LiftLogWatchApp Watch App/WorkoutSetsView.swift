@@ -1,4 +1,5 @@
 import SwiftUI
+import WatchKit
 
 /// The active workout: rest timer, exercises, and the way out of it. Reads the merged
 /// state (`phone.snapshot`), so sets logged with no phone in range show up here right
@@ -152,6 +153,9 @@ private struct LogSetView: View {
     /// Shown instead of the input tiles once logging a set closes the last remaining
     /// exercise — see FR-2. Mirrors `WorkoutExerciseLogView.showPlanFulfilled`.
     @State private var showPlanFulfilled = false
+    /// The weight of a set that was just a record; clears itself after a moment. Screen
+    /// state, so it survives an auto-advance to the next exercise, like the phone's banner.
+    @State private var recordBanner: Double?
 
     private enum Field: Hashable { case weight, reps }
     @FocusState private var field: Field?
@@ -177,6 +181,9 @@ private struct LogSetView: View {
 
     var body: some View {
         VStack(spacing: 6) {
+            if let recordBanner {
+                recordBannerView(recordBanner)
+            }
             if showPlanFulfilled {
                 planFulfilledBanner
             } else {
@@ -203,6 +210,15 @@ private struct LogSetView: View {
         }
         .padding(.horizontal, 6)
         .navigationTitle(title)
+        .task(id: recordBanner) {
+            guard recordBanner != nil else { return }
+            do {
+                try await Task.sleep(for: .seconds(2))
+            } catch {
+                return // replaced by a newer record, or the screen went away
+            }
+            withAnimation { recordBanner = nil }
+        }
         .onAppear {
             // Once: after that the tiles hold whatever the user dialed in, and
             // `applyDefaults()` moves them on only when a set is actually logged.
@@ -266,6 +282,17 @@ private struct LogSetView: View {
             }
     }
 
+    private func recordBannerView(_ weight: Double) -> some View {
+        Label("Рекорд · \(weight.formatted(Self.weightFormat)) кг", systemImage: "trophy.fill")
+            .font(.caption)
+            .foregroundStyle(.yellow)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+            .transition(.opacity)
+            .onTapGesture { withAnimation { recordBanner = nil } }
+            .accessibilityLabel("Новый рекорд, \(weight.formatted(Self.weightFormat)) килограмм")
+    }
+
     private var planFulfilledBanner: some View {
         VStack(spacing: 8) {
             Text("План выполнен").font(.headline)
@@ -283,7 +310,14 @@ private struct LogSetView: View {
     private func logSet() {
         guard let exercise, reps > 0 else { return }
         let wasFulfilled = exercise.isSetPlanFulfilled
+        // Read before `phone.logSet`, like `wasFulfilled`: right after it the merged
+        // snapshot's bar already includes this very set.
+        let isRecord = exercise.isWeightRecord(weight)
         phone.logSet(exerciseID: exercise.id, exerciseName: exercise.name, weight: weight, reps: Int(reps.rounded()))
+        if isRecord {
+            withAnimation { recordBanner = weight }
+            WKInterfaceDevice.current().play(.success)
+        }
 
         // A queued `.finish` (or any other reason the workout just disappeared) makes
         // `phone.snapshot` nil — nothing to advance into.

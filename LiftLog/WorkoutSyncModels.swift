@@ -54,14 +54,33 @@ struct WatchWorkoutSnapshot: Codable {
         let weight: Double?
         let reps: Int?
         let plannedSets: [PlannedSet]
+        /// The heaviest weight in the exercise's whole history, sets already logged into
+        /// this workout included — what a set on the watch has to beat to be a weight
+        /// record (plans/features/progress-analytics, FR-4). nil: no weighted history yet.
+        let recordWeight: Double?
+        /// Whether the phone sent `recordWeight` at all. An older phone build doesn't, and
+        /// its nil must not read as "no history yet" — the watch would then take the next
+        /// set as the bar and call the one after it a record.
+        let tracksRecords: Bool
 
-        init(id: UUID, name: String, setsLoggedCount: Int, weight: Double?, reps: Int?, plannedSets: [PlannedSet]) {
+        init(
+            id: UUID,
+            name: String,
+            setsLoggedCount: Int,
+            weight: Double?,
+            reps: Int?,
+            plannedSets: [PlannedSet],
+            recordWeight: Double? = nil,
+            tracksRecords: Bool = false
+        ) {
             self.id = id
             self.name = name
             self.setsLoggedCount = setsLoggedCount
             self.weight = weight
             self.reps = reps
             self.plannedSets = plannedSets
+            self.recordWeight = recordWeight
+            self.tracksRecords = tracksRecords
         }
 
         // Same reasoning as `WatchContext.init(from:)`: everything a later build added
@@ -77,6 +96,15 @@ struct WatchWorkoutSnapshot: Codable {
             weight = try container.decodeIfPresent(Double.self, forKey: .weight)
             reps = try container.decodeIfPresent(Int.self, forKey: .reps)
             plannedSets = try container.decodeIfPresent([PlannedSet].self, forKey: .plannedSets) ?? []
+            recordWeight = try container.decodeIfPresent(Double.self, forKey: .recordWeight)
+            tracksRecords = try container.decodeIfPresent(Bool.self, forKey: .tracksRecords) ?? false
+        }
+
+        /// Whether logging `weight` now would be a weight record — decided on the watch, from
+        /// the merged snapshot, so it works with the phone out of range. A hint: the phone's
+        /// own marks (`ExerciseStats`) stay the source of truth.
+        func isWeightRecord(_ weight: Double) -> Bool {
+            tracksRecords && WeightRecord.isRecord(weight: weight, best: recordWeight)
         }
     }
 
@@ -418,13 +446,18 @@ enum WatchSyncMerge {
             guard let last = mine.last else { return info }
             let count = info.setsLoggedCount + mine.count
             let planned = count < info.plannedSets.count ? info.plannedSets[count] : nil
+            // Queued sets raise the bar in order, so the second of two heavier sets logged
+            // offline isn't also announced as a record.
+            let recordWeight = mine.reduce(info.recordWeight) { WeightRecord.raising($0, with: $1.weight) }
             return WatchWorkoutSnapshot.ExerciseInfo(
                 id: info.id,
                 name: info.name,
                 setsLoggedCount: count,
                 weight: planned?.weight ?? last.weight,
                 reps: planned?.reps ?? last.reps,
-                plannedSets: info.plannedSets
+                plannedSets: info.plannedSets,
+                recordWeight: recordWeight,
+                tracksRecords: info.tracksRecords
             )
         }
         return WatchWorkoutSnapshot(

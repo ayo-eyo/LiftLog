@@ -408,3 +408,98 @@ struct WatchSyncMergeReconcileTests {
         #expect(WatchSyncMerge.reconcile(pending: [entry], with: WatchSyncFixtures.context(appliedCommandIDs: [command.commandID])).isEmpty)
     }
 }
+
+@Suite("WatchSyncMerge — порог рекорда веса")
+struct WatchSyncMergeRecordWeightTests {
+    @Test("подходы из очереди поднимают порог по порядку")
+    func queuedSetsRaiseTheBarInOrder() throws {
+        let workoutID = UUID()
+        let exerciseID = UUID()
+        let snapshot = WatchSyncFixtures.snapshot(
+            workoutID: workoutID,
+            exercises: [WatchSyncFixtures.exerciseInfo(id: exerciseID, recordWeight: 80, tracksRecords: true)]
+        )
+        let pending = [
+            WatchSyncFixtures.pending(.logSet(WatchSyncFixtures.logSetCommand(workoutID: workoutID, exerciseID: exerciseID, weight: 85)), expectedVersion: 1),
+            WatchSyncFixtures.pending(.logSet(WatchSyncFixtures.logSetCommand(workoutID: workoutID, exerciseID: exerciseID, weight: 82.5)), expectedVersion: 2),
+        ]
+
+        let merged = try #require(WatchSyncMerge.activeSnapshot(in: WatchSyncFixtures.context(snapshot: snapshot), pending: pending))
+        let exercise = try #require(merged.exercises.first)
+
+        #expect(exercise.recordWeight == 85)
+        #expect(exercise.tracksRecords)
+        #expect(!exercise.isWeightRecord(85))
+        #expect(exercise.isWeightRecord(87.5))
+    }
+
+    @Test("без истории первый подход не рекорд, но задаёт порог следующему")
+    func firstSetSetsTheBar() throws {
+        let workoutID = UUID()
+        let exerciseID = UUID()
+        let info = WatchSyncFixtures.exerciseInfo(id: exerciseID, recordWeight: nil, tracksRecords: true)
+        let snapshot = WatchSyncFixtures.snapshot(workoutID: workoutID, exercises: [info])
+        let pending = [
+            WatchSyncFixtures.pending(.logSet(WatchSyncFixtures.logSetCommand(workoutID: workoutID, exerciseID: exerciseID, weight: 60)), expectedVersion: 1),
+        ]
+
+        let merged = try #require(WatchSyncMerge.activeSnapshot(in: WatchSyncFixtures.context(snapshot: snapshot), pending: pending))
+        let exercise = try #require(merged.exercises.first)
+
+        #expect(!info.isWeightRecord(60))
+        #expect(exercise.recordWeight == 60)
+        #expect(exercise.isWeightRecord(62.5))
+    }
+
+    @Test("подход без веса не рекорд и порог не двигает")
+    func bodyweightSetNeitherRecordsNorRaises() throws {
+        let workoutID = UUID()
+        let exerciseID = UUID()
+        let info = WatchSyncFixtures.exerciseInfo(id: exerciseID, recordWeight: 80, tracksRecords: true)
+        let snapshot = WatchSyncFixtures.snapshot(workoutID: workoutID, exercises: [info])
+        let pending = [
+            WatchSyncFixtures.pending(.logSet(WatchSyncFixtures.logSetCommand(workoutID: workoutID, exerciseID: exerciseID, weight: 0)), expectedVersion: 1),
+        ]
+
+        let merged = try #require(WatchSyncMerge.activeSnapshot(in: WatchSyncFixtures.context(snapshot: snapshot), pending: pending))
+
+        #expect(!info.isWeightRecord(0))
+        #expect(merged.exercises.first?.recordWeight == 80)
+    }
+
+    @Test("план, начатый на часах без телефона, несёт порог рекорда")
+    func locallyStartedPlanCarriesTheBar() throws {
+        let planID = UUID()
+        let exerciseID = UUID()
+        let plan = WatchSyncFixtures.summary(
+            id: planID,
+            exercises: [WatchSyncFixtures.exerciseInfo(id: exerciseID, recordWeight: 100, tracksRecords: true)]
+        )
+        let pending = [
+            WatchSyncFixtures.pending(.start(WatchSyncFixtures.startCommand(workoutID: planID)), expectedVersion: 1),
+            WatchSyncFixtures.pending(.logSet(WatchSyncFixtures.logSetCommand(workoutID: planID, exerciseID: exerciseID, weight: 105)), expectedVersion: 2),
+        ]
+
+        let merged = try #require(WatchSyncMerge.activeSnapshot(in: WatchSyncFixtures.context(plans: [plan]), pending: pending))
+
+        #expect(merged.exercises.first?.recordWeight == 105)
+        #expect(merged.exercises.first?.tracksRecords == true)
+    }
+
+    @Test("старый телефон без порога: рекордов на часах нет и после подходов из очереди")
+    func olderPhoneNeverAnnouncesRecords() throws {
+        let workoutID = UUID()
+        let exerciseID = UUID()
+        let snapshot = WatchSyncFixtures.snapshot(
+            workoutID: workoutID,
+            exercises: [WatchSyncFixtures.exerciseInfo(id: exerciseID)]
+        )
+        let pending = [
+            WatchSyncFixtures.pending(.logSet(WatchSyncFixtures.logSetCommand(workoutID: workoutID, exerciseID: exerciseID, weight: 60)), expectedVersion: 1),
+        ]
+
+        let merged = try #require(WatchSyncMerge.activeSnapshot(in: WatchSyncFixtures.context(snapshot: snapshot), pending: pending))
+
+        #expect(merged.exercises.first?.isWeightRecord(100) == false)
+    }
+}

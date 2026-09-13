@@ -689,3 +689,40 @@ struct WatchSessionManagerLivePushTests {
         #expect(decoded.snapshot?.workoutID == workout.syncID)
     }
 }
+
+@Suite("WatchSessionManager — порог рекорда в контексте")
+struct WatchSessionManagerRecordWeightTests {
+    @Test("упражнение в контексте несёт рекорд веса всей истории, включая идущую тренировку")
+    func exerciseInfoCarriesRecordWeight() throws {
+        let store = try TestStore.open()
+        let bench = Fixtures.exercise(in: store.context)
+        Fixtures.completedWorkout(bench, sets: [(80, 5)], on: Fixtures.day(0), in: store.context)
+        let workout = Fixtures.workout(date: Fixtures.day(1), startedAt: Fixtures.day(1), exercises: [bench], in: store.context)
+        workout.logSet(weight: 85, reps: 3, for: bench, now: Fixtures.day(1).addingTimeInterval(60), context: store.context)
+        let manager = WatchSessionManager()
+        manager.start(modelContext: store.context, restTimer: Fixtures.restTimer())
+
+        let command = WatchSyncFixtures.logSetCommand(workoutID: workout.syncID, exerciseID: bench.syncID, weight: 82.5, reps: 5)
+        let info = try #require(manager.logSet(command, context: store.context))
+
+        #expect(info.tracksRecords)
+        #expect(info.recordWeight == 85)
+    }
+
+    @Test("часы по своему DTO решают о рекорде так же, как телефон по истории", arguments: [75.0, 80, 82.5, 0])
+    func watchRecordCallMatchesPhone(weight: Double) throws {
+        let store = try TestStore.open()
+        let bench = Fixtures.exercise(in: store.context)
+        Fixtures.completedWorkout(bench, sets: [(70, 8), (80, 5)], on: Fixtures.day(0), in: store.context)
+        let workout = Fixtures.workout(date: Fixtures.day(1), startedAt: Fixtures.day(1), exercises: [bench], in: store.context)
+        let manager = WatchSessionManager()
+        manager.start(modelContext: store.context, restTimer: Fixtures.restTimer())
+
+        let watchSaysRecord = manager.exerciseInfo(for: bench, in: workout).isWeightRecord(weight)
+        let set = workout.logSet(weight: weight, reps: 5, for: bench, now: Fixtures.day(1).addingTimeInterval(60), context: store.context)
+        let phoneSaysRecord = ExerciseStats.recordBeaten(by: set.persistentModelID, in: ExerciseStats.samples(for: bench)) != nil
+
+        #expect(watchSaysRecord == phoneSaysRecord)
+        #expect(watchSaysRecord == (weight == 82.5))
+    }
+}
