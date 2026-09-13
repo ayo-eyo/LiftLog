@@ -120,9 +120,16 @@ struct SetRow: View {
     let weight: Double
     let reps: Int
     var fontSize: CGFloat = 15
+    /// The set was a weight record when logged (`ExerciseStats.recordSetIDs`).
+    var isRecord = false
 
     var body: some View {
         HStack {
+            if isRecord {
+                Image(systemName: "trophy.fill")
+                    .font(.system(size: fontSize * 0.8))
+                    .foregroundStyle(Color.plateRed)
+            }
             Text(weight.formatted(.number) + " кг")
                 .font(.mono(fontSize)).foregroundStyle(.ink)
             Spacer()
@@ -133,6 +140,6 @@ struct SetRow: View {
         // separate elements instead of one composed "75 kg, 10 reps" reading — this
         // row appears on five screens, so it's worth fixing once here.
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(weight.formatted(.number)) кг, \(reps) \(RussianPlural.form(reps, "повтор", "повтора", "повторов"))")
+        .accessibilityLabel("\(weight.formatted(.number)) кг, \(reps) \(RussianPlural.form(reps, "повтор", "повтора", "повторов"))\(isRecord ? ", рекорд веса" : "")")
     }
 }

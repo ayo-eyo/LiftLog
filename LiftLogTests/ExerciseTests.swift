@@ -43,21 +43,6 @@ struct ExerciseCatalogLinkTests {
     }
 }
 
-@Suite("Exercise.addSet")
-struct ExerciseAddSetTests {
-    @Test("вставляет сет в контекст и в sets")
-    func insertsSetIntoContextAndSets() throws {
-        let store = try TestStore.open()
-        let exercise = Fixtures.exercise(in: store.context)
-
-        exercise.addSet(weight: 60, reps: 8, context: store.context)
-        try store.context.save()
-
-        #expect(exercise.sets.count == 1)
-        #expect(try store.count(WorkoutSet.self) == 1)
-    }
-}
-
 @Suite("syncID — регресс на историческую коллизию default-value")
 struct SyncIDUniquenessTests {
     @Test("два подряд созданных Exercise имеют разные syncID")

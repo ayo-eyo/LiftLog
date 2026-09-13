@@ -113,7 +113,7 @@ struct PersistenceCascadeTests {
     func exerciseDeletionCascadesToSetsAfterReload() throws {
         let handle = try TestStore.open()
         let bench = Fixtures.exercise(in: handle.context)
-        bench.addSet(weight: 60, reps: 8, context: handle.context)
+        Fixtures.standaloneSet(weight: 60, reps: 8, for: bench, in: handle.context)
         _ = try handle.reload()
 
         handle.context.delete(bench)

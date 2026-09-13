@@ -16,13 +16,6 @@ final class Exercise {
         self.createdAt = createdAt
     }
 
-    func addSet(weight: Double, reps: Int, context: ModelContext) {
-        let order = (sets.map(\.order).max() ?? -1) + 1
-        let new = WorkoutSet(weight: weight, reps: reps, order: order)
-        context.insert(new)
-        sets.append(new)
-    }
-
     var catalogExercise: CatalogExercise? {
         catalogID.flatMap { ExerciseCatalog.byID[$0] }
     }
