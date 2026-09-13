@@ -246,6 +246,21 @@ final class PhoneSessionManager: NSObject, WCSessionDelegate {
         applyOnMain(contextData: data)
     }
 
+    /// The live counterpart to `didReceiveApplicationContext` — a `WatchContext` the
+    /// phone pushed via `sendMessage` because the watch was reachable, so an
+    /// already-open screen updates immediately instead of waiting for
+    /// `updateApplicationContext`'s best-effort delivery (see
+    /// `WatchSessionManager.send` on the phone).
+    nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
+        // `WatchMessageKey` is main-actor-isolated (the project defaults every type to
+        // `@MainActor`), so the key lookup itself has to happen after hopping, same
+        // reasoning as `apply(contextData:)`'s decode below.
+        Task { @MainActor in
+            guard let data = message[WatchMessageKey.push] as? Data else { return }
+            self.apply(contextData: data)
+        }
+    }
+
     nonisolated func sessionReachabilityDidChange(_ session: WCSession) {
         Task { @MainActor in self.flush() }
     }

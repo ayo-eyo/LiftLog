@@ -3,6 +3,19 @@ import WatchConnectivity
 import SwiftData
 import os
 
+/// Seam over the slice of `WCSession` that `WatchSessionManager.send` needs, so a test
+/// can verify the live-push behavior without a real paired watch — see the
+/// `create-tests` skill's seam table (`WCSession.default` is called out there by name).
+/// `WCSession` already has this exact shape, so it conforms with no extra code.
+protocol WatchConnectivitySession: AnyObject {
+    var activationState: WCSessionActivationState { get }
+    var isReachable: Bool { get }
+    func updateApplicationContext(_ applicationContext: [String: Any]) throws
+    func sendMessage(_ message: [String: Any], replyHandler: (([String: Any]) -> Void)?, errorHandler: ((Error) -> Void)?)
+}
+
+extension WCSession: WatchConnectivitySession {}
+
 /// Pushes the active workout and the startable plans to the paired Watch app and
 /// applies the commands (log a set, start, finish, skip rest) it sends back. The watch
 /// has no SwiftData store of its own — this is the only place that touches the phone's
@@ -12,6 +25,11 @@ final class WatchSessionManager: NSObject, WCSessionDelegate {
     static let shared = WatchSessionManager()
 
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "LiftLog", category: "WatchSession")
+    /// Only `send`'s own outgoing calls go through this seam — activation and the
+    /// delegate callbacks below still talk to `WCSession.default` directly, since tests
+    /// exercise those by calling `apply`/`logSet`/`finish` etc. directly rather than
+    /// through the real session.
+    var session: WatchConnectivitySession = WCSession.default
     private var modelContext: ModelContext?
     private weak var restTimer: RestTimer?
     private var started = false
@@ -84,12 +102,25 @@ final class WatchSessionManager: NSObject, WCSessionDelegate {
     }
 
     private func send(_ context: WatchContext) {
-        guard WCSession.default.activationState == .activated,
+        guard session.activationState == .activated,
               let data = try? JSONEncoder().encode(context) else { return }
         do {
-            try WCSession.default.updateApplicationContext(["data": data])
+            try session.updateApplicationContext(["data": data])
         } catch {
             logger.error("failed to push context (\(data.count) bytes): \(error.localizedDescription)")
+        }
+        // `updateApplicationContext` is a best-effort background-sync channel — it can
+        // sit undelivered for a long while when the watch app is already foreground and
+        // active, since nothing about it is timely by design. That leaves a set logged
+        // on the phone invisible on an already-open watch screen until the watch app is
+        // relaunched. When the watch is actually reachable, also push the same payload
+        // as a live message, which delivers immediately; `updateApplicationContext`
+        // above still covers the case where it isn't (or the message gets lost).
+        if session.isReachable {
+            let logger = self.logger
+            session.sendMessage([WatchMessageKey.push: data], replyHandler: nil) { error in
+                logger.error("live push failed, relying on application context: \(error.localizedDescription)")
+            }
         }
     }
 
