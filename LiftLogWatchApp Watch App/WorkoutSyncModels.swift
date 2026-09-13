@@ -544,3 +544,25 @@ enum CrownStepping {
         (value / step).rounded() * step
     }
 }
+
+// MARK: - Weight records
+
+/// The one kind of personal record the app tracks: a set heavier than every set logged
+/// for the exercise before it (plans/features/progress-analytics, decisions 2, 4, 5, 16).
+/// Lives in this shared file because the watch has to make the same call offline, from its
+/// own DTO, while the phone makes it from the full history in `ExerciseStats`.
+enum WeightRecord {
+    /// Whether `weight` beats `best`. A nil `best` means no weighted history yet — the
+    /// first weighted set has nothing to beat, so it isn't a record. A bodyweight set
+    /// (weight 0) never is.
+    static func isRecord(weight: Double, best: Double?) -> Bool {
+        guard weight > 0, let best else { return false }
+        return weight > best
+    }
+
+    /// `best` after a set of `weight` has been logged. Bodyweight sets leave it where it was.
+    static func raising(_ best: Double?, with weight: Double) -> Double? {
+        guard weight > 0 else { return best }
+        return max(best ?? 0, weight)
+    }
+}

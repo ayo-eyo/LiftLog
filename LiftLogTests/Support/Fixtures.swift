@@ -88,6 +88,62 @@ enum Fixtures {
         }
     }
 
+    /// `epoch` plus `days` whole days.
+    nonisolated static func day(_ days: Int) -> Date {
+        epoch.addingTimeInterval(Double(days) * 86_400)
+    }
+
+    /// Gregorian calendar pinned to UTC, so day and month boundaries in a test don't move
+    /// with the machine's time zone.
+    nonisolated static var utcCalendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        return calendar
+    }
+
+    /// A finished workout holding `sets` of one exercise, built the way the app builds it —
+    /// one planned position per set, `start`, `logSet` a minute apart, `finish` — so an
+    /// exercise's history can be laid out across days deterministically.
+    @discardableResult
+    static func completedWorkout(
+        _ exercise: Exercise,
+        sets: [(weight: Double, reps: Int)],
+        on date: Date = epoch,
+        name: String = "",
+        in context: ModelContext
+    ) -> Workout {
+        let workout = Workout(date: date, name: name)
+        context.insert(workout)
+        for _ in sets {
+            workout.addExercise(exercise, context: context)
+        }
+        workout.start(now: date)
+        for (index, set) in sets.enumerated() {
+            workout.logSet(weight: set.weight, reps: set.reps, for: exercise, now: date.addingTimeInterval(Double(index + 1) * 60), context: context)
+        }
+        workout.finish(now: date.addingTimeInterval(Double(sets.count + 1) * 60))
+        return workout
+    }
+
+    /// A set logged outside any workout. The app can no longer create one (the standalone
+    /// input on `ExerciseDetailView` is gone, and `Exercise.addSet` with it), but existing
+    /// stores still hold them — so history and cascade tests build them the way the
+    /// removed `Exercise.addSet` did.
+    @discardableResult
+    static func standaloneSet(
+        weight: Double,
+        reps: Int,
+        for exercise: Exercise,
+        at date: Date = epoch,
+        in context: ModelContext
+    ) -> WorkoutSet {
+        let order = (exercise.sets.map(\.order).max() ?? -1) + 1
+        let set = WorkoutSet(weight: weight, reps: reps, createdAt: date, order: order)
+        context.insert(set)
+        exercise.sets.append(set)
+        return set
+    }
+
     // MARK: RestTimer
 
     /// A `RestTimer` whose notification hooks are no-ops, so tests never touch the

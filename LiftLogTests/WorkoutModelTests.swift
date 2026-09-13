@@ -306,8 +306,8 @@ struct ExerciseDeleteCascadeTests {
         // (нерелевантную здесь) семантику. Каскад, который проверяет этот тест, — только
         // Exercise -> WorkoutSet.
         let bench = Fixtures.exercise("Жим лёжа", in: store.context)
-        bench.addSet(weight: 60, reps: 8, context: store.context)
-        bench.addSet(weight: 65, reps: 6, context: store.context)
+        Fixtures.standaloneSet(weight: 60, reps: 8, for: bench, in: store.context)
+        Fixtures.standaloneSet(weight: 65, reps: 6, for: bench, at: Fixtures.date(offset: 60), in: store.context)
 
         #expect(try store.count(WorkoutSet.self) == 2)
 

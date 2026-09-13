@@ -162,9 +162,11 @@ final class Workout {
         bumpVersion()
     }
 
-    func logSet(weight: Double, reps: Int, for exercise: Exercise, context: ModelContext) {
+    /// `now` stamps the set's `createdAt` — a parameter, like `start(now:)`/`finish(now:)`,
+    /// so tests can lay out a history across days deterministically.
+    func logSet(weight: Double, reps: Int, for exercise: Exercise, now: Date = .now, context: ModelContext) {
         let order = (sets.map(\.order).max() ?? -1) + 1
-        let new = WorkoutSet(weight: weight, reps: reps, order: order)
+        let new = WorkoutSet(weight: weight, reps: reps, createdAt: now, order: order)
         context.insert(new)
         sets.append(new)
         exercise.sets.append(new)
