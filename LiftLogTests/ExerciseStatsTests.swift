@@ -255,3 +255,105 @@ struct ExerciseChartPointsTests {
         #expect(ExerciseStats.availableMetrics(ExerciseStats.samples(for: bench)) == [.weight, .oneRepMax, .volume])
     }
 }
+
+@Suite("ExerciseStats.lastSession")
+struct ExerciseLastSessionTests {
+    @Test("прошлый раз — последняя сессия до идущей тренировки, без неё самой")
+    func latestSessionBeforeCurrentWorkout() throws {
+        let store = try TestStore.open()
+        let bench = Fixtures.exercise(in: store.context)
+        Fixtures.completedWorkout(bench, sets: [(60, 8)], on: Fixtures.day(0), in: store.context)
+        Fixtures.completedWorkout(bench, sets: [(62.5, 6), (62.5, 5)], on: Fixtures.day(3), in: store.context)
+        let current = Fixtures.workout(date: Fixtures.day(5), startedAt: Fixtures.day(5), exercises: [bench], in: store.context)
+        current.logSet(weight: 65, reps: 5, for: bench, now: Fixtures.day(5).addingTimeInterval(60), context: store.context)
+
+        let last = try #require(ExerciseStats.lastSession(ExerciseStats.samples(for: bench), before: current))
+
+        #expect(last.sets.map { $0.weight } == [62.5, 62.5])
+        #expect(WorkoutExerciseLogView.setsSummary(last.sets) == "62,5×6 · 62,5×5")
+    }
+
+    @Test("без прошлых сессий прошлого раза нет")
+    func noLastSessionWithoutHistory() throws {
+        let store = try TestStore.open()
+        let bench = Fixtures.exercise(in: store.context)
+        let current = Fixtures.workout(startedAt: Fixtures.epoch, exercises: [bench], in: store.context)
+        current.logSet(weight: 60, reps: 8, for: bench, now: Fixtures.date(offset: 60), context: store.context)
+
+        #expect(ExerciseStats.lastSession(ExerciseStats.samples(for: bench), before: current) == nil)
+    }
+}
+
+@Suite("ExerciseStats.recordBeaten")
+struct ExerciseRecordBeatenTests {
+    @Test("рекордный подход сообщает свой вес и побитый прежний рекорд")
+    func reportsWeightAndPreviousRecord() throws {
+        let store = try TestStore.open()
+        let bench = Fixtures.exercise(in: store.context)
+        Fixtures.completedWorkout(bench, sets: [(80, 5)], on: Fixtures.day(0), in: store.context)
+        let current = Fixtures.workout(date: Fixtures.day(1), startedAt: Fixtures.day(1), exercises: [bench], in: store.context)
+        let set = current.logSet(weight: 82.5, reps: 3, for: bench, now: Fixtures.day(1).addingTimeInterval(60), context: store.context)
+
+        let record = try #require(ExerciseStats.recordBeaten(by: set.persistentModelID, in: ExerciseStats.samples(for: bench)))
+
+        #expect(record.weight == 82.5)
+        #expect(record.previous == 80)
+    }
+
+    @Test("повтор только что поставленного рекорда баннера не даёт")
+    func repeatingNewRecordIsNotRecord() throws {
+        let store = try TestStore.open()
+        let bench = Fixtures.exercise(in: store.context)
+        Fixtures.completedWorkout(bench, sets: [(80, 5)], on: Fixtures.day(0), in: store.context)
+        let current = Fixtures.workout(date: Fixtures.day(1), startedAt: Fixtures.day(1), exercises: [bench], in: store.context)
+        current.logSet(weight: 82.5, reps: 3, for: bench, now: Fixtures.day(1).addingTimeInterval(60), context: store.context)
+        let again = current.logSet(weight: 82.5, reps: 3, for: bench, now: Fixtures.day(1).addingTimeInterval(120), context: store.context)
+
+        #expect(ExerciseStats.recordBeaten(by: again.persistentModelID, in: ExerciseStats.samples(for: bench)) == nil)
+    }
+
+    @Test("первый в истории подход с весом баннера не даёт")
+    func firstWeightedSetIsNotRecord() throws {
+        let store = try TestStore.open()
+        let bench = Fixtures.exercise(in: store.context)
+        let current = Fixtures.workout(startedAt: Fixtures.epoch, exercises: [bench], in: store.context)
+        let set = current.logSet(weight: 60, reps: 8, for: bench, now: Fixtures.date(offset: 60), context: store.context)
+
+        #expect(ExerciseStats.recordBeaten(by: set.persistentModelID, in: ExerciseStats.samples(for: bench)) == nil)
+    }
+}
+
+@Suite("ExerciseStats.records(in:)")
+struct WorkoutRecordsSummaryTests {
+    @Test("по упражнению — самый тяжёлый рекордный подход этой тренировки")
+    func heaviestRecordPerExercise() throws {
+        let store = try TestStore.open()
+        let bench = Fixtures.exercise("Жим лёжа", in: store.context)
+        let squat = Fixtures.exercise("Присед", in: store.context)
+        Fixtures.completedWorkout(bench, sets: [(60, 8)], on: Fixtures.day(0), in: store.context)
+        Fixtures.completedWorkout(squat, sets: [(100, 5)], on: Fixtures.day(0), in: store.context)
+
+        let day = Fixtures.day(1)
+        let workout = Fixtures.workout(date: day, startedAt: day, exercises: [bench, squat], in: store.context)
+        workout.logSet(weight: 62.5, reps: 5, for: bench, now: day.addingTimeInterval(60), context: store.context)
+        workout.logSet(weight: 65, reps: 3, for: bench, now: day.addingTimeInterval(120), context: store.context)
+        workout.logSet(weight: 95, reps: 5, for: squat, now: day.addingTimeInterval(180), context: store.context)
+        workout.finish(now: day.addingTimeInterval(240))
+
+        let records = ExerciseStats.records(in: workout)
+
+        #expect(records.map { $0.exercise.name } == ["Жим лёжа"])
+        #expect(records.map { $0.weight } == [65])
+    }
+
+    @Test("рекорд прошлой тренировки в сводку следующей не попадает")
+    func earlierRecordStaysInItsWorkout() throws {
+        let store = try TestStore.open()
+        let bench = Fixtures.exercise(in: store.context)
+        Fixtures.completedWorkout(bench, sets: [(60, 8)], on: Fixtures.day(0), in: store.context)
+        Fixtures.completedWorkout(bench, sets: [(65, 5)], on: Fixtures.day(1), in: store.context)
+        let latest = Fixtures.completedWorkout(bench, sets: [(62.5, 5)], on: Fixtures.day(2), in: store.context)
+
+        #expect(ExerciseStats.records(in: latest).isEmpty)
+    }
+}

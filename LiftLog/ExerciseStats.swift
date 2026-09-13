@@ -41,6 +41,21 @@ struct WeightRecordInfo: Equatable {
     let date: Date
 }
 
+/// A just-logged set that beat the exercise's weight record — the banner's content.
+struct WeightRecordBreak: Equatable {
+    let setID: PersistentIdentifier
+    let weight: Double
+    /// The record it beat.
+    let previous: Double
+}
+
+/// One exercise's weight record set in a given workout — a row of the completed summary.
+struct WorkoutRecord {
+    let exercise: Exercise
+    /// The heaviest record set of the exercise in that workout.
+    let weight: Double
+}
+
 /// One workout's worth of an exercise's sets (or one day's, outside a workout).
 struct ExerciseSession: Identifiable, Equatable {
     let key: SetSample.SessionKey
@@ -228,5 +243,45 @@ enum ExerciseStats {
     ) -> ExerciseChartPeriod {
         let recent = chartPoints(sessions, metric: metric, period: .threeMonths, now: now, calendar: calendar)
         return recent.count >= 2 ? .threeMonths : .all
+    }
+
+    // MARK: During and after a workout (FR-3)
+
+    /// «Прошлый раз»: the exercise's latest session that isn't `workout` itself and began
+    /// before it did.
+    static func lastSession(_ samples: [SetSample], before workout: Workout) -> ExerciseSession? {
+        let key = SetSample.SessionKey.workout(workout.persistentModelID)
+        let cutoff = workout.startedAt ?? workout.date
+        return sessions(samples).first { $0.key != key && $0.date < cutoff }
+    }
+
+    /// The record `setID` broke, if it was one — same running maximum as `recordSetIDs`,
+    /// stopping at that set so the banner can say what it beat.
+    static func recordBeaten(by setID: PersistentIdentifier, in samples: [SetSample]) -> WeightRecordBreak? {
+        var best: Double?
+        for sample in samples {
+            if sample.id == setID {
+                guard let previous = best, WeightRecord.isRecord(weight: sample.weight, best: previous) else { return nil }
+                return WeightRecordBreak(setID: setID, weight: sample.weight, previous: previous)
+            }
+            best = WeightRecord.raising(best, with: sample.weight)
+        }
+        return nil
+    }
+
+    /// Exercises of `workout` that set a weight record in it, each with its heaviest record
+    /// set there. Marks come from each exercise's whole history — judged against this
+    /// workout alone, every first set would be "a record".
+    static func records(in workout: Workout) -> [WorkoutRecord] {
+        let key = SetSample.SessionKey.workout(workout.persistentModelID)
+        return workout.orderedExercises.compactMap { exercise in
+            let exerciseSamples = samples(for: exercise)
+            let recordIDs = recordSetIDs(exerciseSamples)
+            let heaviest = exerciseSamples
+                .filter { $0.sessionKey == key && recordIDs.contains($0.id) }
+                .map(\.weight)
+                .max()
+            return heaviest.map { WorkoutRecord(exercise: exercise, weight: $0) }
+        }
     }
 }

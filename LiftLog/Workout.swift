@@ -163,14 +163,17 @@ final class Workout {
     }
 
     /// `now` stamps the set's `createdAt` — a parameter, like `start(now:)`/`finish(now:)`,
-    /// so tests can lay out a history across days deterministically.
-    func logSet(weight: Double, reps: Int, for exercise: Exercise, now: Date = .now, context: ModelContext) {
+    /// so tests can lay out a history across days deterministically. Returns the new set so
+    /// the logging screen can check it against the exercise's history (record banner).
+    @discardableResult
+    func logSet(weight: Double, reps: Int, for exercise: Exercise, now: Date = .now, context: ModelContext) -> WorkoutSet {
         let order = (sets.map(\.order).max() ?? -1) + 1
         let new = WorkoutSet(weight: weight, reps: reps, createdAt: now, order: order)
         context.insert(new)
         sets.append(new)
         exercise.sets.append(new)
         bumpVersion()
+        return new
     }
 
     func setsFor(_ exercise: Exercise) -> [WorkoutSet] {
