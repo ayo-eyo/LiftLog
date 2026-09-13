@@ -253,7 +253,11 @@ struct WorkoutDetailView: View {
     // MARK: Completed content
 
     private var completedList: some View {
-        List {
+        let records = ExerciseStats.records(in: workout)
+        return List {
+            if !records.isEmpty {
+                recordsSection(records)
+            }
             ForEach(workout.orderedExercises) { exercise in
                 exerciseSection(exercise)
             }
@@ -262,13 +266,39 @@ struct WorkoutDetailView: View {
         .background(.chalk)
     }
 
-    private func exerciseSection(_ exercise: Exercise) -> some View {
+    /// «🏆 N рекордов» — one row per exercise that set a weight record here, not one per
+    /// record set: 60 → 62,5 → 65 in a row is a single «65 кг» (FR-3).
+    private func recordsSection(_ records: [WorkoutRecord]) -> some View {
         Section {
+            ForEach(records, id: \.exercise.persistentModelID) { record in
+                HStack {
+                    Text(record.exercise.name).font(.sans(14)).foregroundStyle(.ink)
+                    Spacer()
+                    Text(ProgressFormat.kg(record.weight)).font(.mono(14)).foregroundStyle(.ink)
+                }
+            }
+        } header: {
+            HStack(spacing: 6) {
+                Image(systemName: "trophy.fill").foregroundStyle(.plateRed)
+                Text("\(records.count) \(RussianPlural.form(records.count, "рекорд", "рекорда", "рекордов"))")
+                    .font(.sans(15))
+                    .foregroundStyle(.ink)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("workoutDetail.records")
+        }
+        .listRowBackground(Color.chalk)
+    }
+
+    private func exerciseSection(_ exercise: Exercise) -> some View {
+        // Marks come from the exercise's whole history (`ExerciseStats.records(in:)` has why).
+        let recordIDs = ExerciseStats.recordSetIDs(ExerciseStats.samples(for: exercise))
+        return Section {
             ForEach(workout.setsFor(exercise)) { set in
                 Button {
                     activeSheet = .editSet(set)
                 } label: {
-                    SetRow(weight: set.weight, reps: set.reps, fontSize: 14)
+                    SetRow(weight: set.weight, reps: set.reps, fontSize: 14, isRecord: recordIDs.contains(set.persistentModelID))
                 }
             }
             NavigationLink("Вся история упражнения") {
