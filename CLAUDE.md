@@ -108,7 +108,7 @@ The iOS app's sources are grouped by feature, with the shared domain model on it
 | `Services/` | System integrations: `HealthKitManager`, `NotificationManager` |
 | `DesignSystem/` | `Theme`, `Fonts`, `RussianPlural` |
 
-`Assets.xcassets`, `Info.plist` and `LiftLog.entitlements` stay at the `LiftLog/` root — the build settings point at those paths. The watch app (`LiftLogWatchApp Watch App/`) and both test targets are flat. `WorkoutSyncModels.swift`'s two paths are hardcoded in `Scripts/check-watch-sync-parity.sh` and `SourcePaths` (`LiftLogTests/Support/WatchSyncFixtures.swift`) — move it and update both.
+`Assets.xcassets`, `Info.plist` and `LiftLog.entitlements` stay at the `LiftLog/` root — the build settings point at those paths. The watch app (`LiftLogWatchApp Watch App/`) is flat. Both test targets mirror the app's folders — a suite goes in the folder of the code it tests (`LiftLogTests/Progress/ExerciseStatsTests.swift`, `LiftLogUITests/Workouts/WorkoutCopyUITests.swift`); tests of the shared sync file, `CrownStepping` included, go in `Sync/`. `LiftLogTests/Support/` and `LiftLogUITests/Support/` hold helpers and stay at the target roots (`SourcePaths` derives the repo root from `Support/`'s location). `WorkoutSyncModels.swift`'s two paths are hardcoded in `Scripts/check-watch-sync-parity.sh` and `SourcePaths` (`LiftLogTests/Support/WatchSyncFixtures.swift`) — move it and update both.
 
 ### Data model (SwiftData, iOS target only)
 

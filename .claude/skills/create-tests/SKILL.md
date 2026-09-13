@@ -38,10 +38,21 @@ description: How and when to write tests in the LiftLog project. Use whenever yo
 
 ## 2. Куда положить файл
 
-- Юниты: `LiftLogTests/<Тема>Tests.swift` (например `WorkoutModelTests.swift`,
-  `TemplateDefaultsTests.swift`, `WatchWireFormatTests.swift`).
-- UI: `LiftLogUITests/<Поток>UITests.swift` (например `WorkoutFlowUITests.swift`).
-- Общие хелперы — только в `*/Support/`, не в файлах с тестами.
+Тестовые цели повторяют папки приложения (`App`, `Models`, `Workouts`, `Catalog`,
+`MuscleMap`, `Progress`, `Sync`, `Services`, `DesignSystem`): набор лежит в папке того
+кода, который проверяет.
+
+- Юниты: `LiftLogTests/<Папка>/<Тема>Tests.swift` (например `Models/WorkoutModelTests.swift`,
+  `Progress/ExerciseStatsTests.swift`, `Sync/WatchWireFormatTests.swift`). Тесты общего
+  файла синхронизации (`WorkoutSyncModels.swift`, включая `CrownStepping` и
+  `WatchSyncMerge`) — в `Sync/`.
+- UI: `LiftLogUITests/<Папка>/<Поток>UITests.swift` (например `Workouts/WorkoutCopyUITests.swift`,
+  `Progress/AnalyticsUITests.swift`).
+- Сначала ищи существующий набор в нужной папке и расширяй его, новый файл — только для
+  новой темы.
+- Общие хелперы — только в `LiftLogTests/Support/` и `LiftLogUITests/Support/`, не в файлах
+  с тестами. `Support/` остаётся в корне цели: `SourcePaths` вычисляет корень репозитория
+  от её расположения.
 
 Цели используют file-system-synchronized группы: **новый файл подхватывается сам**,
 `project.pbxproj` править не нужно и нельзя (лишний диф).
