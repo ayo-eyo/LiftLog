@@ -216,6 +216,16 @@ struct WatchFinishWorkoutCommand: Codable {
     let workoutID: UUID
 }
 
+/// "This watch is recording the workout into Health" — sent once its
+/// `HKLiveWorkoutBuilder` has actually begun collecting, so the phone knows not to
+/// save its own heart-rate-less copy (and to delete one it already saved). Queued like
+/// every other command: it has to survive the phone being out of range and land after
+/// the `start` it belongs to.
+struct WatchHealthRecordedCommand: Codable {
+    let commandID: UUID
+    let workoutID: UUID
+}
+
 /// One envelope for every mutating command, so the watch can keep them in a single
 /// ordered queue while offline — order matters (`start` has to land before the sets
 /// logged into it).
@@ -223,12 +233,14 @@ enum WatchCommand: Codable {
     case logSet(WatchLogSetCommand)
     case start(WatchStartWorkoutCommand)
     case finish(WatchFinishWorkoutCommand)
+    case healthRecorded(WatchHealthRecordedCommand)
 
     var commandID: UUID {
         switch self {
         case .logSet(let command): command.commandID
         case .start(let command): command.commandID
         case .finish(let command): command.commandID
+        case .healthRecorded(let command): command.commandID
         }
     }
 
@@ -237,6 +249,7 @@ enum WatchCommand: Codable {
         case .logSet(let command): command.workoutID
         case .start(let command): command.workoutID
         case .finish(let command): command.workoutID
+        case .healthRecorded(let command): command.workoutID
         }
     }
 }
@@ -345,9 +358,10 @@ enum WatchSyncMerge {
             // explicit ack (`context.appliedCommandIDs`, checked by the caller before
             // this) is the only safe signal for `.finish`.
             return false
-        case .logSet:
+        case .logSet, .healthRecorded:
             // A logged set is exactly what the version counts, so here the version is
             // the signal — the phone reaching the expected version means it applied it.
+            // Marking a workout as recorded on the watch is the same +1.
             guard let remote = remoteVersion(of: entry.workoutID, in: context) else { return false }
             return remote >= entry.expectedVersion
         }
@@ -466,6 +480,53 @@ enum WatchSyncMerge {
             restEndDate: nil,
             restExerciseName: nil
         )
+    }
+}
+
+// MARK: - Health recording
+
+/// When the watch's live workout session (`WorkoutRecorder`) should start and stop, and
+/// the metadata both sides stamp on what they save to Health. Here rather than in the
+/// watch target for the same reason as `WatchSyncMerge`: it's testable from here.
+enum WatchHealthRecording {
+    /// Carries `Workout.syncID`, so the phone can find its own copy of a workout.
+    static let workoutIDMetadataKey = "LiftLogWorkoutID"
+    static let recordedOnMetadataKey = "LiftLogRecordedOn"
+    static let recordedOnPhone = "phone"
+    static let recordedOnWatch = "watch"
+
+    enum Action: Equatable {
+        case none
+        case start(UUID)
+        case end
+        /// A different workout is active than the one being recorded: end, then start.
+        case restart(UUID)
+    }
+
+    /// `isTrusted` is false while all the watch has is the context cached from an earlier
+    /// run — it can be days old. Starting from it records a workout that's long over;
+    /// ending from it cuts short a session recovered after a crash. Better to wait the
+    /// second it takes the phone to answer.
+    static func action(recording: UUID?, active: UUID?, isTrusted: Bool) -> Action {
+        guard isTrusted else { return .none }
+        switch (recording, active) {
+        case (nil, nil): return .none
+        case (nil, let active?): return .start(active)
+        case (_?, nil): return .end
+        case (let recording?, let active?): return recording == active ? .none : .restart(active)
+        }
+    }
+
+    /// Opening the watch app mid-workout shouldn't cut the first half out of the duration
+    /// in Health. Beyond this, a date is more likely wrong than a workout that long.
+    static let maxBackdate: TimeInterval = 3 * 60 * 60
+
+    /// Where collection starts: the workout's own start when it's a plausible one, now
+    /// otherwise. A workout started on this watch while offline still carries its plan's
+    /// *creation* date (see `WatchSyncMerge.promote`), so that one always starts now.
+    static func collectionStart(workoutDate: Date, startedLocally: Bool, now: Date) -> Date {
+        guard !startedLocally, workoutDate <= now, now.timeIntervalSince(workoutDate) <= maxBackdate else { return now }
+        return workoutDate
     }
 }
 

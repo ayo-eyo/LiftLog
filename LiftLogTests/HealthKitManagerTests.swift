@@ -11,7 +11,10 @@ private final class FakeSavingStore: WorkoutSavingStore {
     private(set) var beginCollectionCallCount = 0
     private(set) var endCollectionCallCount = 0
     private(set) var finishWorkoutCallCount = 0
+    private(set) var metadata: [String: Any] = [:]
     var errorToThrow: Error?
+    /// Runs inside `finishWorkout` — lets a test land something mid-save.
+    var duringFinish: (() -> Void)?
 
     func authorizationStatus(for type: HKObjectType) -> HKAuthorizationStatus {
         authorizationStatusToReturn
@@ -22,6 +25,10 @@ private final class FakeSavingStore: WorkoutSavingStore {
         if let errorToThrow { throw errorToThrow }
     }
 
+    func addMetadata(_ metadata: [String: Any]) async throws {
+        self.metadata.merge(metadata) { _, new in new }
+    }
+
     func endCollection(at date: Date) async throws {
         endCollectionCallCount += 1
         if let errorToThrow { throw errorToThrow }
@@ -30,6 +37,81 @@ private final class FakeSavingStore: WorkoutSavingStore {
     func finishWorkout() async throws {
         finishWorkoutCallCount += 1
         if let errorToThrow { throw errorToThrow }
+        duringFinish?()
+    }
+}
+
+private final class FakeDeletingStore: WorkoutDeletingStore {
+    private(set) var deletedWorkoutIDs: [UUID] = []
+
+    func deletePhoneWorkouts(liftLogWorkoutID: UUID) async throws {
+        deletedWorkoutIDs.append(liftLogWorkoutID)
+    }
+}
+
+@Suite("HealthKitManager — тренировка, записанная часами")
+struct HealthKitManagerWatchRecordingTests {
+    @Test("не сохраняет свою копию, если тренировку записали часы")
+    func skipsWhenRecordedOnWatch() async throws {
+        let store = try TestStore.open()
+        let exercise = Fixtures.exercise(in: store.context)
+        let workout = Fixtures.workout(exercises: [exercise], in: store.context)
+        Fixtures.log([(60, 8)], for: exercise, in: workout, context: store.context)
+        workout.completedAt = Fixtures.date(offset: 3600)
+        workout.healthRecordedOnWatch = true
+
+        let fake = FakeSavingStore()
+        await HealthKitManager.save(workout, to: fake)
+
+        #expect(fake.beginCollectionCallCount == 0)
+        #expect(fake.finishWorkoutCallCount == 0)
+    }
+
+    @Test("копия телефона помечена ID тренировки и источником — по ним её потом находят для удаления")
+    func stampsWorkoutIDAndSource() async throws {
+        let store = try TestStore.open()
+        let exercise = Fixtures.exercise(in: store.context)
+        let workout = Fixtures.workout(exercises: [exercise], in: store.context)
+        Fixtures.log([(60, 8)], for: exercise, in: workout, context: store.context)
+        workout.completedAt = Fixtures.date(offset: 3600)
+
+        let fake = FakeSavingStore()
+        await HealthKitManager.save(workout, to: fake)
+
+        #expect(fake.metadata[WatchHealthRecording.workoutIDMetadataKey] as? String == workout.syncID.uuidString)
+        #expect(fake.metadata[WatchHealthRecording.recordedOnMetadataKey] as? String == WatchHealthRecording.recordedOnPhone)
+        #expect(fake.metadata[HKMetadataKeyIndoorWorkout] as? Bool == true)
+    }
+
+    @Test("отметка с часов, пришедшая во время сохранения, удаляет только что сохранённую копию")
+    func deletesCopyWhenWatchReportLandsMidSave() async throws {
+        let store = try TestStore.open()
+        let exercise = Fixtures.exercise(in: store.context)
+        let workout = Fixtures.workout(exercises: [exercise], in: store.context)
+        Fixtures.log([(60, 8)], for: exercise, in: workout, context: store.context)
+        workout.completedAt = Fixtures.date(offset: 3600)
+
+        let saving = FakeSavingStore()
+        saving.duringFinish = { workout.healthRecordedOnWatch = true }
+        let deleting = FakeDeletingStore()
+        await HealthKitManager.save(workout, to: saving, deletingStore: deleting)
+
+        #expect(saving.finishWorkoutCallCount == 1)
+        #expect(deleting.deletedWorkoutIDs == [workout.syncID])
+    }
+
+    @Test("обычное сохранение ничего не удаляет")
+    func plainSaveDeletesNothing() async throws {
+        let store = try TestStore.open()
+        let exercise = Fixtures.exercise(in: store.context)
+        let workout = Fixtures.workout(exercises: [exercise], in: store.context)
+        Fixtures.log([(60, 8)], for: exercise, in: workout, context: store.context)
+        workout.completedAt = Fixtures.date(offset: 3600)
+
+        let deleting = FakeDeletingStore()
+        await HealthKitManager.save(workout, to: FakeSavingStore(), deletingStore: deleting)
+
+        #expect(deleting.deletedWorkoutIDs.isEmpty)
     }
 }
 

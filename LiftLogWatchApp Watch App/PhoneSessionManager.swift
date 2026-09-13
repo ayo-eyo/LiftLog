@@ -92,6 +92,13 @@ final class PhoneSessionManager: NSObject, WCSessionDelegate {
         enqueue(.finish(WatchFinishWorkoutCommand(commandID: UUID(), workoutID: workoutID)))
     }
 
+    /// Tells the phone this watch is recording `workoutID` into Health, so it doesn't
+    /// save its own bare copy. Not gated on `snapshot`: the workout can already be
+    /// finished by the time the recorder reports in.
+    func markHealthRecorded(workoutID: UUID) {
+        enqueue(.healthRecorded(WatchHealthRecordedCommand(commandID: UUID(), workoutID: workoutID)))
+    }
+
     /// Asks the phone for its current context. The phone only pushes when *it* notices
     /// a change, so a push lost on the way — or a plan created while this app wasn't
     /// listening — would otherwise leave this screen on a stale list indefinitely, with
@@ -259,7 +266,9 @@ final class PhoneSessionManager: NSObject, WCSessionDelegate {
             logger.error("activation failed: \(error.localizedDescription)")
         }
         if let data = session.receivedApplicationContext["data"] as? Data {
-            applyOnMain(contextData: data)
+            // Whatever was last delivered, possibly by an earlier run — good enough to
+            // draw the screen, not to start or stop a Health recording on.
+            applyOnMain(contextData: data, isFresh: false)
         }
         Task { @MainActor in
             self.flush()
@@ -272,7 +281,7 @@ final class PhoneSessionManager: NSObject, WCSessionDelegate {
 
     nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
         guard let data = applicationContext["data"] as? Data else { return }
-        applyOnMain(contextData: data)
+        applyOnMain(contextData: data, isFresh: true)
     }
 
     /// The live counterpart to `didReceiveApplicationContext` — a `WatchContext` the
@@ -304,23 +313,33 @@ final class PhoneSessionManager: NSObject, WCSessionDelegate {
     // target (they're the iOS-side multi-session-transition callbacks; watchOS has only
     // one paired counterpart, so they don't apply).
 
-    nonisolated private func applyOnMain(contextData data: Data) {
+    nonisolated private func applyOnMain(contextData data: Data, isFresh: Bool) {
         // `WatchContext`'s `Decodable` conformance is main-actor-isolated (the project
         // defaults every type to `@MainActor`), so the decode itself has to happen
         // after hopping, not before — decoding here in the `nonisolated` function would
         // warn under Swift 5 and fail to compile under the Swift 6 language mode.
         Task { @MainActor in
-            self.apply(contextData: data)
+            self.apply(contextData: data, isFresh: isFresh)
         }
     }
 
-    private func apply(contextData data: Data) {
+    /// Whether the phone has sent a context during this run — as opposed to only the one
+    /// `receivedApplicationContext` cached from before.
+    private(set) var hasFreshContext = false
+
+    /// Whether `snapshot` is safe to start or stop a Health recording on: the phone
+    /// answered this run, or the queue holds something this watch did itself (a workout
+    /// started or finished offline is known here regardless of the phone).
+    var isSnapshotTrusted: Bool { hasFreshContext || !pending.isEmpty }
+
+    private func apply(contextData data: Data, isFresh: Bool = true) {
         guard let decoded = try? JSONDecoder().decode(WatchContext.self, from: data) else {
             // Nothing else changes here, so the screen keeps showing the last context
             // that *did* decode — a stale list with no visible cause. Leave a trace.
             logger.error("не удалось декодировать контекст с телефона (\(data.count) байт), экран остаётся на прошлом состоянии")
             return
         }
+        if isFresh { hasFreshContext = true }
         let oldEndDate = context?.snapshot?.restEndDate
         context = decoded
         // Drop everything the phone confirmed applying before the UI reads the merged

@@ -186,14 +186,15 @@ struct WatchWireFormatCommandTests {
         #expect(decoded.appliedCommandIDs == [commandID])
     }
 
-    @Test("каждый вид команды переживает round-trip и сохраняет свой commandID", arguments: [0, 1, 2])
+    @Test("каждый вид команды переживает round-trip и сохраняет свой commandID", arguments: [0, 1, 2, 3])
     func everyCommandKindRoundTrips(kind: Int) throws {
         let commandID = UUID()
         let workoutID = UUID()
         let command: WatchCommand = switch kind {
         case 0: .logSet(WatchSyncFixtures.logSetCommand(workoutID: workoutID, exerciseID: UUID(), commandID: commandID))
         case 1: .start(WatchSyncFixtures.startCommand(workoutID: workoutID, commandID: commandID))
-        default: .finish(WatchSyncFixtures.finishCommand(workoutID: workoutID, commandID: commandID))
+        case 2: .finish(WatchSyncFixtures.finishCommand(workoutID: workoutID, commandID: commandID))
+        default: .healthRecorded(WatchSyncFixtures.healthRecordedCommand(workoutID: workoutID, commandID: commandID))
         }
 
         let data = try JSONEncoder().encode(command)

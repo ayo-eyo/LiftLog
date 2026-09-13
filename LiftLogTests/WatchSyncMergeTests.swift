@@ -382,4 +382,29 @@ struct WatchSyncMergeReconcileTests {
 
         #expect(WatchSyncMerge.localVersion(of: workoutID, in: context, pending: pending) == 3)
     }
+
+    @Test("отметка о записи в Здоровье уходит из очереди, когда версия телефона догнала ожидаемую — это такой же +1, как подход")
+    func healthRecordedLandsByVersion() throws {
+        let workoutID = UUID()
+        let entry = WatchSyncFixtures.pending(
+            .healthRecorded(WatchSyncFixtures.healthRecordedCommand(workoutID: workoutID)),
+            expectedVersion: 3
+        )
+
+        let behind = WatchSyncFixtures.context(snapshot: WatchSyncFixtures.snapshot(workoutID: workoutID, version: 2))
+        let caughtUp = WatchSyncFixtures.context(snapshot: WatchSyncFixtures.snapshot(workoutID: workoutID, version: 3))
+
+        #expect(WatchSyncMerge.reconcile(pending: [entry], with: behind).count == 1)
+        #expect(WatchSyncMerge.reconcile(pending: [entry], with: caughtUp).isEmpty)
+    }
+
+    @Test("отметка о записи в Здоровье для завершённой тренировки уходит только по подтверждению commandID")
+    func healthRecordedForFinishedWorkoutNeedsAck() throws {
+        let workoutID = UUID()
+        let command = WatchSyncFixtures.healthRecordedCommand(workoutID: workoutID)
+        let entry = WatchSyncFixtures.pending(.healthRecorded(command), expectedVersion: 5)
+
+        #expect(WatchSyncMerge.reconcile(pending: [entry], with: WatchSyncFixtures.context()).count == 1)
+        #expect(WatchSyncMerge.reconcile(pending: [entry], with: WatchSyncFixtures.context(appliedCommandIDs: [command.commandID])).isEmpty)
+    }
 }

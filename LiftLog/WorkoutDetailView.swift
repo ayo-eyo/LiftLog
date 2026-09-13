@@ -360,6 +360,8 @@ struct WorkoutDetailView: View {
     private func start() {
         workout.start()
         WatchSessionManager.shared.pushSnapshot(for: workout)
+        // Heart rate and energy are only recorded by the watch's workout session.
+        Task { await HealthKitManager.startWatchWorkout() }
     }
 
     private func finish() {

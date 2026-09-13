@@ -40,6 +40,10 @@ enum WatchSyncFixtures {
         WatchFinishWorkoutCommand(commandID: commandID, workoutID: workoutID)
     }
 
+    static func healthRecordedCommand(workoutID: UUID, commandID: UUID = UUID()) -> WatchHealthRecordedCommand {
+        WatchHealthRecordedCommand(commandID: commandID, workoutID: workoutID)
+    }
+
     /// The exact `[String: Any]` a watch `sendMessage` / `transferUserInfo` carries.
     static func commandMessage(_ command: WatchCommand) throws -> [String: Any] {
         [WatchMessageKey.command: try encoder.encode(command)]

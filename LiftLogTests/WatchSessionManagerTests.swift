@@ -429,6 +429,86 @@ struct WatchSessionManagerLifecycleTests {
     }
 }
 
+@Suite("WatchSessionManager — тренировку записывают часы")
+struct WatchSessionManagerHealthRecordedTests {
+    @Test("отметка с часов ставит флаг, поднимает версию на единицу и переживает перечитывание стора")
+    func marksWorkoutAndPersists() throws {
+        let store = try TestStore.open()
+        let exercise = Fixtures.exercise(in: store.context)
+        let workout = Fixtures.workout(exercises: [exercise], in: store.context)
+        let versionBefore = workout.version
+        let syncID = workout.syncID
+
+        let manager = WatchSessionManager()
+        manager.start(modelContext: store.context, restTimer: Fixtures.restTimer())
+        var deleted: [UUID] = []
+        manager.deletePhoneHealthCopy = { deleted.append($0) }
+
+        var reply: [String: Any]?
+        let command = WatchSyncFixtures.healthRecordedCommand(workoutID: syncID)
+        manager.apply(try WatchSyncFixtures.commandMessage(.healthRecorded(command)), context: store.context) { reply = $0 }
+
+        #expect(workout.healthRecordedOnWatch)
+        #expect(workout.version == versionBefore + 1)
+        #expect(deleted.isEmpty, "идущую тренировку телефон ещё не сохранял — удалять нечего")
+        #expect((reply?[WatchMessageKey.ok] as? Bool) == true)
+        #expect(manager.lastContext?.appliedCommandIDs.contains(command.commandID) == true)
+
+        let reloaded = try store.reload().fetch(FetchDescriptor<Workout>()).first { $0.syncID == syncID }
+        #expect(reloaded?.healthRecordedOnWatch == true)
+    }
+
+    @Test("повторная доставка отметки не поднимает версию второй раз")
+    func redeliveryIsIdempotent() throws {
+        let store = try TestStore.open()
+        let workout = Fixtures.workout(exercises: [Fixtures.exercise(in: store.context)], in: store.context)
+        let manager = WatchSessionManager()
+        manager.start(modelContext: store.context, restTimer: Fixtures.restTimer())
+        manager.deletePhoneHealthCopy = { _ in }
+
+        let command = WatchSyncFixtures.healthRecordedCommand(workoutID: workout.syncID)
+        manager.healthRecorded(command, context: store.context)
+        let version = workout.version
+        manager.healthRecorded(command, context: store.context)
+
+        #expect(workout.version == version)
+    }
+
+    @Test("отметка для уже завершённой тренировки удаляет копию, которую успел сохранить телефон")
+    func completedWorkoutDeletesPhoneCopy() throws {
+        let store = try TestStore.open()
+        let workout = Fixtures.workout(
+            completedAt: Fixtures.date(offset: 3600),
+            exercises: [Fixtures.exercise(in: store.context)],
+            in: store.context
+        )
+        let manager = WatchSessionManager()
+        manager.start(modelContext: store.context, restTimer: Fixtures.restTimer())
+        var deleted: [UUID] = []
+        manager.deletePhoneHealthCopy = { deleted.append($0) }
+
+        manager.healthRecorded(WatchSyncFixtures.healthRecordedCommand(workoutID: workout.syncID), context: store.context)
+
+        #expect(deleted == [workout.syncID])
+    }
+
+    @Test("отметка для неизвестной тренировки — успех без изменений, а не ошибка на часах")
+    func unknownWorkoutIsSuccess() throws {
+        let store = try TestStore.open()
+        let manager = WatchSessionManager()
+        manager.start(modelContext: store.context, restTimer: Fixtures.restTimer())
+        var deleted: [UUID] = []
+        manager.deletePhoneHealthCopy = { deleted.append($0) }
+
+        var reply: [String: Any]?
+        let command = WatchSyncFixtures.healthRecordedCommand(workoutID: UUID())
+        manager.apply(try WatchSyncFixtures.commandMessage(.healthRecorded(command)), context: store.context) { reply = $0 }
+
+        #expect((reply?[WatchMessageKey.ok] as? Bool) == true)
+        #expect(deleted.isEmpty)
+    }
+}
+
 @Suite("Workout.complete — общий путь завершения")
 struct WorkoutCompletionTests {
     @Test("гасит отдых, проставляет время завершения, сохраняет на диск и снимает снапшот с часов")
