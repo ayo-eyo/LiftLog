@@ -39,7 +39,7 @@ description: How and when to write tests in the LiftLog project. Use whenever yo
 ## 2. Куда положить файл
 
 Тестовые цели повторяют папки приложения (`App`, `Models`, `Workouts`, `Catalog`,
-`MuscleMap`, `Progress`, `Sync`, `Services`, `DesignSystem`): набор лежит в папке того
+`MuscleMap`, `Progress`, `Sync`, `Backup`, `Services`, `DesignSystem`): набор лежит в папке того
 кода, который проверяет.
 
 - Юниты: `LiftLogTests/<Папка>/<Тема>Tests.swift` (например `Models/WorkoutModelTests.swift`,

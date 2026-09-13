@@ -7,6 +7,7 @@ struct WorkoutListView: View {
     private var workouts: [Workout]
     @Environment(\.modelContext) private var context
     @State private var newWorkout: Workout?
+    @State private var isShowingData = false
 
     var body: some View {
         NavigationStack {
@@ -48,6 +49,13 @@ struct WorkoutListView: View {
             .navigationTitle("Тренировки")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { EditButton() }
+                ToolbarItem(placement: .topBarLeading) {
+                    // The app has no settings screen; «Данные» (export/import) lives here
+                    // (plans/features/backup-sync, open question 1).
+                    Button { isShowingData = true } label: { Image(systemName: "gearshape") }
+                        .accessibilityLabel("Данные")
+                        .accessibilityIdentifier("workoutList.data")
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { createWorkout() } label: { Image(systemName: "plus") }
                         .accessibilityIdentifier("workoutList.addWorkout")
@@ -64,6 +72,9 @@ struct WorkoutListView: View {
             }
             .navigationDestination(item: $newWorkout) { workout in
                 WorkoutDetailView(workout: workout, restTimer: restTimer)
+            }
+            .sheet(isPresented: $isShowingData) {
+                DataManagementView()
             }
         }
     }

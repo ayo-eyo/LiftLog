@@ -105,6 +105,7 @@ The iOS app's sources are grouped by feature, with the shared domain model on it
 | `MuscleMap/` | Muscle atlas data, SVG path parsing, `MuscleMapView` |
 | `Progress/` | `ExerciseStats`, the exercise progress screen, `TrainingAnalytics` and the Analytics tab |
 | `Sync/` | `WatchSessionManager` and the phone's copy of `WorkoutSyncModels.swift` |
+| `Backup/` | JSON backup format, export (JSON/CSV) and import, the «Данные» screen |
 | `Services/` | System integrations: `HealthKitManager`, `NotificationManager` |
 | `DesignSystem/` | `Theme`, `Fonts`, `RussianPlural` |
 
