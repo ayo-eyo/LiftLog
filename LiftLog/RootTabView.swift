@@ -36,6 +36,10 @@ struct RootTabView: View {
             }
         }
         .task {
+            // The Health permission sheet is presented inside the app and covers the
+            // whole screen until answered — on a simulator where nobody ever answered
+            // it, every UI test's first tap lands on the sheet instead of the app.
+            guard !LiftLogApp.isUITesting else { return }
             await HealthKitManager.requestAuthorization()
             await NotificationManager.requestAuthorization()
         }

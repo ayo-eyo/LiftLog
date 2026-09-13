@@ -64,7 +64,7 @@ final class WorkoutSetEditUITests: XCTestCase {
         XCTAssertTrue(doneEditButton.waitForExistence(timeout: 5), "Экран редактирования подхода должен открыться")
         Thread.sleep(forTimeInterval: 0.5)
 
-        // Weight stepper: step 0.5, two taps → 20 + 1 = 21.
+        // Weight stepper: step 0.25 (`WeightInputRow`), two taps → 20 + 0.5 = 20,5.
         let weightIncrement = app.buttons.matching(identifier: "Increment").element(boundBy: 0)
         weightIncrement.tap()
         Thread.sleep(forTimeInterval: 0.5)
@@ -80,8 +80,13 @@ final class WorkoutSetEditUITests: XCTestCase {
 
         doneEditButton.tap()
 
-        XCTAssertTrue(app.staticTexts["21 кг"].waitForExistence(timeout: 5), "После редактирования должен отображаться новый вес")
-        XCTAssertTrue(app.staticTexts["× 12"].waitForExistence(timeout: 5), "После редактирования должно отображаться новое число повторов")
-        XCTAssertFalse(app.staticTexts["20 кг"].exists, "Старое значение веса не должно остаться в подходе после редактирования")
+        // `SetRow` is one accessibility element ("20,5 кг, 12 повторов"), not separate
+        // weight/reps texts — so the row is found by its composed label.
+        let editedRow = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "20,5 кг, 12 повторов")).firstMatch
+        XCTAssertTrue(editedRow.waitForExistence(timeout: 5), "После редактирования подход должен показывать новый вес и повторы")
+        XCTAssertFalse(
+            app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "20 кг")).firstMatch.exists,
+            "Старое значение веса не должно остаться в подходе после редактирования"
+        )
     }
 }

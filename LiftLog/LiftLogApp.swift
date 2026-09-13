@@ -47,7 +47,7 @@ struct LiftLogApp: App {
     /// UI tests launch with `-uiTestInMemoryStore` (see `AppLauncher`) so each
     /// run starts from an empty store instead of resuming whatever workout the
     /// previous run left active. DEBUG-only: never reachable in a shipped build.
-    private static var isUITesting: Bool {
+    static var isUITesting: Bool {
         #if DEBUG
         ProcessInfo.processInfo.arguments.contains("-uiTestInMemoryStore")
         #else
