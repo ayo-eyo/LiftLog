@@ -17,8 +17,11 @@ struct ContentView: View {
             .onChange(of: scenePhase) { _, phase in
                 switch phase {
                 case .active:
-                    // Coming back is the moment the phone is most likely reachable again.
+                    // Coming back is the moment the phone is most likely reachable again
+                    // — drain the queue, and ask for whatever changed on the phone while
+                    // this app was away.
                     phone.flush()
+                    phone.requestContext()
                 default:
                     // The queue only drains while this app runs, so anything still in it
                     // is handed to the system on the way out.

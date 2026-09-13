@@ -493,6 +493,37 @@ struct WatchSessionManagerPlanListTests {
         #expect(manager.lastPlans.contains { $0.id == completed.syncID } == false)
     }
 
+    @Test("запрос контекста с часов пересобирает список планов, а не отвечает последним отправленным")
+    func requestContextRebuildsPlansFromTheStore() throws {
+        let store = try TestStore.open()
+        let exercise = Fixtures.exercise(in: store.context)
+        let known = Fixtures.workout(startedAt: nil, items: [(exercise, 60, 8)], in: store.context)
+
+        let manager = WatchSessionManager()
+        manager.start(modelContext: store.context, restTimer: Fixtures.restTimer())
+        manager.refresh()
+        #expect(manager.lastPlans.map(\.id) == [known.syncID])
+
+        // Появился уже после последнего пуша — ровно то, чего часам не хватало:
+        // сами они попросить состояние раньше не могли.
+        let fresh = Fixtures.workout(
+            date: Fixtures.date(offset: 86_400),
+            startedAt: nil,
+            items: [(exercise, 70, 6)],
+            in: store.context
+        )
+
+        var reply: [String: Any]?
+        manager.apply(WatchSyncFixtures.requestContextMessage(), context: store.context) { reply = $0 }
+
+        #expect(Set(manager.lastPlans.map(\.id)) == Set([known.syncID, fresh.syncID]))
+        #expect((reply?[WatchMessageKey.ok] as? Bool) == true)
+
+        let data = try #require(reply?[WatchMessageKey.context] as? Data)
+        let answered = try WatchSyncFixtures.decoder.decode(WatchContext.self, from: data)
+        #expect(Set(answered.plans.map(\.id)) == Set([known.syncID, fresh.syncID]))
+    }
+
     @Test("refresh сам находит идущую тренировку в сторе")
     func refreshFindsTheActiveWorkout() throws {
         let store = try TestStore.open()

@@ -54,6 +54,30 @@ struct WatchWorkoutSnapshot: Codable {
         let weight: Double?
         let reps: Int?
         let plannedSets: [PlannedSet]
+
+        init(id: UUID, name: String, setsLoggedCount: Int, weight: Double?, reps: Int?, plannedSets: [PlannedSet]) {
+            self.id = id
+            self.name = name
+            self.setsLoggedCount = setsLoggedCount
+            self.weight = weight
+            self.reps = reps
+            self.plannedSets = plannedSets
+        }
+
+        // Same reasoning as `WatchContext.init(from:)`: everything a later build added
+        // decodes as its empty value instead of taking the whole context down. A field
+        // missing costs one feature (here: advancing through the plan offline); a failed
+        // decode costs *every* update — the watch silently keeps showing the last
+        // context it managed to read, for as long as the two builds differ.
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            id = try container.decode(UUID.self, forKey: .id)
+            name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+            setsLoggedCount = try container.decodeIfPresent(Int.self, forKey: .setsLoggedCount) ?? 0
+            weight = try container.decodeIfPresent(Double.self, forKey: .weight)
+            reps = try container.decodeIfPresent(Int.self, forKey: .reps)
+            plannedSets = try container.decodeIfPresent([PlannedSet].self, forKey: .plannedSets) ?? []
+        }
     }
 
     let workoutID: UUID
@@ -65,6 +89,36 @@ struct WatchWorkoutSnapshot: Codable {
     let exercises: [ExerciseInfo]
     let restEndDate: Date?
     let restExerciseName: String?
+
+    init(
+        workoutID: UUID,
+        name: String,
+        date: Date,
+        version: Int,
+        exercises: [ExerciseInfo],
+        restEndDate: Date?,
+        restExerciseName: String?
+    ) {
+        self.workoutID = workoutID
+        self.name = name
+        self.date = date
+        self.version = version
+        self.exercises = exercises
+        self.restEndDate = restEndDate
+        self.restExerciseName = restExerciseName
+    }
+
+    // Lenient for the same reason as `ExerciseInfo` above.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        workoutID = try container.decode(UUID.self, forKey: .workoutID)
+        name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+        date = try container.decode(Date.self, forKey: .date)
+        version = try container.decodeIfPresent(Int.self, forKey: .version) ?? 0
+        exercises = try container.decodeIfPresent([ExerciseInfo].self, forKey: .exercises) ?? []
+        restEndDate = try container.decodeIfPresent(Date.self, forKey: .restEndDate)
+        restExerciseName = try container.decodeIfPresent(String.self, forKey: .restExerciseName)
+    }
 }
 
 /// A workout the watch can list and start, but which isn't running yet. Carries the
@@ -76,6 +130,24 @@ struct WatchWorkoutSummary: Codable, Identifiable {
     let date: Date
     let version: Int
     let exercises: [WatchWorkoutSnapshot.ExerciseInfo]
+
+    init(id: UUID, name: String, date: Date, version: Int, exercises: [WatchWorkoutSnapshot.ExerciseInfo]) {
+        self.id = id
+        self.name = name
+        self.date = date
+        self.version = version
+        self.exercises = exercises
+    }
+
+    // Lenient for the same reason as `WatchWorkoutSnapshot` above.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+        date = try container.decode(Date.self, forKey: .date)
+        version = try container.decodeIfPresent(Int.self, forKey: .version) ?? 0
+        exercises = try container.decodeIfPresent([WatchWorkoutSnapshot.ExerciseInfo].self, forKey: .exercises) ?? []
+    }
 }
 
 // MARK: - Set counters (FR-1)
@@ -211,6 +283,11 @@ enum WatchMessageKey {
     /// the watch is reachable, so an already-open watch screen updates immediately
     /// instead of waiting for a relaunch — see `WatchSessionManager.send`.
     static let push = "push"
+    /// Watch → phone: "send me what you have now". Every other delivery is a push the
+    /// phone decides to make, so a context lost on the way (or a plan list that changed
+    /// while the phone app wasn't running) leaves the watch showing a stale list with no
+    /// way out of it. The reply carries a freshly rebuilt `context`.
+    static let requestContext = "requestContext"
 
     static let ok = "ok"
     static let context = "context"

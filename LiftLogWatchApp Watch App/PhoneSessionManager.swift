@@ -92,6 +92,30 @@ final class PhoneSessionManager: NSObject, WCSessionDelegate {
         enqueue(.finish(WatchFinishWorkoutCommand(commandID: UUID(), workoutID: workoutID)))
     }
 
+    /// Asks the phone for its current context. The phone only pushes when *it* notices
+    /// a change, so a push lost on the way — or a plan created while this app wasn't
+    /// listening — would otherwise leave this screen on a stale list indefinitely, with
+    /// no way for the user to force an update. Live-only, like `skipRest`: when the
+    /// phone isn't reachable there's nothing to ask, and `updateApplicationContext`
+    /// brings the state along the moment it is.
+    ///
+    /// `sendMessage` also wakes the phone app in the background if it isn't running, so
+    /// this works with the phone in a pocket, screen off.
+    func requestContext() {
+        let session = WCSession.default
+        guard session.activationState == .activated, session.isReachable else { return }
+        session.sendMessage([WatchMessageKey.requestContext: true]) { [weak self] reply in
+            Task { @MainActor in
+                guard let data = reply[WatchMessageKey.context] as? Data else { return }
+                self?.apply(contextData: data)
+            }
+        } errorHandler: { [weak self] error in
+            Task { @MainActor in
+                self?.logger.error("requestContext failed: \(error.localizedDescription)")
+            }
+        }
+    }
+
     /// Live-only: skipping rest after the fact is meaningless, so it never queues.
     func skipRest() {
         let session = WCSession.default
@@ -236,8 +260,13 @@ final class PhoneSessionManager: NSObject, WCSessionDelegate {
         }
         if let data = session.receivedApplicationContext["data"] as? Data {
             applyOnMain(contextData: data)
-        } else {
-            Task { @MainActor in self.flush() }
+        }
+        Task { @MainActor in
+            self.flush()
+            // `receivedApplicationContext` is whatever was last delivered — it can be
+            // days old, and it's the only thing this app has until the phone next
+            // decides to push. Ask for the current state instead of trusting it.
+            self.requestContext()
         }
     }
 
@@ -262,7 +291,12 @@ final class PhoneSessionManager: NSObject, WCSessionDelegate {
     }
 
     nonisolated func sessionReachabilityDidChange(_ session: WCSession) {
-        Task { @MainActor in self.flush() }
+        Task { @MainActor in
+            self.flush()
+            // Back in range: the phone may have changed the plan list while it was out
+            // of it, and nothing about that change will be re-pushed on its own.
+            self.requestContext()
+        }
     }
 
     // `sessionDidBecomeInactive`/`sessionDidDeactivate` exist on `WCSessionDelegate` but
@@ -281,7 +315,12 @@ final class PhoneSessionManager: NSObject, WCSessionDelegate {
     }
 
     private func apply(contextData data: Data) {
-        guard let decoded = try? JSONDecoder().decode(WatchContext.self, from: data) else { return }
+        guard let decoded = try? JSONDecoder().decode(WatchContext.self, from: data) else {
+            // Nothing else changes here, so the screen keeps showing the last context
+            // that *did* decode — a stale list with no visible cause. Leave a trace.
+            logger.error("не удалось декодировать контекст с телефона (\(data.count) байт), экран остаётся на прошлом состоянии")
+            return
+        }
         let oldEndDate = context?.snapshot?.restEndDate
         context = decoded
         // Drop everything the phone confirmed applying before the UI reads the merged

@@ -54,6 +54,12 @@ enum WatchSyncFixtures {
         [WatchMessageKey.skipRest: true]
     }
 
+    /// The "send me what you have now" message the watch puts on the wire when it can't
+    /// trust the last context it was pushed (activation, reachability, foreground).
+    static func requestContextMessage() -> [String: Any] {
+        [WatchMessageKey.requestContext: true]
+    }
+
     /// A payload the phone must reject without crashing or mutating the store.
     static func malformedLogSetMessage() -> [String: Any] {
         [WatchMessageKey.legacyLogSet: Data("not json".utf8)]

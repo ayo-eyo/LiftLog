@@ -46,6 +46,48 @@ struct WatchWireFormatRoundTripTests {
     }
 }
 
+@Suite("Совместимость со сборкой другой версии")
+struct WatchWireFormatForwardCompatibilityTests {
+    /// Часы и телефон обновляются независимо, и упавший декод контекста не виден
+    /// пользователю никак: экран просто остаётся на последнем состоянии, которое
+    /// удалось прочитать. Поэтому поля, добавленные позже, обязаны декодироваться
+    /// пустыми, а не ронять весь контекст.
+    @Test("контекст без version и plannedSets декодируется целиком, а не отбрасывается")
+    func payloadWithoutLaterFieldsStillDecodes() throws {
+        let workoutID = UUID()
+        let planID = UUID()
+        let exerciseID = UUID()
+        let payload: [String: Any] = [
+            "snapshot": [
+                "workoutID": workoutID.uuidString,
+                "name": "Тренировка",
+                "date": 0,
+                "exercises": [[
+                    "id": exerciseID.uuidString,
+                    "name": "Жим лёжа",
+                    "setsLoggedCount": 2,
+                ]],
+            ],
+            "plans": [[
+                "id": planID.uuidString,
+                "name": "План",
+                "date": 0,
+                "exercises": [],
+            ]],
+        ]
+
+        let data = try JSONSerialization.data(withJSONObject: payload)
+        let decoded = try JSONDecoder().decode(WatchContext.self, from: data)
+
+        #expect(decoded.snapshot?.workoutID == workoutID)
+        #expect(decoded.snapshot?.version == 0)
+        #expect(decoded.snapshot?.exercises.first?.id == exerciseID)
+        #expect(decoded.snapshot?.exercises.first?.plannedSets.isEmpty == true)
+        #expect(decoded.plans.map(\.id) == [planID])
+        #expect(decoded.plans.first?.version == 0)
+    }
+}
+
 @Suite("Совместимость по датам")
 struct WatchWireFormatDateStrategyTests {
     @Test("даты кодируются и декодируются одной стратегией на обеих сторонах провода")

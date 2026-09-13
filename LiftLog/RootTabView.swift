@@ -9,6 +9,7 @@ struct RootTabView: View {
     @State private var presentedWorkout: Workout?
     @State private var restTimer = RestTimer()
     @State private var didRunDataIntegrityCheck = false
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         TabView {
@@ -49,6 +50,15 @@ struct RootTabView: View {
             // workout screen, so the first context has to go out at launch. The send is
             // dropped while `WCSession` is still activating and replayed on activation.
             WatchSessionManager.shared.refresh()
+        }
+        // `onAppear` above fires once per process, and this app can stay resident for
+        // days — so without this, plans created after the first launch would only reach
+        // the watch if the user happened to open a workout screen. Coming back to the
+        // foreground is also the moment the watch is most likely reachable again.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                WatchSessionManager.shared.refresh()
+            }
         }
     }
 

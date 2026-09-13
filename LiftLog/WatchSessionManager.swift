@@ -242,6 +242,13 @@ final class WatchSessionManager: NSObject, WCSessionDelegate {
             }
             saveContext(context)
             reply?([WatchMessageKey.ok: true, "exercise": infoData])
+        } else if message[WatchMessageKey.requestContext] != nil {
+            // The watch asking for the current state. Rebuilt from the store rather
+            // than answered from `lastContext`: what the watch is missing is exactly
+            // the changes made while it wasn't listening — including any that happened
+            // with this app not running at all, where nothing ever called `refresh`.
+            refresh()
+            reply?(successReply())
         } else if message[WatchMessageKey.skipRest] != nil {
             restTimer?.skip()
             pushSnapshot(for: currentWorkout)
