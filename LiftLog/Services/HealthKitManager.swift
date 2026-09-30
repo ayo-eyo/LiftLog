@@ -109,7 +109,7 @@ enum HealthKitManager {
         do {
             try await store.startWatchApp(toHandle: configuration)
         } catch {
-            logger.error("не удалось запустить тренировку на часах: \(error.localizedDescription)")
+            logger.error("failed to start the workout on the watch: \(error.localizedDescription)")
         }
     }
 
@@ -163,7 +163,7 @@ enum HealthKitManager {
         do {
             try await deletingStore.deletePhoneWorkouts(liftLogWorkoutID: syncID)
         } catch {
-            logger.error("не удалось удалить копию тренировки с телефона: \(error.localizedDescription)")
+            logger.error("failed to delete the phone’s copy of the workout: \(error.localizedDescription)")
         }
     }
 }

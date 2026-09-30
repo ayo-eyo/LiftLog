@@ -40,7 +40,7 @@ struct EditSetView: View {
             VStack(spacing: 16) {
                 WeightInputRow(weight: $weight, stepper: weightStepper, accessibilityID: "editSet.weight")
                 RepsInputRow(reps: $reps, stepper: repsStepper, accessibilityID: "editSet.reps")
-                Button("Удалить подход", role: .destructive) {
+                Button("Delete set", role: .destructive) {
                     WorkoutSet.delete(set, context: context)
                     didEdit = true
                     pushWatchUpdate()
@@ -51,10 +51,10 @@ struct EditSetView: View {
             }
             .padding()
             .background(.chalk)
-            .navigationTitle("Подход")
+            .navigationTitle("Set")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                Button("Готово") { commitAndDismiss() }
+                Button("Done") { commitAndDismiss() }
             }
         }
         .onChange(of: weight) { _, newValue in

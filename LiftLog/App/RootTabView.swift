@@ -13,13 +13,13 @@ struct RootTabView: View {
 
     var body: some View {
         TabView {
-            Tab("Тренировки", systemImage: "figure.strengthtraining.traditional") {
+            Tab("Workouts", systemImage: "figure.strengthtraining.traditional") {
                 WorkoutListView(restTimer: restTimer)
             }
-            Tab("Упражнения", systemImage: "books.vertical") {
+            Tab("Exercises", systemImage: "books.vertical") {
                 CatalogView()
             }
-            Tab("Аналитика", systemImage: "chart.xyaxis.line") {
+            Tab("Analytics", systemImage: "chart.xyaxis.line") {
                 AnalyticsView()
             }
         }
@@ -97,7 +97,7 @@ struct RootTabView: View {
         if restTimer.isResting(at: date), let name = restTimer.exerciseName {
             return "\(name) · \(restTimer.remaining(at: date).clockString)"
         }
-        return "Тренировка идёт"
+        return String(localized: "Workout in progress")
     }
 }
 

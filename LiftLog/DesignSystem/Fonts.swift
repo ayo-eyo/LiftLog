@@ -20,10 +20,10 @@ extension Font {
 
 #Preview {
     VStack(alignment: .leading, spacing: 12) {
-        Text("Присед в гакк-машине").font(.display(28))
-        Text("Основные мышцы: квадрицепс, ягодичные").font(.sans(16))
-        Text("75,0 кг × 10").font(.mono(20))
-        Text("77,5 кг × 8").font(.mono(20))
+        Text(verbatim: "Hack squat").font(.display(28))
+        Text(verbatim: "Primary muscles: quadriceps, glutes").font(.sans(16))
+        Text(verbatim: "75.0 kg × 10").font(.mono(20))
+        Text(verbatim: "77.5 kg × 8").font(.mono(20))
     }
     .padding()
 }

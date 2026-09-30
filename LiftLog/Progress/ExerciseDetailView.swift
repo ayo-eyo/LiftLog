@@ -22,9 +22,9 @@ struct ExerciseDetailView: View {
         Group {
             if sessions.isEmpty {
                 ContentUnavailableView(
-                    "Ещё нет подходов",
+                    "No sets yet",
                     systemImage: "chart.xyaxis.line",
-                    description: Text("Запиши подходы в тренировке — здесь появится прогресс")
+                    description: Text("Log sets in a workout — progress will show up here")
                 )
             } else {
                 content(samples: samples, sessions: sessions)
@@ -93,8 +93,8 @@ struct ExerciseDetailView: View {
     }
 
     private func title(of session: ExerciseSession) -> String {
-        if session.isStandalone { return "Вне тренировки" }
-        guard let name = session.workoutName, !name.isEmpty else { return "Тренировка" }
+        if session.isStandalone { return String(localized: "Outside a workout") }
+        guard let name = session.workoutName, !name.isEmpty else { return String(localized: "Workout") }
         return name
     }
 }
@@ -102,11 +102,11 @@ struct ExerciseDetailView: View {
 #Preview {
     let container = PreviewSupport.container()
     let context = container.mainContext
-    let bench = Exercise(name: "Жим лёжа", catalogID: "Barbell_Bench_Press_-_Medium_Grip")
+    let bench = Exercise(name: "Bench press", catalogID: "Barbell_Bench_Press_-_Medium_Grip")
     context.insert(bench)
     for (day, weights) in [(0, [60.0, 62.5]), (7, [62.5, 65]), (14, [65, 67.5])] {
         let date = Date.now.addingTimeInterval(Double(day - 14) * 86_400)
-        let workout = Workout(date: date, name: "Грудь")
+        let workout = Workout(date: date, name: "Chest")
         context.insert(workout)
         workout.addExercise(bench, context: context)
         workout.start(now: date)

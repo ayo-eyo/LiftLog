@@ -61,10 +61,10 @@ struct ExercisePickerView: View {
             }
             .scrollContentBackground(.hidden)
             .background(.chalk)
-            .searchable(text: $searchText, prompt: "Поиск упражнения")
-            .navigationTitle("Добавить упражнение")
+            .searchable(text: $searchText, prompt: "Search exercises")
+            .navigationTitle("Add exercise")
             .toolbar {
-                Button("Отмена") { dismiss() }
+                Button("Cancel") { dismiss() }
             }
         }
         .onAppear { recomputeFilteredGroups() }

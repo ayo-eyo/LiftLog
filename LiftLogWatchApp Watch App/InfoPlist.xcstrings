@@ -1,0 +1,38 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "NSHealthShareUsageDescription" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To show heart rate and calories during a workout"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чтобы показывать пульс и калории во время тренировки"
+          }
+        }
+      }
+    },
+    "NSHealthUpdateUsageDescription" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To save workouts to the Health app"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чтобы сохранять тренировки в приложение Здоровье"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

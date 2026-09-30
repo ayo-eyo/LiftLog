@@ -10,8 +10,8 @@ enum NotificationManager {
 
     static func scheduleRestTimerEnd(after duration: TimeInterval, exerciseName: String) {
         let content = UNMutableNotificationContent()
-        content.title = "Отдых окончен"
-        content.body = "Пора продолжить: \(exerciseName)"
+        content.title = String(localized: "Rest is over")
+        content.body = String(localized: "Time to continue: \(exerciseName)")
         content.sound = .default
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: duration, repeats: false)

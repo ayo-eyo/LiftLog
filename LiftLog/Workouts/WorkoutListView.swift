@@ -24,7 +24,7 @@ struct WorkoutListView: View {
                         Button {
                             copyWorkout(workout)
                         } label: {
-                            Label("Копировать", systemImage: "doc.on.doc")
+                            Label("Copy", systemImage: "doc.on.doc")
                         }
                         .tint(.plateBlue)
                     }
@@ -32,12 +32,12 @@ struct WorkoutListView: View {
                         Button {
                             copyWorkout(workout)
                         } label: {
-                            Label("Копировать", systemImage: "doc.on.doc")
+                            Label("Copy", systemImage: "doc.on.doc")
                         }
                         Button(role: .destructive) {
                             delete(workout)
                         } label: {
-                            Label("Удалить", systemImage: "trash")
+                            Label("Delete", systemImage: "trash")
                         }
                     }
                 }
@@ -46,14 +46,14 @@ struct WorkoutListView: View {
             }
             .scrollContentBackground(.hidden)
             .background(.chalk)
-            .navigationTitle("Тренировки")
+            .navigationTitle("Workouts")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { EditButton() }
                 ToolbarItem(placement: .topBarLeading) {
                     // The app has no settings screen; «Данные» (export/import) lives here
                     // (plans/features/backup-sync, open question 1).
                     Button { isShowingData = true } label: { Image(systemName: "gearshape") }
-                        .accessibilityLabel("Данные")
+                        .accessibilityLabel("Data")
                         .accessibilityIdentifier("workoutList.data")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -64,9 +64,9 @@ struct WorkoutListView: View {
             .overlay {
                 if workouts.isEmpty {
                     ContentUnavailableView(
-                        "Тренировок пока нет",
+                        "No workouts yet",
                         systemImage: "figure.strengthtraining.traditional",
-                        description: Text("Нажми «+» здесь или «Начать тренировку» внизу экрана")
+                        description: Text("Tap “+” here or “Start workout” at the bottom of the screen")
                     )
                 }
             }
@@ -148,15 +148,15 @@ private struct WorkoutRow: View {
                 Text(workout.name.isEmpty ? workout.date.formatted(date: .abbreviated, time: .shortened) : workout.name)
                     .font(.sans(16))
                     .foregroundStyle(.ink)
-                Text("\(workout.orderedExercises.count) \(RussianPlural.form(workout.orderedExercises.count, "упражнение", "упражнения", "упражнений")) · \(workout.sets.count) \(RussianPlural.form(workout.sets.count, "подход", "подхода", "подходов"))")
+                Text("\(workout.orderedExercises.count) exercises · \(workout.sets.count) sets")
                     .font(.mono(13))
                     .foregroundStyle(.steel)
             }
             Spacer()
             if workout.isActive {
-                Text("Идёт").font(.mono(12)).foregroundStyle(.plateGreen)
+                Text("In progress").font(.mono(12)).foregroundStyle(.plateGreen)
             } else if workout.startedAt == nil {
-                Text("План").font(.mono(12)).foregroundStyle(.steel)
+                Text("Plan").font(.mono(12)).foregroundStyle(.steel)
             }
         }
         // Otherwise VoiceOver reads name, exercise/set counts, and status as three or
@@ -168,12 +168,12 @@ private struct WorkoutRow: View {
 #Preview {
     let container = PreviewSupport.container()
     let context = container.mainContext
-    let bench = Exercise(name: "Жим лёжа")
-    let squat = Exercise(name: "Присед")
+    let bench = Exercise(name: "Bench press")
+    let squat = Exercise(name: "Squat")
     context.insert(bench)
     context.insert(squat)
 
-    let plan = Workout(name: "Завтра — грудь", sortIndex: 0)
+    let plan = Workout(name: "Tomorrow — chest", sortIndex: 0)
     context.insert(plan)
     plan.addExercise(bench, weight: 60, reps: 8, context: context)
 
@@ -183,7 +183,7 @@ private struct WorkoutRow: View {
     active.start()
     active.logSet(weight: 100, reps: 5, for: squat, context: context)
 
-    let finished = Workout(name: "Спина", sortIndex: 1)
+    let finished = Workout(name: "Back", sortIndex: 1)
     context.insert(finished)
     finished.addExercise(bench, weight: 60, reps: 8, context: context)
     finished.start(now: Date(timeIntervalSinceNow: -3600))

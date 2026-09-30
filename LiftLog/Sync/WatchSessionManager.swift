@@ -304,7 +304,7 @@ final class WatchSessionManager: NSObject, WCSessionDelegate {
         do {
             try context.save()
         } catch {
-            logger.error("не удалось сохранить команду с часов: \(error.localizedDescription)")
+            logger.error("failed to save the watch’s command: \(error.localizedDescription)")
         }
     }
 
