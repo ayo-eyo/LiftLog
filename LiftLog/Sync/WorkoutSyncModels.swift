@@ -46,6 +46,12 @@ struct WatchWorkoutSnapshot: Codable {
         let reps: Int?
     }
 
+    /// One set of an earlier session — unlike `PlannedSet`, both numbers are always there.
+    struct LoggedSet: Codable, Equatable {
+        let weight: Double
+        let reps: Int
+    }
+
     struct ExerciseInfo: Codable, Identifiable {
         let id: UUID
         let name: String
@@ -62,6 +68,11 @@ struct WatchWorkoutSnapshot: Codable {
         /// its nil must not read as "no history yet" — the watch would then take the next
         /// set as the bar and call the one after it a record.
         let tracksRecords: Bool
+        /// «Прошлый раз»: the sets of the exercise's latest session before this workout,
+        /// chronological (`ExerciseStats.lastSession`). Sent ahead of time — plans carry it
+        /// too — because it doesn't change while the workout runs, so the watch shows it with
+        /// no phone in range. Empty: no earlier session, or an older phone that doesn't send it.
+        let lastSession: [LoggedSet]
 
         init(
             id: UUID,
@@ -71,7 +82,8 @@ struct WatchWorkoutSnapshot: Codable {
             reps: Int?,
             plannedSets: [PlannedSet],
             recordWeight: Double? = nil,
-            tracksRecords: Bool = false
+            tracksRecords: Bool = false,
+            lastSession: [LoggedSet] = []
         ) {
             self.id = id
             self.name = name
@@ -81,6 +93,7 @@ struct WatchWorkoutSnapshot: Codable {
             self.plannedSets = plannedSets
             self.recordWeight = recordWeight
             self.tracksRecords = tracksRecords
+            self.lastSession = lastSession
         }
 
         // Same reasoning as `WatchContext.init(from:)`: everything a later build added
@@ -98,6 +111,13 @@ struct WatchWorkoutSnapshot: Codable {
             plannedSets = try container.decodeIfPresent([PlannedSet].self, forKey: .plannedSets) ?? []
             recordWeight = try container.decodeIfPresent(Double.self, forKey: .recordWeight)
             tracksRecords = try container.decodeIfPresent(Bool.self, forKey: .tracksRecords) ?? false
+            lastSession = try container.decodeIfPresent([LoggedSet].self, forKey: .lastSession) ?? []
+        }
+
+        /// The set with the next set's number from last time — what the watch shows while
+        /// that set is being entered. nil past the end of the last session, or without one.
+        var lastSessionSetForNext: LoggedSet? {
+            lastSession.indices.contains(setsLoggedCount) ? lastSession[setsLoggedCount] : nil
         }
 
         /// Whether logging `weight` now would be a weight record — decided on the watch, from
@@ -457,7 +477,8 @@ enum WatchSyncMerge {
                 reps: planned?.reps ?? last.reps,
                 plannedSets: info.plannedSets,
                 recordWeight: recordWeight,
-                tracksRecords: info.tracksRecords
+                tracksRecords: info.tracksRecords,
+                lastSession: info.lastSession
             )
         }
         return WatchWorkoutSnapshot(

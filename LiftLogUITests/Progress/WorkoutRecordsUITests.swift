@@ -44,7 +44,41 @@ final class WorkoutRecordsUITests: XCTestCase {
         )
     }
 
+    /// plans/features/last-session, FR-1: building the next plan shows what was done last time.
+    @MainActor
+    func test_прошлыйРазВРедактореПлана() throws {
+        let app = AppLauncher.launch()
+
+        startWorkout(app)
+        openExercise(app)
+        logSet(app)
+        finishWorkout(app)
+
+        openPlanEditor(app)
+
+        let lastTime = app.descendants(matching: .any)["planEditor.lastTime"]
+        XCTAssertTrue(lastTime.waitForExistence(timeout: 5), "В редакторе плана упражнения, которое уже делали, должна быть строка «Прошлый раз»")
+        XCTAssertTrue(lastTime.label.contains("20×10"), "«Прошлый раз» должен показать подход прошлой тренировки; показано «\(lastTime.label)»")
+    }
+
     private func startWorkout(_ app: XCUIApplication) {
+        openPlanEditor(app)
+
+        let addPlannedSetButton = app.buttons["Добавить подход"]
+        addPlannedSetButton.waitUntilVisible()
+        addPlannedSetButton.tap()
+
+        let doneButton = app.buttons["Готово"]
+        doneButton.waitUntilVisible()
+        doneButton.tap()
+
+        let startButton = app.buttons["Начать"]
+        startButton.waitUntilVisible()
+        startButton.tap()
+    }
+
+    /// New workout → pick the exercise, which lands in its plan editor.
+    private func openPlanEditor(_ app: XCUIApplication) {
         let addWorkout = app.buttons["workoutList.addWorkout"]
         addWorkout.waitUntilVisible()
         addWorkout.tap()
@@ -61,18 +95,6 @@ final class WorkoutRecordsUITests: XCTestCase {
         let exerciseRow = app.buttons[exerciseName]
         exerciseRow.waitUntilVisible()
         exerciseRow.tap()
-
-        let addPlannedSetButton = app.buttons["Добавить подход"]
-        addPlannedSetButton.waitUntilVisible()
-        addPlannedSetButton.tap()
-
-        let doneButton = app.buttons["Готово"]
-        doneButton.waitUntilVisible()
-        doneButton.tap()
-
-        let startButton = app.buttons["Начать"]
-        startButton.waitUntilVisible()
-        startButton.tap()
     }
 
     private func openExercise(_ app: XCUIApplication) {

@@ -38,6 +38,15 @@ struct WorkoutSetsView: View {
                                     Text(countLabel(for: exercise))
                                         .font(.caption2)
                                         .foregroundStyle(.secondary)
+                                    // The whole of last time; the set screen shows just the
+                                    // matching set (plans/features/last-session, FR-3).
+                                    if !exercise.lastSession.isEmpty {
+                                        Text(exercise.lastSession.map(setLabel).joined(separator: " · "))
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                            .lineLimit(1)
+                                            .truncationMode(.tail)
+                                    }
                                 }
                                 Spacer()
                                 if exercise.isSetPlanFulfilled {
@@ -137,6 +146,11 @@ extension View {
     }
 }
 
+/// «57,5×7» — same shape as the phone's «Прошлый раз».
+func setLabel(_ set: WatchWorkoutSnapshot.LoggedSet) -> String {
+    "\(set.weight.formatted(.number))×\(set.reps)"
+}
+
 func clockString(_ interval: TimeInterval) -> String {
     let seconds = max(0, Int(interval.rounded()))
     return String(format: "%d:%02d", seconds / 60, seconds % 60)
@@ -207,6 +221,15 @@ struct LogSetView: View {
 
                 if WatchSyncMerge.shouldWarnAboutQueue(phone.pending, now: now) {
                     QueueStatusLabel(phone: phone)
+                }
+
+                // The same set from last time — set 2 shows last time's second set — so
+                // the numbers to beat are right next to the ones being dialed in.
+                if let last = exercise?.lastSessionSetForNext {
+                    Text("Прошлый раз: \(setLabel(last))")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
 
                 Button("Записать подход") { logSet() }

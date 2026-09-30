@@ -46,6 +46,7 @@ struct WorkoutItemDefaultsView: View {
     var body: some View {
         VStack(spacing: 0) {
             inputBlock
+            lastTimeRow
             historyList
         }
         .background(.chalk)
@@ -94,6 +95,24 @@ struct WorkoutItemDefaultsView: View {
             }
         }
         .padding()
+    }
+
+    /// «Прошлый раз» while building the plan (plans/features/last-session, FR-1). Plain
+    /// text, not a link like on the logging screen: this is a sheet with swipe-to-dismiss
+    /// disabled, and «Готово» is meant to be the only way out.
+    @ViewBuilder
+    private var lastTimeRow: some View {
+        if let last = ExerciseStats.lastSession(ExerciseStats.samples(for: exercise), before: workout) {
+            Text(ProgressFormat.lastTime(last))
+                .font(.mono(12))
+                .foregroundStyle(.steel)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal)
+                .padding(.bottom, 8)
+                .accessibilityIdentifier("planEditor.lastTime")
+        }
     }
 
     private var historyList: some View {

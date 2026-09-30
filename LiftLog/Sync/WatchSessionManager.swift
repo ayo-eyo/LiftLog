@@ -171,6 +171,7 @@ final class WatchSessionManager: NSObject, WCSessionDelegate {
         let plannedSets = workout.sortedItems
             .filter { $0.exercise?.persistentModelID == exercise.persistentModelID }
             .map { WatchWorkoutSnapshot.PlannedSet(weight: $0.plannedWeight, reps: $0.plannedReps) }
+        let samples = ExerciseStats.samples(for: exercise)
         return WatchWorkoutSnapshot.ExerciseInfo(
             id: exercise.syncID,
             name: exercise.name,
@@ -178,9 +179,11 @@ final class WatchSessionManager: NSObject, WCSessionDelegate {
             weight: weight,
             reps: reps,
             plannedSets: plannedSets,
-            // Plans carry it too: the watch can start a plan offline and log into it.
-            recordWeight: ExerciseStats.currentRecord(ExerciseStats.samples(for: exercise))?.weight,
-            tracksRecords: true
+            // Plans carry both of these too: the watch can start a plan offline and log into it.
+            recordWeight: ExerciseStats.currentRecord(samples)?.weight,
+            tracksRecords: true,
+            lastSession: ExerciseStats.lastSession(samples, before: workout)?.sets
+                .map { WatchWorkoutSnapshot.LoggedSet(weight: $0.weight, reps: $0.reps) } ?? []
         )
     }
 

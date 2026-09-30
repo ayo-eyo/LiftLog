@@ -243,7 +243,7 @@ struct WorkoutExerciseLogView: View {
             NavigationLink {
                 ExerciseDetailView(exercise: current)
             } label: {
-                Text("Прошлый раз, \(ProgressFormat.day(last.date)): \(Self.setsSummary(last.sets))")
+                Text(ProgressFormat.lastTime(last))
                     .font(.mono(12))
                     .foregroundStyle(.steel)
                     .lineLimit(1)
@@ -255,11 +255,6 @@ struct WorkoutExerciseLogView: View {
             .padding(.top, 8)
             .accessibilityIdentifier("exerciseLog.lastTime")
         }
-    }
-
-    /// «60×8 · 60×8 · 57,5×7».
-    static func setsSummary(_ sets: [SetSample]) -> String {
-        sets.map { "\($0.weight.formatted(.number))×\($0.reps)" }.joined(separator: " · ")
     }
 
     private var restBlock: some View {

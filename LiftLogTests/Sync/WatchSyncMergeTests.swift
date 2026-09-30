@@ -503,3 +503,37 @@ struct WatchSyncMergeRecordWeightTests {
         #expect(merged.exercises.first?.isWeightRecord(100) == false)
     }
 }
+
+@Suite("WatchSyncMerge — прошлый раз")
+struct WatchSyncMergeLastSessionTests {
+    @Test("подход из очереди не теряет прошлый раз и сдвигает показываемый подход на следующий")
+    func queuedSetKeepsLastSessionAndAdvances() throws {
+        let workoutID = UUID()
+        let exerciseID = UUID()
+        let snapshot = WatchSyncFixtures.snapshot(
+            workoutID: workoutID,
+            exercises: [WatchSyncFixtures.exerciseInfo(id: exerciseID, lastSession: [(60, 8), (57.5, 7)])]
+        )
+        let pending = [
+            WatchSyncFixtures.pending(.logSet(WatchSyncFixtures.logSetCommand(workoutID: workoutID, exerciseID: exerciseID, weight: 60)), expectedVersion: 1),
+        ]
+
+        let merged = try #require(WatchSyncMerge.activeSnapshot(in: WatchSyncFixtures.context(snapshot: snapshot), pending: pending))
+        let exercise = try #require(merged.exercises.first)
+
+        #expect(exercise.lastSession.count == 2)
+        #expect(exercise.lastSessionSetForNext == .init(weight: 57.5, reps: 7))
+    }
+
+    @Test("на подходе N показывается N-й подход прошлого раза, за его концом — ничего", arguments: [
+        (0, WatchWorkoutSnapshot.LoggedSet?.some(.init(weight: 60, reps: 8))),
+        (1, .some(.init(weight: 57.5, reps: 7))),
+        (2, nil),
+        (5, nil),
+    ])
+    func setForNextFollowsLoggedCount(logged: Int, expected: WatchWorkoutSnapshot.LoggedSet?) {
+        let info = WatchSyncFixtures.exerciseInfo(setsLoggedCount: logged, lastSession: [(60, 8), (57.5, 7)])
+
+        #expect(info.lastSessionSetForNext == expected)
+    }
+}

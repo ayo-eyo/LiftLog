@@ -252,10 +252,12 @@ enum ExerciseStats {
     // MARK: During and after a workout (FR-3)
 
     /// «Прошлый раз»: the exercise's latest session that isn't `workout` itself and began
-    /// before it did.
+    /// before it did. A plan hasn't begun, so for it that's simply the latest session: its
+    /// `date` is when it was created, and a plan can sit for a week while the exercise gets
+    /// done in other workouts (plans/features/last-session, decision 2).
     static func lastSession(_ samples: [SetSample], before workout: Workout) -> ExerciseSession? {
         let key = SetSample.SessionKey.workout(workout.persistentModelID)
-        let cutoff = workout.startedAt ?? workout.date
+        let cutoff = workout.startedAt ?? .distantFuture
         return sessions(samples).first { $0.key != key && $0.date < cutoff }
     }
 
