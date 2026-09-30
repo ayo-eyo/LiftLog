@@ -4,6 +4,8 @@ import SwiftUI
 /// can be started from here — with or without the phone in range.
 struct WatchWorkoutListView: View {
     let phone: PhoneSessionManager
+    /// See `refreshingNow` — here only for the queue line.
+    @State private var now = Date()
 
     var body: some View {
         NavigationStack {
@@ -45,11 +47,14 @@ struct WatchWorkoutListView: View {
                                 }
                             }
                         }
-                        Section { QueueStatusView(phone: phone) }
+                        if WatchSyncMerge.shouldWarnAboutQueue(phone.pending, now: now) {
+                            Section { QueueStatusLabel(phone: phone) }
+                        }
                     }
                 }
             }
             .navigationTitle("LiftLog")
+            .refreshingNow($now, at: WatchSyncMerge.queueWarningDate(phone.pending))
         }
         .alert("Не удалось начать", isPresented: startConflictBinding) {
             Button("Повторить") { phone.retryAfterConflict() }
