@@ -288,35 +288,25 @@ final class Workout {
 }
 
 extension Workout {
-    /// Builds a plan from `source`: same ordered exercises, planned weight/reps.
-    /// Per exercise, the source's already-logged sets become the copy's plan when
-    /// there are any (so a partially/fully worked exercise copies as "what was
-    /// actually done"); otherwise the source's own planned positions are copied.
-    /// Sets, `startedAt`/`completedAt` are never copied; `Exercise` objects are
-    /// shared, not duplicated, so exercise history stays unified; the source is
-    /// never mutated.
+    /// Builds a plan from `source`: its planned positions, verbatim — same ordered
+    /// exercises, same planned weight/reps, same number of positions. What was
+    /// actually logged is ignored, so a workout done short or heavier doesn't drift
+    /// the next plan (progression is a separate feature). Sets, `startedAt`/
+    /// `completedAt` are never copied; `Exercise` objects are shared, not
+    /// duplicated, so exercise history stays unified; the source is never mutated.
     static func copy(of source: Workout, sortIndex: Int, now: Date = .now, context: ModelContext) -> Workout {
         let copy = Workout(date: now, name: source.name, sortIndex: sortIndex)
         context.insert(copy)
 
+        // `groupedItems`, not `sortedItems`: the copy keeps exercises together even
+        // if the source's `order` got interleaved, and renumbers from 0.
         var order = 0
-        for exercise in source.orderedExercises {
-            let loggedSets = source.setsFor(exercise)
-            if !loggedSets.isEmpty {
-                for set in loggedSets {
-                    let item = WorkoutItem(exercise: exercise, plannedWeight: set.weight, plannedReps: set.reps, order: order)
-                    context.insert(item)
-                    copy.items.append(item)
-                    order += 1
-                }
-            } else {
-                let planned = source.sortedItems.filter { $0.exercise?.persistentModelID == exercise.persistentModelID }
-                for position in planned {
-                    let item = WorkoutItem(exercise: exercise, plannedWeight: position.plannedWeight, plannedReps: position.plannedReps, order: order)
-                    context.insert(item)
-                    copy.items.append(item)
-                    order += 1
-                }
+        for group in source.groupedItems {
+            for position in group.items {
+                let item = WorkoutItem(exercise: group.exercise, plannedWeight: position.plannedWeight, plannedReps: position.plannedReps, order: order)
+                context.insert(item)
+                copy.items.append(item)
+                order += 1
             }
         }
         return copy

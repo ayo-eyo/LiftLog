@@ -3,22 +3,38 @@ import SwiftData
 @testable import LiftLog
 
 /// `Workout.copy(of:)` — «повторить тренировку» без a separate template entity:
-/// see FR-3 in plans/features/delete-fixture/requirements.md.
-@Suite("Workout.copy — план из подходов или из плана источника")
+/// see FR-3 in plans/features/delete-fixture/requirements.md. The copy repeats the
+/// source's plan verbatim; what was actually logged never leaks into it.
+@Suite("Workout.copy — копия повторяет план источника")
 struct WorkoutCopyTests {
-    @Test("если у упражнения источника есть залогированные подходы, они становятся планом копии")
-    func copiesLoggedSetsAsPlan() throws {
+    @Test("вес и повторы копии берутся из плана, а не из сделанных подходов")
+    func copiesPlanNotLoggedSets() throws {
         let store = try TestStore.open()
         let bench = Fixtures.exercise(in: store.context)
-        let source = Fixtures.workout(exercises: [bench], in: store.context)
-        Fixtures.log([(100, 5), (100, 5), (100, 5)], for: bench, in: source, context: store.context)
+        let source = Fixtures.workout(items: [(bench, 100, 8), (bench, 100, 8), (bench, 100, 8)], in: store.context)
+        Fixtures.log([(105, 6), (105, 6), (100, 5)], for: bench, in: source, context: store.context)
+        source.finish()
 
         let copy = Workout.copy(of: source, sortIndex: 0, context: store.context)
 
         let items = copy.sortedItems.filter { $0.exercise?.persistentModelID == bench.persistentModelID }
         #expect(items.map(\.plannedWeight) == [100, 100, 100])
-        #expect(items.map(\.plannedReps) == [5, 5, 5])
+        #expect(items.map(\.plannedReps) == [8, 8, 8])
         #expect(copy.sets.isEmpty)
+    }
+
+    @Test("подходов в копии столько, сколько в плане, даже если сделано больше", arguments: [1, 3])
+    func copyKeepsPlannedSetCount(loggedCount: Int) throws {
+        let store = try TestStore.open()
+        let bench = Fixtures.exercise(in: store.context)
+        let source = Fixtures.workout(items: [(bench, 60, 8), (bench, 65, 6)], in: store.context)
+        Fixtures.log(Array(repeating: (weight: 60.0, reps: 8), count: loggedCount), for: bench, in: source, context: store.context)
+
+        let copy = Workout.copy(of: source, sortIndex: 0, context: store.context)
+
+        let items = copy.sortedItems.filter { $0.exercise?.persistentModelID == bench.persistentModelID }
+        #expect(items.map(\.plannedWeight) == [60, 65])
+        #expect(items.map(\.plannedReps) == [8, 6])
     }
 
     @Test("если подходов нет, план копии повторяет план источника")
@@ -100,8 +116,8 @@ struct WorkoutCopyTests {
         #expect(copy.sets.isEmpty)
     }
 
-    @Test("копирование идущей тренировки: уже сделанные подходы становятся планом копии")
-    func copyingActiveWorkoutUsesLoggedSetsAsPlan() throws {
+    @Test("копирование идущей тренировки повторяет её план целиком, а не сделанную часть")
+    func copyingActiveWorkoutCopiesWholePlan() throws {
         let store = try TestStore.open()
         let bench = Fixtures.exercise(in: store.context)
         let source = Fixtures.workout(items: [(bench, 60, 8), (bench, 65, 6)], in: store.context)
@@ -110,7 +126,7 @@ struct WorkoutCopyTests {
         let copy = Workout.copy(of: source, sortIndex: 0, context: store.context)
 
         let items = copy.sortedItems.filter { $0.exercise?.persistentModelID == bench.persistentModelID }
-        #expect(items.map(\.plannedWeight) == [60])
+        #expect(items.map(\.plannedWeight) == [60, 65])
     }
 
     @Test("Exercise не дублируется — копия ссылается на тот же объект, что и источник")
