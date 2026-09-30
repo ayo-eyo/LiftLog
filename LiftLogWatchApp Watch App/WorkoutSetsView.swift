@@ -179,7 +179,8 @@ struct LogSetView: View {
 
     private var title: String {
         guard let exercise else { return "Подход" }
-        guard exercise.plannedSetCount > 0 else { return exercise.name }
+        // The name has its own line above the tiles, so a bare count here, not the name twice.
+        guard exercise.plannedSetCount > 0 else { return "Подход \(exercise.setsLoggedCount + 1)" }
         let setNumber = max(exercise.setsLoggedCount, min(exercise.setsLoggedCount + 1, exercise.plannedSetCount))
         return "Подход \(setNumber) из \(exercise.plannedSetCount)"
     }
@@ -192,6 +193,16 @@ struct LogSetView: View {
             if showPlanFulfilled {
                 planFulfilledBanner
             } else {
+                // Without it the title's «Подход 2 из 4» is all there is, and remembering
+                // what the set is *of* meant going back to the list.
+                if let name = exercise?.name, !name.isEmpty {
+                    Text(name)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+                        .accessibilityAddTraits(.isHeader)
+                }
                 weightTile
                 repsTile
 
