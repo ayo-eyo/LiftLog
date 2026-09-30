@@ -39,12 +39,13 @@ struct WorkoutSetsView: View {
                                         .font(.caption2)
                                         .foregroundStyle(.secondary)
                                     // The whole of last time; the set screen shows just the
-                                    // matching set (plans/features/last-session, FR-3).
+                                    // matching set (plans/features/last-session, FR-3). Labeled:
+                                    // bare «20×10 · 20×10» under «0/3» read as the plan.
                                     if !exercise.lastSession.isEmpty {
-                                        Text(exercise.lastSession.map(setLabel).joined(separator: " · "))
+                                        Text("Прошлый раз: " + exercise.lastSession.map(setLabel).joined(separator: " · "))
                                             .font(.caption2)
                                             .foregroundStyle(.secondary)
-                                            .lineLimit(1)
+                                            .lineLimit(2)
                                             .truncationMode(.tail)
                                     }
                                 }
@@ -143,6 +144,19 @@ extension View {
             }
             now.wrappedValue = Date()
         }
+    }
+}
+
+extension View {
+    /// Weight/reps tile: always on a fill, so both tap targets show where they end, and the
+    /// one the crown turns gets a green ring — the system's own color for crown focus. Not
+    /// the accent color: the watch app doesn't set one, and the default read as plain gray.
+    func inputTile(isFocused: Bool) -> some View {
+        background(Color.white.opacity(isFocused ? 0.18 : 0.1), in: .rect(cornerRadius: 8))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8)
+                    .strokeBorder(.green, lineWidth: isFocused ? 2 : 0)
+            }
     }
 }
 
@@ -273,7 +287,7 @@ struct LogSetView: View {
             .minimumScaleFactor(0.6)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 6)
-            .background(field == .weight ? Color.accentColor.opacity(0.2) : Color.clear, in: .rect(cornerRadius: 8))
+            .inputTile(isFocused: field == .weight)
             .focusable(true)
             .focused($field, equals: .weight)
             .digitalCrownRotation($weight, from: 0, through: 500, by: Self.weightStep, sensitivity: .medium, isContinuous: false, isHapticFeedbackEnabled: true)
@@ -304,7 +318,7 @@ struct LogSetView: View {
             .minimumScaleFactor(0.6)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 6)
-            .background(field == .reps ? Color.accentColor.opacity(0.2) : Color.clear, in: .rect(cornerRadius: 8))
+            .inputTile(isFocused: field == .reps)
             .focusable(true)
             .focused($field, equals: .reps)
             .digitalCrownRotation($reps, from: 1, through: 50, by: 1, sensitivity: .low, isContinuous: false, isHapticFeedbackEnabled: true)
