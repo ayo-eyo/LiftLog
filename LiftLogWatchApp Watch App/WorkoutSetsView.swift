@@ -177,11 +177,20 @@ struct LogSetView: View {
         phone.snapshot?.exercises.first { $0.id == exerciseID }
     }
 
+    /// The exercise's name — without it, remembering what the set is *of* meant going back
+    /// to the list. The set count is on the button instead (`logButtonTitle`): a line of its
+    /// own above the tiles ran into the title once the rest timer was on screen too.
     private var title: String {
-        guard let exercise else { return "Подход" }
-        guard exercise.plannedSetCount > 0 else { return exercise.name }
-        let setNumber = max(exercise.setsLoggedCount, min(exercise.setsLoggedCount + 1, exercise.plannedSetCount))
-        return "Подход \(setNumber) из \(exercise.plannedSetCount)"
+        guard let name = exercise?.name, !name.isEmpty else { return "Подход" }
+        return name
+    }
+
+    /// «Записать 1 из 3» — the count sits on the action that logs that very set. Past the
+    /// plan (after «Продолжить») or with no plan there's nothing to be "of", and a clamped
+    /// «3 из 3» on the fourth set would be a lie.
+    private var logButtonTitle: String {
+        guard let exercise, exercise.setsLoggedCount < exercise.plannedSetCount else { return "Записать подход" }
+        return "Записать \(exercise.setsLoggedCount + 1) из \(exercise.plannedSetCount)"
     }
 
     var body: some View {
@@ -209,9 +218,12 @@ struct LogSetView: View {
                     QueueStatusLabel(phone: phone)
                 }
 
-                Button("Записать подход") { logSet() }
+                Button(logButtonTitle) { logSet() }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
+                    // «Записать 10 из 12» on a 40 mm watch: shrink rather than wrap.
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                     .disabled(exercise == nil || reps <= 0)
             }
         }
