@@ -7,9 +7,6 @@ import WatchKit
 struct WorkoutSetsView: View {
     let phone: PhoneSessionManager
     @State private var isConfirmingFinish = false
-    /// Set by the sheet's «Завершить»; the finish itself runs in the sheet's `onDismiss`.
-    @State private var didConfirmFinish = false
-    @Environment(\.dismiss) private var dismiss
     /// Moved forward by `refreshingNow` exactly when the rest ends or the queue turns
     /// stale — see there.
     @State private var now = Date()
@@ -34,9 +31,7 @@ struct WorkoutSetsView: View {
                         }
                     }
                     ForEach(snapshot.exercises) { exercise in
-                        NavigationLink {
-                            LogSetView(phone: phone, exerciseID: exercise.id)
-                        } label: {
+                        NavigationLink(value: WatchRoute.logSet(exerciseID: exercise.id)) {
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(exercise.name)
@@ -71,38 +66,9 @@ struct WorkoutSetsView: View {
         .navigationTitle(title)
         .refreshingNow($now, at: phone.snapshot?.restEndDate)
         .refreshingNow($now, at: WatchSyncMerge.queueWarningDate(phone.pending))
-        // A sheet, not `confirmationDialog`, for its `onDismiss`: finishing makes
-        // `phone.snapshot` nil at once, which tears this screen down (its link in the
-        // list vanishes, `PlanView` swaps it out, `dismiss()` below fires). Doing that
-        // while the confirmation is still on screen left it stuck there — so the finish
-        // waits until the confirmation has fully gone away.
-        .sheet(isPresented: $isConfirmingFinish, onDismiss: {
-            guard didConfirmFinish else { return }
-            didConfirmFinish = false
-            phone.finishWorkout()
-        }) {
-            finishConfirmation
-        }
-        // Тренировка кончилась (здесь или на телефоне) — возвращаемся к списку вместо
-        // того, чтобы показывать «Нет активной тренировки» на месте только что
-        // завершённой.
-        .onChange(of: phone.snapshot?.workoutID) { old, new in
-            if old != nil, new == nil {
-                dismiss()
-            }
-        }
-    }
-
-    private var finishConfirmation: some View {
-        VStack(spacing: 8) {
-            Text("Завершить тренировку?")
-                .font(.headline)
-                .multilineTextAlignment(.center)
-            Button("Завершить", role: .destructive) {
-                didConfirmFinish = true
-                isConfirmingFinish = false
-            }
-            Button("Отмена", role: .cancel) { isConfirmingFinish = false }
+        .confirmationDialog("Завершить тренировку?", isPresented: $isConfirmingFinish, titleVisibility: .visible) {
+            Button("Завершить", role: .destructive) { phone.finishWorkout() }
+            Button("Отмена", role: .cancel) {}
         }
     }
 
@@ -176,7 +142,7 @@ func clockString(_ interval: TimeInterval) -> String {
     return String(format: "%d:%02d", seconds / 60, seconds % 60)
 }
 
-private struct LogSetView: View {
+struct LogSetView: View {
     let phone: PhoneSessionManager
     /// `@State`, not `let` — FR-2's auto-advance swaps this in place instead of
     /// pushing a new screen, same reasoning as `WorkoutExerciseLogView.current` on the
