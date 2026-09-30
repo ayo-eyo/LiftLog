@@ -38,11 +38,11 @@ struct WorkoutSetsView: View {
                                     Text(countLabel(for: exercise))
                                         .font(.caption2)
                                         .foregroundStyle(.secondary)
-                                    // The whole of last time; the set screen shows just the
-                                    // matching set (plans/features/last-session, FR-3). Labeled:
-                                    // bare «20×10 · 20×10» under «0/3» read as the plan.
-                                    if !exercise.lastSession.isEmpty {
-                                        Text("Прошлый раз: " + exercise.lastSession.map(setLabel).joined(separator: " · "))
+                                    // This workout's plan, set by set. Last time belongs on the
+                                    // set screen, next to the plan's numbers in the tiles
+                                    // (plans/features/last-session, FR-3).
+                                    if let plan = planLabel(for: exercise) {
+                                        Text(plan)
                                             .font(.caption2)
                                             .foregroundStyle(.secondary)
                                             .lineLimit(2)
@@ -93,6 +93,19 @@ struct WorkoutSetsView: View {
         exercise.plannedSetCount > 0
             ? "\(exercise.setsLoggedCount)/\(exercise.plannedSetCount)"
             : "\(exercise.setsLoggedCount)"
+    }
+
+    /// «20×10 · 20×10 · 25×8»; nil with no planned numbers at all.
+    private func planLabel(for exercise: WatchWorkoutSnapshot.ExerciseInfo) -> String? {
+        let sets = exercise.plannedSets.compactMap { set -> String? in
+            switch (set.weight, set.reps) {
+            case let (weight?, reps?): "\(weight.formatted(.number))×\(reps)"
+            case let (nil, reps?): "×\(reps)"
+            case let (weight?, nil): "\(weight.formatted(.number)) кг"
+            case (nil, nil): nil
+            }
+        }
+        return sets.isEmpty ? nil : sets.joined(separator: " · ")
     }
 
     private func restRow(remaining: TimeInterval, name: String?) -> some View {
