@@ -177,12 +177,24 @@ struct LogSetView: View {
         phone.snapshot?.exercises.first { $0.id == exerciseID }
     }
 
+    /// The exercise's name — without it, remembering what the set is *of* meant going back
+    /// to the list. The set count moved down into `statusRow`: a line of its own above the
+    /// tiles ran into the title once the rest timer was on screen too.
     private var title: String {
-        guard let exercise else { return "Подход" }
-        // The name has its own line above the tiles, so a bare count here, not the name twice.
-        guard exercise.plannedSetCount > 0 else { return "Подход \(exercise.setsLoggedCount + 1)" }
+        guard let name = exercise?.name, !name.isEmpty else { return "Подход" }
+        return name
+    }
+
+    /// «1/3» — the list's short form, there's no room for «Подход 1 из 3» next to the timer.
+    /// A bare «Подход 3» for an exercise with no plan, which has nothing to be "of".
+    private var setCounter: (text: String, spoken: String)? {
+        guard let exercise else { return nil }
+        guard exercise.plannedSetCount > 0 else {
+            let text = "Подход \(exercise.setsLoggedCount + 1)"
+            return (text, text)
+        }
         let setNumber = max(exercise.setsLoggedCount, min(exercise.setsLoggedCount + 1, exercise.plannedSetCount))
-        return "Подход \(setNumber) из \(exercise.plannedSetCount)"
+        return ("\(setNumber)/\(exercise.plannedSetCount)", "Подход \(setNumber) из \(exercise.plannedSetCount)")
     }
 
     var body: some View {
@@ -193,28 +205,9 @@ struct LogSetView: View {
             if showPlanFulfilled {
                 planFulfilledBanner
             } else {
-                // Without it the title's «Подход 2 из 4» is all there is, and remembering
-                // what the set is *of* meant going back to the list.
-                if let name = exercise?.name, !name.isEmpty {
-                    Text(name)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.center)
-                        .accessibilityAddTraits(.isHeader)
-                }
                 weightTile
                 repsTile
-
-                if let restEndDate = phone.snapshot?.restEndDate {
-                    TimelineView(.periodic(from: restEndDate, by: 1)) { timeline in
-                        if restEndDate > timeline.date {
-                            Text(clockString(restEndDate.timeIntervalSince(timeline.date)))
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
+                statusRow
 
                 if WatchSyncMerge.shouldWarnAboutQueue(phone.pending, now: now) {
                     QueueStatusLabel(phone: phone)
@@ -244,6 +237,29 @@ struct LogSetView: View {
             guard !didLoadDefaults else { return }
             didLoadDefaults = true
             applyDefaults()
+        }
+    }
+
+    /// «1/3 · 1:55»: the set count, plus the rest timer while resting — one line for both.
+    @ViewBuilder
+    private var statusRow: some View {
+        if let restEndDate = phone.snapshot?.restEndDate {
+            TimelineView(.periodic(from: restEndDate, by: 1)) { timeline in
+                statusText(rest: restEndDate > timeline.date ? restEndDate.timeIntervalSince(timeline.date) : nil)
+            }
+        } else {
+            statusText(rest: nil)
+        }
+    }
+
+    @ViewBuilder
+    private func statusText(rest: TimeInterval?) -> some View {
+        let parts = [setCounter?.text, rest.map(clockString)].compactMap { $0 }
+        if !parts.isEmpty {
+            Text(parts.joined(separator: " · "))
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .accessibilityLabel([setCounter?.spoken, rest.map { "отдых \(clockString($0))" }].compactMap { $0 }.joined(separator: ", "))
         }
     }
 
