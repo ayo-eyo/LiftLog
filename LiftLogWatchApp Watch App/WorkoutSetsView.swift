@@ -303,7 +303,8 @@ struct LogSetView: View {
             .inputTile(isFocused: field == .weight)
             .focusable(true)
             .focused($field, equals: .weight)
-            .digitalCrownRotation($weight, from: 0, through: 500, by: Self.weightStep, sensitivity: .medium, isContinuous: false, isHapticFeedbackEnabled: true)
+            // `.low`, like reps: at `.medium` a small turn ran through several 0.25 kg steps.
+            .digitalCrownRotation($weight, from: 0, through: 500, by: Self.weightStep, sensitivity: .low, isContinuous: false, isHapticFeedbackEnabled: true)
             // The crown drives `weight` continuously under the hood even with `by:` set —
             // rotation deltas accumulate float error, so left alone the binding drifts to
             // values like 20.000000000004 (which is what was rendering as fractions down
