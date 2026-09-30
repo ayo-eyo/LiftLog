@@ -6,9 +6,8 @@ import WatchKit
 /// away and stay put until the phone confirms them.
 struct WorkoutSetsView: View {
     let phone: PhoneSessionManager
-    @State private var isConfirmingFinish = false
-    /// Set by the sheet's «Завершить»; the finish itself runs in the sheet's `onDismiss`.
-    @State private var didConfirmFinish = false
+    /// Owned by `WatchWorkoutListView`, which also presents the dialog — see there.
+    @Binding var isConfirmingFinish: Bool
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -63,18 +62,6 @@ struct WorkoutSetsView: View {
             }
         }
         .navigationTitle(title)
-        // A sheet, not `confirmationDialog`, for its `onDismiss`: finishing makes
-        // `phone.snapshot` nil at once, which tears this screen down (its link in the
-        // list vanishes, `PlanView` swaps it out, `dismiss()` below fires). Doing that
-        // while the confirmation is still on screen left it stuck there — so the finish
-        // waits until the confirmation has fully gone away.
-        .sheet(isPresented: $isConfirmingFinish, onDismiss: {
-            guard didConfirmFinish else { return }
-            didConfirmFinish = false
-            phone.finishWorkout()
-        }) {
-            finishConfirmation
-        }
         // Тренировка кончилась (здесь или на телефоне) — возвращаемся к списку вместо
         // того, чтобы показывать «Нет активной тренировки» на месте только что
         // завершённой.
@@ -82,19 +69,6 @@ struct WorkoutSetsView: View {
             if old != nil, new == nil {
                 dismiss()
             }
-        }
-    }
-
-    private var finishConfirmation: some View {
-        VStack(spacing: 8) {
-            Text("Завершить тренировку?")
-                .font(.headline)
-                .multilineTextAlignment(.center)
-            Button("Завершить", role: .destructive) {
-                didConfirmFinish = true
-                isConfirmingFinish = false
-            }
-            Button("Отмена", role: .cancel) { isConfirmingFinish = false }
         }
     }
 
