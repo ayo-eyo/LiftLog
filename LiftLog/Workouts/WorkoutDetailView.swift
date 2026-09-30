@@ -178,7 +178,7 @@ struct WorkoutDetailView: View {
         return HStack(spacing: 11) {
             ExerciseThumbnail(primaryMuscles: group.exercise.primaryMuscles, secondaryMuscles: group.exercise.secondaryMuscles, size: 44, cornerRadius: 9)
             VStack(alignment: .leading, spacing: 4) {
-                Text(group.exercise.name).font(.sans(16)).foregroundStyle(.ink)
+                Text(group.exercise.displayName).font(.sans(16)).foregroundStyle(.ink)
                 if workout.isActive {
                     Text(activeSetsSummary(for: group.exercise))
                         .font(.mono(13))
@@ -271,7 +271,7 @@ struct WorkoutDetailView: View {
         Section {
             ForEach(records, id: \.exercise.persistentModelID) { record in
                 HStack {
-                    Text(record.exercise.name).font(.sans(14)).foregroundStyle(.ink)
+                    Text(record.exercise.displayName).font(.sans(14)).foregroundStyle(.ink)
                     Spacer()
                     Text(ProgressFormat.kg(record.weight)).font(.mono(14)).foregroundStyle(.ink)
                 }
@@ -307,7 +307,7 @@ struct WorkoutDetailView: View {
             .foregroundStyle(.plateBlue)
         } header: {
             HStack {
-                Text(exercise.name).font(.sans(15)).foregroundStyle(.ink)
+                Text(exercise.displayName).font(.sans(15)).foregroundStyle(.ink)
                 Spacer()
                 let planned = workout.plannedSetCount(for: exercise)
                 if planned > 0 {

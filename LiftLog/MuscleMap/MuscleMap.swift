@@ -182,10 +182,10 @@ struct MuscleMapHero: View {
     private var accessibilityLabel: String {
         var parts: [String] = []
         if !primaryMuscles.isEmpty {
-            parts.append(String(localized: "primary muscles: \(primaryMuscles.joined(separator: ", "))"))
+            parts.append(String(localized: "primary muscles: \(CatalogVocabulary.muscles(primaryMuscles))"))
         }
         if !secondaryMuscles.isEmpty {
-            parts.append(String(localized: "secondary: \(secondaryMuscles.joined(separator: ", "))"))
+            parts.append(String(localized: "secondary: \(CatalogVocabulary.muscles(secondaryMuscles))"))
         }
         return parts.isEmpty ? String(localized: "Muscle map") : parts.joined(separator: ", ")
     }

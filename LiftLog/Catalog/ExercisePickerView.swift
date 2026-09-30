@@ -30,7 +30,7 @@ struct ExercisePickerView: View {
         groups.compactMap { group in
             let filtered = group.exercises.filter { item in
                 !excluding.contains(item.id) &&
-                (searchText.isEmpty || item.name.localizedCaseInsensitiveContains(searchText))
+                (searchText.isEmpty || item.matches(searchText))
             }
             return filtered.isEmpty ? nil : (group.muscle, filtered)
         }
@@ -47,13 +47,13 @@ struct ExercisePickerView: View {
                             } label: {
                                 HStack(spacing: 11) {
                                     ExerciseThumbnail(primaryMuscles: item.primaryMuscles, secondaryMuscles: item.secondaryMuscles)
-                                    Text(item.name)
+                                    Text(item.localizedName)
                                         .foregroundStyle(.ink)
                                 }
                             }
                         }
                     } header: {
-                        Text(group.muscle.capitalized)
+                        Text(CatalogVocabulary.muscle(group.muscle))
                             .font(.mono(12))
                             .foregroundStyle(.steel)
                     }

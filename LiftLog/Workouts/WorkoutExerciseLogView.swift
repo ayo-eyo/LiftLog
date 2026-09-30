@@ -86,7 +86,7 @@ struct WorkoutExerciseLogView: View {
             historyList
         }
         .background(.chalk)
-        .navigationTitle(current.name)
+        .navigationTitle(current.displayName)
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $editingSet) { set in
             EditSetView(set: set, workout: workout)
@@ -150,7 +150,7 @@ struct WorkoutExerciseLogView: View {
             withAnimation { recordBanner = record }
             AccessibilityNotification.Announcement(String(localized: "New record, \(ProgressFormat.kg(record.weight))")).post()
         }
-        restTimer.start(duration: RestTimer.defaultDuration, exerciseName: current.name)
+        restTimer.start(duration: RestTimer.defaultDuration, exerciseName: current.displayName)
         WatchSessionManager.shared.pushSnapshot(for: workout)
 
         switch WorkoutFlow.advance(after: current, wasFulfilled: wasFulfilled, in: workout) {

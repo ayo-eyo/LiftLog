@@ -5,7 +5,10 @@ import XCTest
 /// workout lists the record. Unit suites cover the branches (`ExerciseRecordBeatenTests`,
 /// `WorkoutRecordsSummaryTests`).
 final class WorkoutRecordsUITests: XCTestCase {
-    private let exerciseName = "Barbell Bench Press - Medium Grip"
+    /// Typed into search in English — search matches both languages — while rows and
+    /// titles show the Russian name (the plans run in Russian).
+    private let exerciseQuery = "Barbell Bench Press - Medium Grip"
+    private let exerciseName = "Жим штанги лёжа средним хватом"
 
     @MainActor
     func test_прошлыйРазБаннерРекордаИСводкаРекордов() throws {
@@ -90,7 +93,7 @@ final class WorkoutRecordsUITests: XCTestCase {
         let searchField = app.searchFields["Поиск упражнения"]
         searchField.waitUntilVisible()
         searchField.tap()
-        searchField.typeText(exerciseName)
+        searchField.typeText(exerciseQuery)
 
         let exerciseRow = app.buttons[exerciseName]
         exerciseRow.waitUntilVisible()

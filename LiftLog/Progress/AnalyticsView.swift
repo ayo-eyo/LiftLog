@@ -223,7 +223,7 @@ struct AnalyticsView: View {
                     Text("Barely worked")
                         .font(.sans(13))
                         .foregroundStyle(.ink)
-                    Text(snapshot.underloaded.map(\.capitalized).joined(separator: ", "))
+                    Text(CatalogVocabulary.muscles(snapshot.underloaded))
                         .font(.sans(13))
                         .foregroundStyle(.steel)
                 }
@@ -238,7 +238,7 @@ struct AnalyticsView: View {
 
     private static func muscleMapLabel(_ load: MuscleLoad) -> String {
         let top = load.volume.sorted { $0.value > $1.value }.prefix(3).map(\.key)
-        return top.isEmpty ? String(localized: "Muscle load map") : String(localized: "Worked the most: \(top.joined(separator: ", "))")
+        return top.isEmpty ? String(localized: "Muscle load map") : String(localized: "Worked the most: \(CatalogVocabulary.muscles(Array(top)))")
     }
 
     // MARK: Records and exercises

@@ -169,6 +169,22 @@ struct WatchSessionManagerTests {
         #expect(workout.setsFor(exercise).count == 1)
     }
 
+    @Test("фолбэк по имени находит упражнение каталога и по переведённому названию, которое видели часы")
+    func nameFallbackMatchesTranslatedName() throws {
+        let store = try TestStore.open()
+        let exercise = Fixtures.catalogBackedExercise(in: store.context)
+        let workout = Fixtures.workout(exercises: [exercise], in: store.context)
+        let manager = WatchSessionManager()
+        manager.start(modelContext: store.context, restTimer: Fixtures.restTimer())
+
+        // The watch was sent `displayName`, so that's the name a stale command carries.
+        let command = WatchSyncFixtures.logSetCommand(workoutID: workout.syncID, exerciseID: UUID(), exerciseName: exercise.displayName)
+        _ = manager.logSet(command, context: store.context)
+
+        #expect(exercise.displayName != exercise.name)
+        #expect(workout.setsFor(exercise).count == 1)
+    }
+
     @Test("старый формат сообщения (без конверта WatchCommand) всё ещё применяется")
     func legacyLogSetMessageStillApplies() throws {
         let store = try TestStore.open()

@@ -19,7 +19,7 @@ final class ExerciseProgressUITests: XCTestCase {
         searchField.tap()
         searchField.typeText("Barbell Bench Press - Medium Grip")
 
-        let exerciseRow = app.buttons["Barbell Bench Press - Medium Grip"]
+        let exerciseRow = app.buttons["Жим штанги лёжа средним хватом"]
         exerciseRow.waitUntilVisible()
         exerciseRow.tap()
 
@@ -35,7 +35,7 @@ final class ExerciseProgressUITests: XCTestCase {
         startButton.waitUntilVisible()
         startButton.tap()
 
-        let exerciseNavLink = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Barbell Bench Press - Medium Grip")).firstMatch
+        let exerciseNavLink = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Жим штанги лёжа средним хватом")).firstMatch
         exerciseNavLink.waitUntilVisible()
         exerciseNavLink.tap()
 

@@ -31,7 +31,7 @@ struct ExerciseDetailView: View {
             }
         }
         .background(.chalk)
-        .navigationTitle(exercise.name)
+        .navigationTitle(exercise.displayName)
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $editingSet) { set in
             // Only an active workout has anything on the watch to refresh after the edit.

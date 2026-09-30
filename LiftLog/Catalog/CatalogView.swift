@@ -22,13 +22,13 @@ struct CatalogView: View {
                             NavigationLink {
                                 CatalogExerciseDetailView(exercise: exercise)
                             } label: {
-                                Text(exercise.name).font(.sans(16)).foregroundStyle(.ink)
+                                Text(exercise.localizedName).font(.sans(16)).foregroundStyle(.ink)
                             }
                             .listRowBackground(Color.chalk)
                             .listRowSeparatorTint(.hairline)
                         }
                     } header: {
-                        Text(group.muscle.capitalized).font(.mono(12)).foregroundStyle(.steel)
+                        Text(CatalogVocabulary.muscle(group.muscle)).font(.mono(12)).foregroundStyle(.steel)
                     }
                 }
             }

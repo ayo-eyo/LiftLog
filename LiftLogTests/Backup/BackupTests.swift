@@ -243,6 +243,19 @@ struct BackupCSVTests {
         #expect(lines[2] == "01.01.2025;00:02;Грудь;Жим лёжа;2;80;6")
     }
 
+    @Test("упражнение каталога называется в CSV переводом, а в JSON-копии остаётся английским")
+    func catalogExerciseIsTranslatedInCSVOnly() throws {
+        let store = try TestStore.open()
+        let bench = Fixtures.catalogBackedExercise(in: store.context)
+        Fixtures.completedWorkout(bench, sets: [(60, 8)], on: Fixtures.epoch, name: "Грудь", in: store.context)
+        let file = try BackupExporter.makeFile(context: store.context)
+
+        let csv = BackupExporter.csv(from: file, timeZone: TimeZone(identifier: "UTC")!)
+
+        #expect(csv.contains(";Жим штанги лёжа средним хватом;"))
+        #expect(file.exercises.map(\.name) == ["Barbell Bench Press - Medium Grip"])
+    }
+
     @Test("поля с разделителем и кавычками экранируются")
     func fieldsAreEscaped() {
         #expect(BackupExporter.csvField(#"Грудь; "тяжёлая""#) == #""Грудь; ""тяжёлая""""#)

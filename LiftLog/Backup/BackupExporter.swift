@@ -91,7 +91,14 @@ enum BackupExporter {
     /// opens with a double click in Russian-locale Excel as well as in Numbers; CRLF line
     /// ends for Excel.
     nonisolated static func csv(from file: BackupFile, timeZone: TimeZone = .current) -> String {
-        let exerciseNames = Dictionary(file.exercises.map { ($0.syncID, $0.name) }, uniquingKeysWith: { first, _ in first })
+        // In the interface language, like the rest of the CSV — the JSON backup keeps the
+        // canonical English names.
+        let exerciseNames = Dictionary(
+            file.exercises.map { exercise in
+                (exercise.syncID, exercise.catalogID.map { CatalogNames.localizedName(id: $0, fallback: exercise.name) } ?? exercise.name)
+            },
+            uniquingKeysWith: { first, _ in first }
+        )
         let russian = Locale(identifier: "ru_RU")
         let dayFormatter = DateFormatter()
         dayFormatter.locale = russian

@@ -17,7 +17,11 @@ to SwiftUI (`Text("…")`, `Button("…")`, `.navigationTitle("…")`) is locali
 into a `String` first (computed titles, alert messages, notifications, CSV) needs
 `String(localized:)`. Counts go through plural variations in the catalog (`"\(n) sets"`), not
 hand-picked word forms. Every new key needs its Russian translation in the catalog —
-`LocalizationTests` fails otherwise. The test plans run in Russian.
+`LocalizationTests` fails otherwise. The test plans run in Russian. Catalog exercise names are translated in
+`LiftLog/Catalog/ExerciseNames.xcstrings` (keyed by `CatalogExercise.id`) and catalog field
+values through `CatalogVocabulary`; `Exercise.name` keeps the canonical English name (backups,
+the watch's by-name fallback) and the UI shows `Exercise.displayName` /
+`CatalogExercise.localizedName`. Search matches both languages. Instructions stay English.
 
 ## Commands
 

@@ -763,6 +763,26 @@
         }
       }
     },
+    "Abdominals" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пресс"
+          }
+        }
+      }
+    },
+    "Abductors" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отводящие мышцы бедра"
+          }
+        }
+      }
+    },
     "Add exercise" : {
       "localizations" : {
         "ru" : {
@@ -789,6 +809,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Добавлено: %@."
+          }
+        }
+      }
+    },
+    "Adductors" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приводящие мышцы бедра"
           }
         }
       }
@@ -885,12 +915,42 @@
         }
       }
     },
+    "Bands" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Резинки"
+          }
+        }
+      }
+    },
+    "Barbell" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Штанга"
+          }
+        }
+      }
+    },
     "Barely worked" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Мало нагружены"
+          }
+        }
+      }
+    },
+    "Beginner" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новичок"
           }
         }
       }
@@ -905,12 +965,52 @@
         }
       }
     },
+    "Biceps" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Бицепс"
+          }
+        }
+      }
+    },
     "Bodyweight exercises aren’t counted" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Без учёта упражнений с собственным весом"
+          }
+        }
+      }
+    },
+    "Bodyweight only" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Собственный вес"
+          }
+        }
+      }
+    },
+    "Cable" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Блок"
+          }
+        }
+      }
+    },
+    "Calves" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Икры"
           }
         }
       }
@@ -931,6 +1031,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Каталог"
+          }
+        }
+      }
+    },
+    "Chest" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Грудь"
           }
         }
       }
@@ -1127,6 +1237,26 @@
         }
       }
     },
+    "Dumbbell" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Гантели"
+          }
+        }
+      }
+    },
+    "EZ curl bar" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "EZ-гриф"
+          }
+        }
+      }
+    },
     "Equipment" : {
       "localizations" : {
         "ru" : {
@@ -1147,12 +1277,32 @@
         }
       }
     },
+    "Exercise ball" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Фитбол"
+          }
+        }
+      }
+    },
     "Exercises" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Упражнения"
+          }
+        }
+      }
+    },
+    "Expert" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Опытный"
           }
         }
       }
@@ -1227,12 +1377,32 @@
         }
       }
     },
+    "Foam roller" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Массажный ролик"
+          }
+        }
+      }
+    },
     "Force" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Усилие"
+          }
+        }
+      }
+    },
+    "Forearms" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Предплечья"
           }
         }
       }
@@ -1247,12 +1417,32 @@
         }
       }
     },
+    "Glutes" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ягодицы"
+          }
+        }
+      }
+    },
     "Got it" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Понятно"
+          }
+        }
+      }
+    },
+    "Hamstrings" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Бицепс бедра"
           }
         }
       }
@@ -1297,6 +1487,16 @@
         }
       }
     },
+    "Intermediate" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Средний"
+          }
+        }
+      }
+    },
     "JSON can be loaded back — on this phone or a new one. CSV opens in Numbers and Excel." : {
       "localizations" : {
         "ru" : {
@@ -1307,12 +1507,32 @@
         }
       }
     },
+    "Kettlebells" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Гири"
+          }
+        }
+      }
+    },
     "Last time, %@: %@" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Прошлый раз, %@: %@"
+          }
+        }
+      }
+    },
+    "Lats" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Широчайшие"
           }
         }
       }
@@ -1367,6 +1587,26 @@
         }
       }
     },
+    "Lower back" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поясница"
+          }
+        }
+      }
+    },
+    "Machine" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тренажёр"
+          }
+        }
+      }
+    },
     "Max reps" : {
       "localizations" : {
         "ru" : {
@@ -1377,12 +1617,32 @@
         }
       }
     },
+    "Medicine ball" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Медбол"
+          }
+        }
+      }
+    },
     "Metric" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Метрика"
+          }
+        }
+      }
+    },
+    "Middle back" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Середина спины"
           }
         }
       }
@@ -1443,6 +1703,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Мой прогресс"
+          }
+        }
+      }
+    },
+    "Neck" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Шея"
           }
         }
       }
@@ -1567,6 +1837,16 @@
         }
       }
     },
+    "Other" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Другое"
+          }
+        }
+      }
+    },
     "Outside a workout" : {
       "localizations" : {
         "ru" : {
@@ -1613,6 +1893,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Основные"
+          }
+        }
+      }
+    },
+    "Pull" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тянущее"
+          }
+        }
+      }
+    },
+    "Push" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Толкающее"
+          }
+        }
+      }
+    },
+    "Quadriceps" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Квадрицепс"
           }
         }
       }
@@ -1707,6 +2017,16 @@
         }
       }
     },
+    "Shoulders" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Плечи"
+          }
+        }
+      }
+    },
     "Skip rest" : {
       "localizations" : {
         "ru" : {
@@ -1723,6 +2043,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Начать"
+          }
+        }
+      }
+    },
+    "Static" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Статическое"
           }
         }
       }
@@ -1823,6 +2153,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Пора продолжить: %@"
+          }
+        }
+      }
+    },
+    "Traps" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Трапеции"
+          }
+        }
+      }
+    },
+    "Triceps" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Трицепс"
           }
         }
       }
