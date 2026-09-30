@@ -1,12 +1,27 @@
 import SwiftUI
 
+/// Everything the watch can push. Value-based, so the whole stack lives in one `path`
+/// the root owns — which is what lets it pop straight back to the list when the
+/// workout ends, however deep the user is (see `WatchWorkoutListView.path`).
+enum WatchRoute: Hashable {
+    case workout
+    /// By ID, not the summary itself: the plan drops out of `phone.plans` the moment
+    /// it's started, and `PlanView` has to follow it into the running workout.
+    case plan(UUID)
+    case logSet(exerciseID: UUID)
+}
+
 /// Root screen: the workout that's running (if any) and the plans the phone sent, which
 /// can be started from here — with or without the phone in range.
 struct WatchWorkoutListView: View {
     let phone: PhoneSessionManager
+    /// Reset to empty when the workout ends. Each screen dismissing itself didn't work:
+    /// with the set-logging screen on top (e.g. its «План выполнен» → «Завершить»), the
+    /// screens below dismissed and dropped their links, and the top one stayed put.
+    @State private var path: [WatchRoute] = []
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             Group {
                 if phone.snapshot == nil && phone.plans.isEmpty {
                     // Именно «планов», а не «тренировок»: на часы уезжают только
@@ -21,9 +36,7 @@ struct WatchWorkoutListView: View {
                     List {
                         if let snapshot = phone.snapshot {
                             Section("Идёт") {
-                                NavigationLink {
-                                    WorkoutSetsView(phone: phone)
-                                } label: {
+                                NavigationLink(value: WatchRoute.workout) {
                                     row(
                                         title: snapshot.name.isEmpty ? "Тренировка" : snapshot.name,
                                         subtitle: "\(snapshot.exercises.count) \(RussianPlural.form(snapshot.exercises.count, "упражнение", "упражнения", "упражнений"))"
@@ -34,9 +47,7 @@ struct WatchWorkoutListView: View {
                         if !phone.plans.isEmpty {
                             Section("Планы") {
                                 ForEach(phone.plans) { plan in
-                                    NavigationLink {
-                                        PlanView(phone: phone, plan: plan)
-                                    } label: {
+                                    NavigationLink(value: WatchRoute.plan(plan.id)) {
                                         row(
                                             title: plan.name.isEmpty ? plan.date.formatted(date: .abbreviated, time: .omitted) : plan.name,
                                             subtitle: "\(plan.exercises.count) \(RussianPlural.form(plan.exercises.count, "упражнение", "упражнения", "упражнений"))"
@@ -50,6 +61,24 @@ struct WatchWorkoutListView: View {
                 }
             }
             .navigationTitle("LiftLog")
+            .navigationDestination(for: WatchRoute.self) { route in
+                switch route {
+                case .workout:
+                    WorkoutSetsView(phone: phone)
+                case .plan(let planID):
+                    PlanView(phone: phone, planID: planID)
+                case .logSet(let exerciseID):
+                    LogSetView(phone: phone, exerciseID: exerciseID)
+                }
+            }
+        }
+        // Тренировка кончилась (здесь или на телефоне) — возвращаемся к списку, с какой
+        // бы глубины ни смотрели. Показывать на её месте «Нет активной тренировки» или
+        // экран плана, которого больше нет, нечестно.
+        .onChange(of: phone.snapshot?.workoutID) { old, new in
+            if old != nil, new == nil {
+                path = []
+            }
         }
         .alert("Не удалось начать", isPresented: startConflictBinding) {
             Button("Повторить") { phone.retryAfterConflict() }
@@ -97,34 +126,23 @@ struct WatchWorkoutListView: View {
 ///
 /// Once it's running, this screen *becomes* the workout instead of popping back to the
 /// list: the user asked to start this workout, so that's where they should end up.
+/// When it ends, the root pops the whole stack.
 private struct PlanView: View {
     let phone: PhoneSessionManager
-    let plan: WatchWorkoutSummary
-    @Environment(\.dismiss) private var dismiss
-    @State private var didStart = false
-
-    private var isRunning: Bool { phone.snapshot?.workoutID == plan.id }
+    let planID: UUID
 
     var body: some View {
-        Group {
-            if isRunning {
-                WorkoutSetsView(phone: phone)
-            } else {
-                planList
-            }
-        }
-        .onChange(of: isRunning) { _, running in
-            if running {
-                didStart = true
-            } else if didStart {
-                // Тренировка завершена — возвращаемся к списку. Показывать снова экран
-                // плана нечестно: этого плана больше нет, начать его повторно нельзя.
-                dismiss()
-            }
+        if phone.snapshot?.workoutID == planID {
+            WorkoutSetsView(phone: phone)
+        } else if let plan = phone.plans.first(where: { $0.id == planID }) {
+            planList(plan)
+        } else {
+            // Удалён на телефоне, пока экран был открыт.
+            ContentUnavailableView("Плана больше нет", systemImage: "figure.strengthtraining.traditional")
         }
     }
 
-    private var planList: some View {
+    private func planList(_ plan: WatchWorkoutSummary) -> some View {
         List {
             ForEach(plan.exercises) { exercise in
                 VStack(alignment: .leading, spacing: 2) {
