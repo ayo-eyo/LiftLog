@@ -11,14 +11,14 @@ final class WorkoutAutoAdvanceUITests: XCTestCase {
 
         app.buttons["workoutList.addWorkout"].tap()
 
-        addExercise(app, name: "Barbell Bench Press - Medium Grip")
-        addExercise(app, name: "Barbell Squat")
+        addExercise(app, query: "Barbell Bench Press - Medium Grip", name: "Жим штанги лёжа средним хватом")
+        addExercise(app, query: "Barbell Squat", name: "Приседания со штангой")
 
         let startButton = app.buttons["Начать"]
         startButton.waitUntilVisible()
         startButton.tap()
 
-        let firstExerciseLink = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Barbell Bench Press - Medium Grip")).firstMatch
+        let firstExerciseLink = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Жим штанги лёжа средним хватом")).firstMatch
         firstExerciseLink.waitUntilVisible()
         firstExerciseLink.tap()
 
@@ -26,7 +26,7 @@ final class WorkoutAutoAdvanceUITests: XCTestCase {
 
         // The single planned set just closed the first exercise — the screen should
         // have swapped to the second one in place, no navigation involved.
-        let squatTitle = app.navigationBars["Barbell Squat"]
+        let squatTitle = app.navigationBars["Приседания со штангой"]
         XCTAssertTrue(squatTitle.waitForExistence(timeout: 5), "После закрытия первого упражнения экран должен сам показать второе")
 
         logSet(app)
@@ -56,7 +56,9 @@ final class WorkoutAutoAdvanceUITests: XCTestCase {
         XCTAssertFalse(app.buttons["root.startAccessory"].exists, "После завершения тренировки глобальная кнопка возврата должна исчезнуть")
     }
 
-    private func addExercise(_ app: XCUIApplication, name: String) {
+    /// `query` is typed into search (English — search matches both languages); `name` is the
+    /// row's label, which is in the interface language.
+    private func addExercise(_ app: XCUIApplication, query: String, name: String) {
         let addExerciseButton = app.buttons["Добавить упражнение"]
         addExerciseButton.waitUntilVisible()
         addExerciseButton.tap()
@@ -64,7 +66,7 @@ final class WorkoutAutoAdvanceUITests: XCTestCase {
         let searchField = app.searchFields["Поиск упражнения"]
         searchField.waitUntilVisible()
         searchField.tap()
-        searchField.typeText(name)
+        searchField.typeText(query)
 
         let exerciseRow = app.buttons[name]
         exerciseRow.waitUntilVisible()

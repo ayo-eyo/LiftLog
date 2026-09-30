@@ -28,7 +28,7 @@ final class WorkoutCopyUITests: XCTestCase {
         searchField.tap()
         searchField.typeText("Barbell Bench Press - Medium Grip")
 
-        let exerciseRow = app.buttons["Barbell Bench Press - Medium Grip"]
+        let exerciseRow = app.buttons["Жим штанги лёжа средним хватом"]
         exerciseRow.waitUntilVisible()
         exerciseRow.tap()
 

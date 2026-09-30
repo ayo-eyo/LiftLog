@@ -4,7 +4,10 @@ import XCTest
 /// and, once a workout is finished, shows the period summary and the muscle map. The
 /// numbers behind it are covered by `TrainingAnalyticsTests`.
 final class AnalyticsUITests: XCTestCase {
-    private let exerciseName = "Barbell Bench Press - Medium Grip"
+    /// Typed into search in English — search matches both languages — while rows and
+    /// titles show the Russian name (the plans run in Russian).
+    private let exerciseQuery = "Barbell Bench Press - Medium Grip"
+    private let exerciseName = "Жим штанги лёжа средним хватом"
 
     @MainActor
     func test_аналитикаПустаДоПервойТренировкиИПоказываетСводкуПосле() throws {
@@ -38,7 +41,7 @@ final class AnalyticsUITests: XCTestCase {
         let searchField = app.searchFields["Поиск упражнения"]
         searchField.waitUntilVisible()
         searchField.tap()
-        searchField.typeText(exerciseName)
+        searchField.typeText(exerciseQuery)
 
         let exerciseRow = app.buttons[exerciseName]
         exerciseRow.waitUntilVisible()

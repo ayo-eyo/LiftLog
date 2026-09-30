@@ -25,13 +25,17 @@ struct ExerciseCatalogDataTests {
         }
     }
 
-    @Test("groups отсортированы по названию мышцы, внутри — по имени упражнения, суммарный размер равен all.count")
+    @Test("groups отсортированы по переведённому названию мышцы, внутри — по переведённому имени упражнения, суммарный размер равен all.count")
     func groupsAreSortedAndComplete() {
         let groups = ExerciseCatalog.groups
+        let inOrder: ([String]) -> Bool = { names in
+            names == names.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+        }
 
-        #expect(groups.map(\.muscle) == groups.map(\.muscle).sorted())
+        // Sorted as shown, in the interface language — plans/features/localization.
+        #expect(inOrder(groups.map { CatalogVocabulary.muscle($0.muscle) }))
         for group in groups {
-            #expect(group.exercises.map(\.name) == group.exercises.map(\.name).sorted())
+            #expect(inOrder(group.exercises.map(\.localizedName)))
         }
         #expect(groups.reduce(0) { $0 + $1.exercises.count } == ExerciseCatalog.all.count)
     }

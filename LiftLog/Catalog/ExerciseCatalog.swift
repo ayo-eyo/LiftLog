@@ -14,9 +14,11 @@ enum ExerciseCatalog {
 
     static let groups: [(muscle: String, exercises: [CatalogExercise])] = {
         let byMuscle = Dictionary(grouping: all) { $0.primaryMuscles.first ?? "other" }
+        // In the interface language's order — sorting by the English originals would
+        // scatter the Russian list.
         return byMuscle
-            .map { (muscle: $0.key, exercises: $0.value.sorted { $0.name < $1.name }) }
-            .sorted { $0.muscle < $1.muscle }
+            .map { (muscle: $0.key, exercises: $0.value.sorted { $0.localizedName.localizedStandardCompare($1.localizedName) == .orderedAscending }) }
+            .sorted { CatalogVocabulary.muscle($0.muscle).localizedStandardCompare(CatalogVocabulary.muscle($1.muscle)) == .orderedAscending }
     }()
 
     private static func load() -> [CatalogExercise] {

@@ -174,7 +174,8 @@ final class WatchSessionManager: NSObject, WCSessionDelegate {
         let samples = ExerciseStats.samples(for: exercise)
         return WatchWorkoutSnapshot.ExerciseInfo(
             id: exercise.syncID,
-            name: exercise.name,
+            // In the phone's language: the watch shows what it's sent.
+            name: exercise.displayName,
             setsLoggedCount: sets.count,
             weight: weight,
             reps: reps,
@@ -328,7 +329,7 @@ final class WatchSessionManager: NSObject, WCSessionDelegate {
         let exercise: Exercise?
         if let byID = try? context.fetch(FetchDescriptor<Exercise>(predicate: #Predicate { $0.syncID == exerciseID })).first {
             exercise = byID
-        } else if let byName = workout.orderedExercises.first(where: { $0.name == command.exerciseName }) {
+        } else if let byName = workout.orderedExercises.first(where: { $0.displayName == command.exerciseName || $0.name == command.exerciseName }) {
             logger.error("logSet: syncID \(exerciseID) not found, falling back to name match '\(command.exerciseName)' — exercise names aren't unique, this can log to the wrong exercise")
             exercise = byName
         } else {
@@ -341,7 +342,7 @@ final class WatchSessionManager: NSObject, WCSessionDelegate {
         if !appliedCommandIDSet.contains(command.commandID) {
             workout.logSet(weight: command.weight, reps: command.reps, for: exercise, context: context)
             markApplied(command.commandID)
-            restTimer?.start(duration: Self.restDuration, exerciseName: exercise.name)
+            restTimer?.start(duration: Self.restDuration, exerciseName: exercise.displayName)
             pushSnapshot(for: workout)
         }
         return exerciseInfo(for: exercise, in: workout)

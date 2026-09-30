@@ -50,7 +50,7 @@ struct WorkoutItemDefaultsView: View {
             historyList
         }
         .background(.chalk)
-        .navigationTitle(exercise.name)
+        .navigationTitle(exercise.displayName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             Button("Done") { dismiss() }

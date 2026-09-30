@@ -1,7 +1,44 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "CFBundleDisplayName" : {
+      "comment" : "Bundle display name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LiftLogWatchApp"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LiftLogWatchApp"
+          }
+        }
+      }
+    },
+    "CFBundleName" : {
+      "comment" : "Bundle name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LiftLogWatchApp Watch App"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LiftLogWatchApp Watch App"
+          }
+        }
+      }
+    },
     "NSHealthShareUsageDescription" : {
+      "comment" : "Privacy - Health Share Usage Description",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -18,6 +55,7 @@
       }
     },
     "NSHealthUpdateUsageDescription" : {
+      "comment" : "Privacy - Health Update Usage Description",
       "localizations" : {
         "en" : {
           "stringUnit" : {

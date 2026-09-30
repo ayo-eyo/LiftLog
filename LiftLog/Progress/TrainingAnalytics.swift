@@ -17,7 +17,7 @@ extension AnalyticsExercise {
     init(_ exercise: Exercise) {
         self.init(
             id: exercise.persistentModelID,
-            name: exercise.name,
+            name: exercise.displayName,
             primaryMuscles: exercise.primaryMuscles,
             secondaryMuscles: exercise.secondaryMuscles,
             samples: ExerciseStats.samples(for: exercise)

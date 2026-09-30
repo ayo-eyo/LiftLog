@@ -197,6 +197,7 @@ enum SourcePaths {
     static let stringCatalogs: [URL] = [
         "LiftLog/Localizable.xcstrings",
         "LiftLog/InfoPlist.xcstrings",
+        "LiftLog/Catalog/ExerciseNames.xcstrings",
         "LiftLogWatchApp Watch App/Localizable.xcstrings",
         "LiftLogWatchApp Watch App/InfoPlist.xcstrings",
     ].map { repoRoot.appending(path: $0) }
