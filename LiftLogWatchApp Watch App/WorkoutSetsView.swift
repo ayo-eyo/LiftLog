@@ -206,8 +206,12 @@ struct LogSetView: View {
             if showPlanFulfilled {
                 planFulfilledBanner
             } else {
-                weightTile
-                repsTile
+                // Side by side, not stacked: the watch has room for exactly as many lines as
+                // this screen had before «Прошлый раз», and one more slid under the title.
+                HStack(spacing: 4) {
+                    weightTile
+                    repsTile
+                }
                 // The same set from last time — set 2 shows last time's second set — right
                 // under the numbers being dialed in, which is what it gets compared with.
                 if let last = exercise?.lastSessionSetForNext {
@@ -264,6 +268,9 @@ struct LogSetView: View {
     private var weightTile: some View {
         Text("\(weight.formatted(Self.weightFormat)) кг")
             .font(.title3.monospacedDigit())
+            // Half the width now: «102,25 кг» shrinks rather than wraps.
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 6)
             .background(field == .weight ? Color.accentColor.opacity(0.2) : Color.clear, in: .rect(cornerRadius: 8))
@@ -293,6 +300,8 @@ struct LogSetView: View {
     private var repsTile: some View {
         Text("× \(Int(reps.rounded()))")
             .font(.title3.monospacedDigit())
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 6)
             .background(field == .reps ? Color.accentColor.opacity(0.2) : Color.clear, in: .rect(cornerRadius: 8))
