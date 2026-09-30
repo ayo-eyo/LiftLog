@@ -208,6 +208,14 @@ struct LogSetView: View {
             } else {
                 weightTile
                 repsTile
+                // The same set from last time — set 2 shows last time's second set — right
+                // under the numbers being dialed in, which is what it gets compared with.
+                if let last = exercise?.lastSessionSetForNext {
+                    Text("Прошлый раз: \(setLabel(last))")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
 
                 if let restEndDate = phone.snapshot?.restEndDate {
                     TimelineView(.periodic(from: restEndDate, by: 1)) { timeline in
@@ -221,15 +229,6 @@ struct LogSetView: View {
 
                 if WatchSyncMerge.shouldWarnAboutQueue(phone.pending, now: now) {
                     QueueStatusLabel(phone: phone)
-                }
-
-                // The same set from last time — set 2 shows last time's second set — so
-                // the numbers to beat are right next to the ones being dialed in.
-                if let last = exercise?.lastSessionSetForNext {
-                    Text("Прошлый раз: \(setLabel(last))")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
                 }
 
                 Button("Записать подход") { logSet() }
