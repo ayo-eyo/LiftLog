@@ -34,8 +34,8 @@ struct CatalogView: View {
             }
             .scrollContentBackground(.hidden)
             .background(.chalk)
-            .searchable(text: $searchText, prompt: "Поиск упражнения")
-            .navigationTitle("Каталог")
+            .searchable(text: $searchText, prompt: "Search exercises")
+            .navigationTitle("Catalog")
         }
         .onAppear { recomputeFilteredGroups() }
         .onChange(of: searchText) { recomputeFilteredGroups() }

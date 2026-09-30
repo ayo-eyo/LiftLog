@@ -61,30 +61,30 @@ struct WorkoutSetsView: View {
                         if WatchSyncMerge.shouldWarnAboutQueue(phone.pending, now: now) {
                             QueueStatusLabel(phone: phone)
                         }
-                        Button("Завершить", role: .destructive) { isConfirmingFinish = true }
+                        Button("Finish", role: .destructive) { isConfirmingFinish = true }
                             .font(.caption)
                     }
                 }
             } else {
                 ContentUnavailableView(
-                    "Нет активной тренировки",
+                    "No active workout",
                     systemImage: "figure.strengthtraining.traditional",
-                    description: Text("Начни её здесь или на телефоне")
+                    description: Text("Start one here or on the phone")
                 )
             }
         }
         .navigationTitle(title)
         .refreshingNow($now, at: phone.snapshot?.restEndDate)
         .refreshingNow($now, at: WatchSyncMerge.queueWarningDate(phone.pending))
-        .confirmationDialog("Завершить тренировку?", isPresented: $isConfirmingFinish, titleVisibility: .visible) {
-            Button("Завершить", role: .destructive) { phone.finishWorkout() }
-            Button("Отмена", role: .cancel) {}
+        .confirmationDialog("Finish the workout?", isPresented: $isConfirmingFinish, titleVisibility: .visible) {
+            Button("Finish", role: .destructive) { phone.finishWorkout() }
+            Button("Cancel", role: .cancel) {}
         }
     }
 
     private var title: String {
-        guard let snapshot = phone.snapshot else { return "Подходы" }
-        return snapshot.name.isEmpty ? "Подходы" : snapshot.name
+        guard let snapshot = phone.snapshot else { return String(localized: "Sets") }
+        return snapshot.name.isEmpty ? String(localized: "Sets") : snapshot.name
     }
 
     /// «2/4» when there's a plan (FR-1); a bare count for an exercise added
@@ -101,7 +101,7 @@ struct WorkoutSetsView: View {
             switch (set.weight, set.reps) {
             case let (weight?, reps?): "\(weight.formatted(.number))×\(reps)"
             case let (nil, reps?): "×\(reps)"
-            case let (weight?, nil): "\(weight.formatted(.number)) кг"
+            case let (weight?, nil): String(localized: "\(weight.formatted(.number)) kg")
             case (nil, nil): nil
             }
         }
@@ -110,12 +110,12 @@ struct WorkoutSetsView: View {
 
     private func restRow(remaining: TimeInterval, name: String?) -> some View {
         VStack(spacing: 4) {
-            Text(name ?? "Отдых")
+            Text(name ?? String(localized: "Rest"))
                 .font(.caption2)
                 .foregroundStyle(.secondary)
             Text(clockString(remaining))
                 .font(.title2.monospacedDigit())
-            Button("Пропустить") { phone.skipRest() }
+            Button("Skip") { phone.skipRest() }
                 .font(.caption2)
         }
         .frame(maxWidth: .infinity)
@@ -131,7 +131,7 @@ struct QueueStatusLabel: View {
 
     var body: some View {
         Label(
-            "\(phone.unsentCount) \(RussianPlural.form(phone.unsentCount, "запись", "записи", "записей")) не отправлено",
+            "\(phone.unsentCount) entries not sent",
             systemImage: "arrow.triangle.2.circlepath"
         )
         .font(.caption2)
@@ -222,7 +222,7 @@ struct LogSetView: View {
     /// to the list. The set count is on the button instead (`logButtonTitle`): a line of its
     /// own above the tiles ran into the title once the rest timer was on screen too.
     private var title: String {
-        guard let name = exercise?.name, !name.isEmpty else { return "Подход" }
+        guard let name = exercise?.name, !name.isEmpty else { return String(localized: "Set") }
         return name
     }
 
@@ -230,8 +230,8 @@ struct LogSetView: View {
     /// plan (after «Продолжить») or with no plan there's nothing to be "of", and a clamped
     /// «3 из 3» on the fourth set would be a lie.
     private var logButtonTitle: String {
-        guard let exercise, exercise.setsLoggedCount < exercise.plannedSetCount else { return "Записать подход" }
-        return "Записать \(exercise.setsLoggedCount + 1) из \(exercise.plannedSetCount)"
+        guard let exercise, exercise.setsLoggedCount < exercise.plannedSetCount else { return String(localized: "Log set") }
+        return String(localized: "Log \(exercise.setsLoggedCount + 1) of \(exercise.plannedSetCount)")
     }
 
     var body: some View {
@@ -251,7 +251,7 @@ struct LogSetView: View {
                 // The same set from last time — set 2 shows last time's second set — right
                 // under the numbers being dialed in, which is what it gets compared with.
                 if let last = exercise?.lastSessionSetForNext {
-                    Text("Прошлый раз: \(setLabel(last))")
+                    Text("Last time: \(setLabel(last))")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -305,7 +305,7 @@ struct LogSetView: View {
     private static let weightFormat: FloatingPointFormatStyle<Double> = .number.precision(.fractionLength(0...2))
 
     private var weightTile: some View {
-        Text("\(weight.formatted(Self.weightFormat)) кг")
+        Text("\(weight.formatted(Self.weightFormat)) kg")
             .font(.title3.monospacedDigit())
             // Half the width now: «102,25 кг» shrinks rather than wraps.
             .lineLimit(1)
@@ -326,8 +326,8 @@ struct LogSetView: View {
             }
             .onTapGesture { field = .weight }
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Вес")
-            .accessibilityValue("\(weight.formatted(Self.weightFormat)) килограмм")
+            .accessibilityLabel("Weight")
+            .accessibilityValue("\(weight.formatted(Self.weightFormat)) kilograms")
             .accessibilityAdjustableAction { direction in
                 switch direction {
                 case .increment: weight = min(500, weight + Self.weightStep)
@@ -350,7 +350,7 @@ struct LogSetView: View {
             .digitalCrownRotation($reps, from: 1, through: 50, by: 1, sensitivity: .low, isContinuous: false, isHapticFeedbackEnabled: true)
             .onTapGesture { field = .reps }
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Повторы")
+            .accessibilityLabel("Reps")
             .accessibilityValue("\(Int(reps.rounded()))")
             .accessibilityAdjustableAction { direction in
                 switch direction {
@@ -362,22 +362,22 @@ struct LogSetView: View {
     }
 
     private func recordBannerView(_ weight: Double) -> some View {
-        Label("Рекорд · \(weight.formatted(Self.weightFormat)) кг", systemImage: "trophy.fill")
+        Label("Record · \(weight.formatted(Self.weightFormat)) kg", systemImage: "trophy.fill")
             .font(.caption)
             .foregroundStyle(.yellow)
             .lineLimit(1)
             .minimumScaleFactor(0.7)
             .transition(.opacity)
             .onTapGesture { withAnimation { recordBanner = nil } }
-            .accessibilityLabel("Новый рекорд, \(weight.formatted(Self.weightFormat)) килограмм")
+            .accessibilityLabel("New record, \(weight.formatted(Self.weightFormat)) kilograms")
     }
 
     private var planFulfilledBanner: some View {
         VStack(spacing: 8) {
-            Text("План выполнен").font(.headline)
-            Button("Завершить", role: .destructive) { phone.finishWorkout() }
+            Text("Plan complete").font(.headline)
+            Button("Finish", role: .destructive) { phone.finishWorkout() }
                 .font(.caption)
-            Button("Продолжить") { withAnimation { showPlanFulfilled = false } }
+            Button("Continue") { withAnimation { showPlanFulfilled = false } }
                 .font(.caption2)
         }
     }

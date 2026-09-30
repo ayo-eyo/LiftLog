@@ -38,7 +38,7 @@ struct CatalogExerciseDetailView: View {
             List {
                 if let progressExercise {
                     Section {
-                        NavigationLink("Мой прогресс") {
+                        NavigationLink("My progress") {
                             ExerciseDetailView(exercise: progressExercise)
                         }
                         .font(.sans(15))
@@ -46,24 +46,24 @@ struct CatalogExerciseDetailView: View {
                         .accessibilityIdentifier("catalogExercise.progress")
                     }
                 }
-                Section("Мышцы") {
-                    LabeledContent("Основные", value: exercise.primaryMuscles.joined(separator: ", ").capitalized)
+                Section("Muscles") {
+                    LabeledContent("Primary", value: exercise.primaryMuscles.joined(separator: ", ").capitalized)
                     if !exercise.secondaryMuscles.isEmpty {
-                        LabeledContent("Вспомогательные", value: exercise.secondaryMuscles.joined(separator: ", ").capitalized)
+                        LabeledContent("Secondary", value: exercise.secondaryMuscles.joined(separator: ", ").capitalized)
                     }
                 }
-                Section("Параметры") {
+                Section("Details") {
                     if let equipment = exercise.equipment {
-                        LabeledContent("Оборудование", value: equipment.capitalized)
+                        LabeledContent("Equipment", value: equipment.capitalized)
                     }
                     if let level = exercise.level {
-                        LabeledContent("Уровень", value: level.capitalized)
+                        LabeledContent("Level", value: level.capitalized)
                     }
                     if let force = exercise.force {
-                        LabeledContent("Усилие", value: force.capitalized)
+                        LabeledContent("Force", value: force.capitalized)
                     }
                 }
-                Section("Техника") {
+                Section("Technique") {
                     ForEach(steps) { step in
                         Text("\(step.number). \(step.text)")
                     }

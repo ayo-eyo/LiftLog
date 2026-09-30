@@ -46,10 +46,10 @@ enum AnalyticsPeriod: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .week: "Неделя"
-        case .month: "Месяц"
-        case .threeMonths: "3 мес"
-        case .year: "Год"
+        case .week: String(localized: "Week")
+        case .month: String(localized: "Month")
+        case .threeMonths: String(localized: "3 mo")
+        case .year: String(localized: "Year")
         }
     }
 

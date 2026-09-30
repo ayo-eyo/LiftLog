@@ -40,7 +40,7 @@ struct LiftLogApp: App {
         do {
             return try ModelContainer(for: schema, configurations: configuration)
         } catch {
-            fatalError("Не удалось создать ModelContainer: \(error)")
+            fatalError("Could not create ModelContainer: \(error)")
         }
     }()
 

@@ -182,11 +182,11 @@ struct MuscleMapHero: View {
     private var accessibilityLabel: String {
         var parts: [String] = []
         if !primaryMuscles.isEmpty {
-            parts.append("основные мышцы: \(primaryMuscles.joined(separator: ", "))")
+            parts.append(String(localized: "primary muscles: \(primaryMuscles.joined(separator: ", "))"))
         }
         if !secondaryMuscles.isEmpty {
-            parts.append("вспомогательные: \(secondaryMuscles.joined(separator: ", "))")
+            parts.append(String(localized: "secondary: \(secondaryMuscles.joined(separator: ", "))"))
         }
-        return parts.isEmpty ? "Карта мышц" : parts.joined(separator: ", ")
+        return parts.isEmpty ? String(localized: "Muscle map") : parts.joined(separator: ", ")
     }
 }

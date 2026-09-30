@@ -4,17 +4,17 @@ import Charts
 /// Number and date formatting shared by the progress screen's pieces.
 enum ProgressFormat {
     static func kg(_ value: Double) -> String {
-        value.formatted(.number.precision(.fractionLength(0...2))) + " кг"
+        String(localized: "\(value.formatted(.number.precision(.fractionLength(0...2)))) kg")
     }
 
     static func value(_ value: Double, metric: ExerciseProgressMetric) -> String {
         switch metric {
         case .reps:
             let reps = Int(value.rounded())
-            return "\(reps) \(RussianPlural.form(reps, "повтор", "повтора", "повторов"))"
+            return String(localized: "\(reps) reps")
         case .oneRepMax:
             // An estimate — hundredths would be false precision.
-            return value.formatted(.number.precision(.fractionLength(0...1))) + " кг"
+            return String(localized: "\(value.formatted(.number.precision(.fractionLength(0...1)))) kg")
         case .weight, .volume:
             return kg(value)
         }
@@ -27,7 +27,7 @@ enum ProgressFormat {
 
     /// «Прошлый раз, 3 сент.: 60×8 · 60×8» — one wording for every screen that shows it.
     static func lastTime(_ session: ExerciseSession) -> String {
-        "Прошлый раз, \(day(session.date)): \(setsSummary(session.sets))"
+        String(localized: "Last time, \(day(session.date)): \(setsSummary(session.sets))")
     }
 
     /// «3 сент.», with the year only when it isn't the current one.
@@ -49,27 +49,27 @@ struct ExerciseRecordTiles: View {
         HStack(alignment: .top, spacing: 8) {
             if let record = ExerciseStats.currentRecord(samples) {
                 tile(
-                    title: "Рекорд веса",
+                    title: "Weight record",
                     value: ProgressFormat.kg(record.weight),
                     caption: "× \(record.reps) · \(ProgressFormat.day(record.date))",
                     isRecord: true
                 )
                 .accessibilityIdentifier("exerciseProgress.recordWeight")
                 if let best = sessions.compactMap(\.bestOneRepMax).max() {
-                    tile(title: "Лучший 1ПМ", value: ProgressFormat.value(best, metric: .oneRepMax), caption: "расчётный")
+                    tile(title: "Best 1RM", value: ProgressFormat.value(best, metric: .oneRepMax), caption: String(localized: "estimated"))
                 }
                 if let last = sessions.first, last.volume > 0 {
-                    tile(title: "Объём", value: ProgressFormat.kg(last.volume), caption: "последний раз")
+                    tile(title: "Volume", value: ProgressFormat.kg(last.volume), caption: String(localized: "last time"))
                 }
             } else {
                 let maxReps = sessions.map(\.maxReps).max() ?? 0
-                tile(title: "Макс. повторы", value: "\(maxReps)", caption: "без веса")
+                tile(title: "Max reps", value: "\(maxReps)", caption: String(localized: "bodyweight"))
                     .accessibilityIdentifier("exerciseProgress.maxReps")
             }
         }
     }
 
-    private func tile(title: String, value: String, caption: String, isRecord: Bool = false) -> some View {
+    private func tile(title: LocalizedStringKey, value: String, caption: String, isRecord: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 4) {
                 if isRecord {
@@ -113,20 +113,20 @@ struct ExerciseProgressChart: View {
         let points = ExerciseStats.chartPoints(sessions, metric: metric, period: period, now: .now, calendar: .current)
         VStack(alignment: .leading, spacing: 10) {
             if metrics.count > 1 {
-                Picker("Метрика", selection: $metric) {
+                Picker("Metric", selection: $metric) {
                     ForEach(metrics) { Text($0.title).tag($0) }
                 }
                 .pickerStyle(.segmented)
                 .accessibilityIdentifier("exerciseProgress.metric")
             }
-            Picker("Период", selection: $period) {
+            Picker("Period", selection: $period) {
                 ForEach(ExerciseChartPeriod.allCases) { Text($0.title).tag($0) }
             }
             .pickerStyle(.segmented)
             .accessibilityIdentifier("exerciseProgress.period")
 
             if points.count < 2 {
-                Text(sessions.count < 2 ? "Нужно хотя бы две тренировки" : "За этот период меньше двух тренировок")
+                Text(sessions.count < 2 ? "At least two workouts are needed" : "Fewer than two workouts in this period")
                     .font(.sans(13))
                     .foregroundStyle(.steel)
                     .frame(maxWidth: .infinity, minHeight: 140)
@@ -148,14 +148,14 @@ struct ExerciseProgressChart: View {
         }
         return Chart {
             ForEach(points) { point in
-                LineMark(x: .value("Дата", point.date), y: .value(metric.title, point.value))
+                LineMark(x: .value("Date", point.date), y: .value(metric.title, point.value))
                     .foregroundStyle(Color.plateBlue)
-                PointMark(x: .value("Дата", point.date), y: .value(metric.title, point.value))
+                PointMark(x: .value("Date", point.date), y: .value(metric.title, point.value))
                     .foregroundStyle(point.hasRecord ? Color.plateRed : Color.plateBlue)
                     .symbolSize(point.hasRecord ? 70 : 28)
             }
             if let selected {
-                RuleMark(x: .value("Дата", selected.date))
+                RuleMark(x: .value("Date", selected.date))
                     .foregroundStyle(Color.steelLight)
                     .annotation(position: .top, overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
                         VStack(spacing: 2) {

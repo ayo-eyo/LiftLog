@@ -191,4 +191,13 @@ enum SourcePaths {
 
     static let phoneSyncModels = repoRoot.appending(path: "LiftLog/Sync/WorkoutSyncModels.swift")
     static let watchSyncModels = repoRoot.appending(path: "LiftLogWatchApp Watch App/WorkoutSyncModels.swift")
+
+    /// Every String Catalog the two apps ship — `LocalizationTests` checks each is fully
+    /// translated.
+    static let stringCatalogs: [URL] = [
+        "LiftLog/Localizable.xcstrings",
+        "LiftLog/InfoPlist.xcstrings",
+        "LiftLogWatchApp Watch App/Localizable.xcstrings",
+        "LiftLogWatchApp Watch App/InfoPlist.xcstrings",
+    ].map { repoRoot.appending(path: $0) }
 }

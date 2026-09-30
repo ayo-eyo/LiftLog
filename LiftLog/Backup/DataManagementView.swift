@@ -45,11 +45,11 @@ struct DataManagementView: View {
             }
             .scrollContentBackground(.hidden)
             .background(.chalk)
-            .navigationTitle("Данные")
+            .navigationTitle("Data")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Готово") { dismiss() }
+                    Button("Done") { dismiss() }
                 }
             }
             .sheet(item: $shareItem) { item in
@@ -60,14 +60,14 @@ struct DataManagementView: View {
                 readPickedFile(result)
             }
             .alert(
-                "Загрузить из файла?",
+                "Load from file?",
                 isPresented: Binding(get: { pendingImport != nil }, set: { if !$0 { pendingImport = nil } }),
                 presenting: pendingImport
             ) { pending in
                 if pending.preview.hasChanges {
-                    Button("Загрузить") { applyImport(pending.file) }
+                    Button("Load") { applyImport(pending.file) }
                 }
-                Button(pending.preview.hasChanges ? "Отмена" : "Понятно", role: .cancel) {}
+                Button(pending.preview.hasChanges ? "Cancel" : "Got it", role: .cancel) {}
             } message: { pending in
                 Text(Self.previewText(pending.preview))
             }
@@ -90,7 +90,7 @@ struct DataManagementView: View {
             Button {
                 exportJSON()
             } label: {
-                Label("Выгрузить всю историю (JSON)", systemImage: "square.and.arrow.up")
+                Label("Export the whole history (JSON)", systemImage: "square.and.arrow.up")
             }
             .disabled(isExporting)
             .accessibilityIdentifier("dataManagement.exportJSON")
@@ -98,14 +98,14 @@ struct DataManagementView: View {
             Button {
                 exportCSV()
             } label: {
-                Label("Выгрузить подходы (CSV)", systemImage: "tablecells")
+                Label("Export sets (CSV)", systemImage: "tablecells")
             }
             .disabled(isExporting)
             .accessibilityIdentifier("dataManagement.exportCSV")
         } header: {
-            sectionHeader("Экспорт")
+            sectionHeader("Export")
         } footer: {
-            Text("JSON можно загрузить обратно — на этот или на новый телефон. CSV открывается в Numbers и Excel.")
+            Text("JSON can be loaded back — on this phone or a new one. CSV opens in Numbers and Excel.")
                 .font(.sans(12))
         }
         .font(.sans(15))
@@ -118,7 +118,7 @@ struct DataManagementView: View {
                 importStatus = nil
                 isPickingFile = true
             } label: {
-                Label("Загрузить из файла", systemImage: "square.and.arrow.down")
+                Label("Load from file", systemImage: "square.and.arrow.down")
             }
             .accessibilityIdentifier("dataManagement.import")
 
@@ -129,9 +129,9 @@ struct DataManagementView: View {
                     .accessibilityIdentifier("dataManagement.importStatus")
             }
         } header: {
-            sectionHeader("Импорт")
+            sectionHeader("Import")
         } footer: {
-            Text("Добавятся только тренировки, которых ещё нет в приложении. Уже существующие не меняются.")
+            Text("Only workouts the app doesn’t have yet are added. Existing ones aren’t changed.")
                 .font(.sans(12))
         }
         .font(.sans(15))
@@ -140,23 +140,23 @@ struct DataManagementView: View {
 
     private var summarySection: some View {
         Section {
-            LabeledContent("Тренировки", value: "\(workouts.count)")
+            LabeledContent("Workouts", value: "\(workouts.count)")
                 .accessibilityIdentifier("dataManagement.summary.workouts")
-            LabeledContent("Подходы", value: "\(sets.count)")
+            LabeledContent("Sets", value: "\(sets.count)")
                 .accessibilityIdentifier("dataManagement.summary.sets")
-            LabeledContent("Упражнения", value: "\(exercises.count)")
+            LabeledContent("Exercises", value: "\(exercises.count)")
                 .accessibilityIdentifier("dataManagement.summary.exercises")
         } header: {
-            sectionHeader("В приложении")
+            sectionHeader("In the app")
         } footer: {
-            Text("Системная резервная копия iPhone (iCloud или компьютер) тоже сохраняет эти данные вместе со всем телефоном. Файл экспорта — отдельная копия у вас на руках.")
+            Text("The iPhone’s system backup (iCloud or a computer) also keeps this data along with the rest of the phone. An export file is a separate copy in your hands.")
                 .font(.sans(12))
         }
         .font(.sans(15))
         .listRowBackground(Color.chalk)
     }
 
-    private func sectionHeader(_ title: String) -> some View {
+    private func sectionHeader(_ title: LocalizedStringKey) -> some View {
         Text(title).font(.mono(12)).foregroundStyle(.steel)
     }
 
@@ -167,7 +167,7 @@ struct DataManagementView: View {
         do {
             file = try BackupExporter.makeFile(context: context)
         } catch {
-            notice = Notice(title: "Не удалось выгрузить", text: error.localizedDescription)
+            notice = Notice(title: String(localized: "Couldn’t export"), text: error.localizedDescription)
             return
         }
         isExporting = true
@@ -181,7 +181,7 @@ struct DataManagementView: View {
                 }.value
                 shareItem = ShareItem(url: url)
             } catch {
-                notice = Notice(title: "Не удалось выгрузить", text: error.localizedDescription)
+                notice = Notice(title: String(localized: "Couldn’t export"), text: error.localizedDescription)
             }
         }
     }
@@ -191,7 +191,7 @@ struct DataManagementView: View {
         do {
             file = try BackupExporter.makeFile(context: context)
         } catch {
-            notice = Notice(title: "Не удалось выгрузить", text: error.localizedDescription)
+            notice = Notice(title: String(localized: "Couldn’t export"), text: error.localizedDescription)
             return
         }
         isExporting = true
@@ -204,7 +204,7 @@ struct DataManagementView: View {
                 }.value
                 shareItem = ShareItem(url: url)
             } catch {
-                notice = Notice(title: "Не удалось выгрузить", text: error.localizedDescription)
+                notice = Notice(title: String(localized: "Couldn’t export"), text: error.localizedDescription)
             }
         }
     }
@@ -217,7 +217,7 @@ struct DataManagementView: View {
         case .success(let picked):
             url = picked
         case .failure(let error):
-            notice = Notice(title: "Не удалось открыть файл", text: error.localizedDescription)
+            notice = Notice(title: String(localized: "Couldn’t open the file"), text: error.localizedDescription)
             return
         }
         // A file picked in Files lives outside the sandbox until access is started.
@@ -229,7 +229,7 @@ struct DataManagementView: View {
             let file = try BackupImporter.decode(Data(contentsOf: url))
             pendingImport = PendingImport(file: file, preview: try BackupImporter.preview(file, context: context))
         } catch {
-            notice = Notice(title: "Не удалось прочитать файл", text: error.localizedDescription)
+            notice = Notice(title: String(localized: "Couldn’t read the file"), text: error.localizedDescription)
         }
     }
 
@@ -243,39 +243,35 @@ struct DataManagementView: View {
             importStatus = Self.resultText(result)
             WatchSessionManager.shared.refresh()
         } catch {
-            importStatus = "Не удалось загрузить: \(error.localizedDescription)"
+            importStatus = String(localized: "Couldn’t load: \(error.localizedDescription)")
         }
     }
 
     // MARK: Text
 
     static func previewText(_ preview: ImportPreview) -> String {
-        guard preview.hasChanges else { return "Всё из этого файла уже есть в приложении." }
-        var lines = ["Добавится: " + counts(workouts: preview.newWorkouts, exercises: preview.newExercises, standaloneSets: preview.newStandaloneSets) + "."]
+        guard preview.hasChanges else { return String(localized: "Everything in this file is already in the app.") }
+        var lines = [String(localized: "Will be added: \(counts(workouts: preview.newWorkouts, exercises: preview.newExercises, standaloneSets: preview.newStandaloneSets)).")]
         if preview.existingWorkouts > 0 {
-            lines.append("Уже есть и будут пропущены: \(count(preview.existingWorkouts, "тренировка", "тренировки", "тренировок")).")
+            lines.append(String(localized: "Already here, will be skipped: \(preview.existingWorkouts) workouts."))
         }
         if preview.activeBecomesCompleted {
-            lines.append("Идущая тренировка из файла добавится завершённой — здесь уже идёт другая.")
+            lines.append(String(localized: "The file’s running workout will be added as finished — another one is running here."))
         }
         return lines.joined(separator: "\n")
     }
 
     static func resultText(_ result: ImportResult) -> String {
         let added = counts(workouts: result.addedWorkouts, exercises: result.addedExercises, standaloneSets: result.addedStandaloneSets)
-        return added.isEmpty ? "Ничего не добавлено — всё уже было." : "Добавлено: \(added)."
+        return added.isEmpty ? String(localized: "Nothing added — it was all here already.") : String(localized: "Added: \(added).")
     }
 
     private static func counts(workouts: Int, exercises: Int, standaloneSets: Int) -> String {
         var parts: [String] = []
-        if workouts > 0 { parts.append(count(workouts, "тренировка", "тренировки", "тренировок")) }
-        if exercises > 0 { parts.append(count(exercises, "упражнение", "упражнения", "упражнений")) }
-        if standaloneSets > 0 { parts.append(count(standaloneSets, "подход", "подхода", "подходов") + " вне тренировки") }
+        if workouts > 0 { parts.append(String(localized: "\(workouts) workouts")) }
+        if exercises > 0 { parts.append(String(localized: "\(exercises) exercises")) }
+        if standaloneSets > 0 { parts.append(String(localized: "\(standaloneSets) sets outside a workout")) }
         return parts.joined(separator: ", ")
-    }
-
-    private static func count(_ value: Int, _ one: String, _ few: String, _ many: String) -> String {
-        "\(value) \(RussianPlural.form(value, one, few, many))"
     }
 }
 

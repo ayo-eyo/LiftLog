@@ -21,14 +21,14 @@ enum ExerciseCatalog {
 
     private static func load() -> [CatalogExercise] {
         guard let url = Bundle.main.url(forResource: "exercises", withExtension: "json") else {
-            logger.error("exercises.json не найден в бандле")
+            logger.error("exercises.json not found in the bundle")
             return []
         }
         do {
             let data = try Data(contentsOf: url)
             return try JSONDecoder().decode([CatalogExercise].self, from: data)
         } catch {
-            logger.error("Ошибка декодирования exercises.json: \(error.localizedDescription)")
+            logger.error("Failed to decode exercises.json: \(error.localizedDescription)")
             return []
         }
     }

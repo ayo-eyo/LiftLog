@@ -51,9 +51,9 @@ struct AnalyticsView: View {
                         content(snapshot)
                     } else {
                         ContentUnavailableView(
-                            "Пока нечего анализировать",
+                            "Nothing to analyze yet",
                             systemImage: "chart.xyaxis.line",
-                            description: Text("Заверши первую тренировку — здесь появится статистика")
+                            description: Text("Finish your first workout — statistics will show up here")
                         )
                         .accessibilityIdentifier("analytics.empty")
                     }
@@ -63,7 +63,7 @@ struct AnalyticsView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(.chalk)
-            .navigationTitle("Аналитика")
+            .navigationTitle("Analytics")
         }
         .task(id: inputKey) {
             snapshot = TrainingAnalytics.snapshot(
@@ -79,7 +79,7 @@ struct AnalyticsView: View {
     private func content(_ snapshot: AnalyticsSnapshot) -> some View {
         List {
             Section {
-                Picker("Период", selection: $period) {
+                Picker("Period", selection: $period) {
                     ForEach(AnalyticsPeriod.allCases) { Text($0.title).tag($0) }
                 }
                 .pickerStyle(.segmented)
@@ -92,28 +92,28 @@ struct AnalyticsView: View {
             Section {
                 volumeChart(snapshot)
             } header: {
-                sectionHeader(snapshot.bucketsAreMonthly ? "Объём по месяцам" : "Объём по неделям")
+                sectionHeader(snapshot.bucketsAreMonthly ? "Volume by month" : "Volume by week")
             }
             .listRowBackground(Color.chalk)
 
             Section {
                 muscleLoad(snapshot)
             } header: {
-                sectionHeader("Нагрузка мышц")
+                sectionHeader("Muscle load")
             }
             .listRowBackground(Color.chalk)
 
             Section {
                 recordRows(snapshot)
             } header: {
-                sectionHeader("Рекорды за период")
+                sectionHeader("Records in the period")
             }
             .listRowBackground(Color.chalk)
 
             Section {
                 trendRows(snapshot)
             } header: {
-                sectionHeader("Упражнения")
+                sectionHeader("Exercises")
             }
             .listRowBackground(Color.chalk)
         }
@@ -128,18 +128,18 @@ struct AnalyticsView: View {
         // No data before this period at all → no comparison, rather than a "+100 %".
         let compares = !previous.isEmpty
         return LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
-            summaryTile("Тренировки", value: "\(current.workouts)",
+            summaryTile("Workouts", value: "\(current.workouts)",
                         delta: compares ? Self.signed(current.workouts - previous.workouts) : nil, id: "workouts")
-            summaryTile("Подходы", value: "\(current.sets)",
+            summaryTile("Sets", value: "\(current.sets)",
                         delta: compares ? Self.signed(current.sets - previous.sets) : nil, id: "sets")
-            summaryTile("Объём", value: ProgressFormat.kg(current.volume),
+            summaryTile("Volume", value: ProgressFormat.kg(current.volume),
                         delta: compares ? TrainingAnalytics.percentChange(from: previous.volume, to: current.volume).map(Self.percent) : nil, id: "volume")
-            summaryTile("Время", value: Self.duration(current.duration),
+            summaryTile("Time", value: Self.duration(current.duration),
                         delta: compares ? TrainingAnalytics.percentChange(from: previous.duration, to: current.duration).map(Self.percent) : nil, id: "time")
         }
     }
 
-    private func summaryTile(_ title: String, value: String, delta: String?, id: String) -> some View {
+    private func summaryTile(_ title: LocalizedStringKey, value: String, delta: String?, id: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(.sans(12))
@@ -149,7 +149,7 @@ struct AnalyticsView: View {
                 .foregroundStyle(.ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
-            Text(delta.map { "\($0) к прошлому" } ?? " ")
+            Text(delta.map { String(localized: "\($0) vs. previous") } ?? " ")
                 .font(.sans(11))
                 .foregroundStyle(.steel)
                 .lineLimit(1)
@@ -178,12 +178,12 @@ struct AnalyticsView: View {
     @ViewBuilder
     private func volumeChart(_ snapshot: AnalyticsSnapshot) -> some View {
         if snapshot.volumeBuckets.allSatisfy({ $0.volume == 0 }) {
-            placeholder(snapshot.bucketsAreMonthly ? "Нет тренировок за 12 месяцев" : "Нет тренировок за 12 недель")
+            placeholder(snapshot.bucketsAreMonthly ? "No workouts in 12 months" : "No workouts in 12 weeks")
         } else {
             let unit: Calendar.Component = snapshot.bucketsAreMonthly ? .month : .weekOfYear
             VStack(alignment: .leading, spacing: 6) {
                 Chart(snapshot.volumeBuckets) { bucket in
-                    BarMark(x: .value("Период", bucket.start, unit: unit), y: .value("Объём", bucket.volume))
+                    BarMark(x: .value("Period", bucket.start, unit: unit), y: .value("Volume", bucket.volume))
                         .foregroundStyle(Color.plateBlue.opacity(bucket.isCurrent ? 0.4 : 1))
                 }
                 .chartXAxis {
@@ -194,7 +194,7 @@ struct AnalyticsView: View {
                 }
                 .frame(height: 160)
                 .accessibilityIdentifier("analytics.volumeChart")
-                Text(snapshot.bucketsAreMonthly ? "Текущий месяц ещё не закончился" : "Текущая неделя ещё не закончилась")
+                Text(snapshot.bucketsAreMonthly ? "The current month isn’t over yet" : "The current week isn’t over yet")
                     .font(.sans(11))
                     .foregroundStyle(.steel)
             }
@@ -206,7 +206,7 @@ struct AnalyticsView: View {
     @ViewBuilder
     private func muscleLoad(_ snapshot: AnalyticsSnapshot) -> some View {
         if snapshot.summary.sets == 0 {
-            placeholder("Нет тренировок за период")
+            placeholder("No workouts in the period")
         } else {
             HStack(spacing: 1) {
                 MuscleMapView(primaryMuscles: [], side: .front, intensities: snapshot.intensities)
@@ -220,7 +220,7 @@ struct AnalyticsView: View {
 
             if !snapshot.underloaded.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Мало нагружены")
+                    Text("Barely worked")
                         .font(.sans(13))
                         .foregroundStyle(.ink)
                     Text(snapshot.underloaded.map(\.capitalized).joined(separator: ", "))
@@ -230,7 +230,7 @@ struct AnalyticsView: View {
                 .accessibilityElement(children: .combine)
                 .accessibilityIdentifier("analytics.underloaded")
             }
-            Text("Без учёта упражнений с собственным весом")
+            Text("Bodyweight exercises aren’t counted")
                 .font(.sans(11))
                 .foregroundStyle(.steel)
         }
@@ -238,7 +238,7 @@ struct AnalyticsView: View {
 
     private static func muscleMapLabel(_ load: MuscleLoad) -> String {
         let top = load.volume.sorted { $0.value > $1.value }.prefix(3).map(\.key)
-        return top.isEmpty ? "Карта нагрузки мышц" : "Больше всего нагружены: \(top.joined(separator: ", "))"
+        return top.isEmpty ? String(localized: "Muscle load map") : String(localized: "Worked the most: \(top.joined(separator: ", "))")
     }
 
     // MARK: Records and exercises
@@ -246,7 +246,7 @@ struct AnalyticsView: View {
     @ViewBuilder
     private func recordRows(_ snapshot: AnalyticsSnapshot) -> some View {
         if snapshot.records.isEmpty {
-            placeholder("Рекордов за период нет")
+            placeholder("No records in the period")
         } else {
             ForEach(snapshot.records) { record in
                 NavigationLink {
@@ -293,11 +293,11 @@ struct AnalyticsView: View {
     private func trendArrow(_ direction: ExerciseTrend.Direction) -> some View {
         switch direction {
         case .up:
-            Image(systemName: "arrow.up.right").foregroundStyle(.plateGreen).accessibilityLabel("растёт")
+            Image(systemName: "arrow.up.right").foregroundStyle(.plateGreen).accessibilityLabel("rising")
         case .down:
-            Image(systemName: "arrow.down.right").foregroundStyle(.plateRed).accessibilityLabel("падает")
+            Image(systemName: "arrow.down.right").foregroundStyle(.plateRed).accessibilityLabel("falling")
         case .flat:
-            Image(systemName: "arrow.right").foregroundStyle(.steel).accessibilityLabel("без изменений")
+            Image(systemName: "arrow.right").foregroundStyle(.steel).accessibilityLabel("no change")
         }
     }
 
@@ -308,11 +308,11 @@ struct AnalyticsView: View {
         }
     }
 
-    private func sectionHeader(_ title: String) -> some View {
+    private func sectionHeader(_ title: LocalizedStringKey) -> some View {
         Text(title).font(.mono(12)).foregroundStyle(.steel)
     }
 
-    private func placeholder(_ text: String) -> some View {
+    private func placeholder(_ text: LocalizedStringKey) -> some View {
         Text(text)
             .font(.sans(13))
             .foregroundStyle(.steel)

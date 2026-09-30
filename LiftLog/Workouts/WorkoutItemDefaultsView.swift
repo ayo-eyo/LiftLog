@@ -53,7 +53,7 @@ struct WorkoutItemDefaultsView: View {
         .navigationTitle(exercise.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            Button("Готово") { dismiss() }
+            Button("Done") { dismiss() }
         }
         // The weight stepper sits right below the sheet's grab area, and a tap
         // there can be captured by the sheet's swipe-to-dismiss gesture instead
@@ -68,7 +68,7 @@ struct WorkoutItemDefaultsView: View {
             RepsInputRow(reps: $reps, stepper: repsStepper)
             if let editingItem {
                 HStack(spacing: 12) {
-                    Button("Сохранить") {
+                    Button("Save") {
                         editingItem.plannedWeight = weight
                         editingItem.plannedReps = reps
                         self.editingItem = nil
@@ -77,14 +77,14 @@ struct WorkoutItemDefaultsView: View {
                     .buttonStyle(.borderedProminent)
                     .tint(.plateBlue)
                     .disabled(weight == nil || reps == nil || (reps ?? 0) <= 0)
-                    Button("Отмена") {
+                    Button("Cancel") {
                         self.editingItem = nil
                     }
                     .font(.sans(15))
                     .buttonStyle(.bordered)
                 }
             } else {
-                Button("Добавить подход") {
+                Button("Add set") {
                     guard let weight, let reps, weight >= 0, reps > 0 else { return }
                     workout.addExercise(exercise, weight: weight, reps: reps, context: context)
                 }

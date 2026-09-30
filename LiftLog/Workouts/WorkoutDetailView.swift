@@ -77,13 +77,13 @@ struct WorkoutDetailView: View {
             isPresented: Binding(get: { !pendingDeleteExercises.isEmpty }, set: { if !$0 { pendingDeleteExercises = [] } }),
             titleVisibility: .visible
         ) {
-            Button("Удалить", role: .destructive) {
+            Button("Delete", role: .destructive) {
                 for exercise in pendingDeleteExercises {
                     workout.deleteExercise(exercise, context: context)
                 }
                 pendingDeleteExercises = []
             }
-            Button("Отмена", role: .cancel) { pendingDeleteExercises = [] }
+            Button("Cancel", role: .cancel) { pendingDeleteExercises = [] }
         }
         .onAppear {
             if workout.isActive {
@@ -106,7 +106,7 @@ struct WorkoutDetailView: View {
 
     private var pendingDeleteTitle: String {
         let count = pendingDeleteExercises.count
-        return "Удалить \(count) \(RussianPlural.form(count, "упражнение", "упражнения", "упражнений")) вместе с уже залогированными подходами?"
+        return String(localized: "Delete \(count) exercises along with the sets already logged?")
     }
 
     // MARK: Header
@@ -114,10 +114,10 @@ struct WorkoutDetailView: View {
     private var header: some View {
         VStack(spacing: 8) {
             if workout.status == .plan {
-                TextField("Название тренировки", text: $workout.name)
+                TextField("Workout name", text: $workout.name)
                     .font(.display(24))
                     .foregroundStyle(.ink)
-                DatePicker("Дата", selection: $workout.date, displayedComponents: [.date, .hourAndMinute])
+                DatePicker("Date", selection: $workout.date, displayedComponents: [.date, .hourAndMinute])
                     .font(.sans(13))
                     .foregroundStyle(.steel)
                     .datePickerStyle(.compact)
@@ -206,20 +206,19 @@ struct WorkoutDetailView: View {
         let logged = workout.loggedSetCount(for: exercise)
         let planned = workout.plannedSetCount(for: exercise)
         guard planned > 0 else {
-            return "\(logged) \(RussianPlural.form(logged, "подход", "подхода", "подходов"))"
+            return String(localized: "\(logged) sets")
         }
-        // "N из M X" always takes the genitive-plural-like form of X once M > 1 — the
-        // ordinary 1/2-4/5+ counting rule (`RussianPlural.form`) doesn't apply here.
-        let word = planned == 1 ? "подхода" : "подходов"
-        return "\(logged) из \(planned) \(word)"
+        // Pluralized on the plan's count: Russian «из 1 подхода» / «из 4 подходов» follows
+        // M, not N, and doesn't follow the ordinary 1/2-4/5+ rule — see the catalog entry.
+        return String(localized: "\(logged) of \(planned) sets")
     }
 
     private func plannedSummary(_ items: [WorkoutItem]) -> String {
         let count = items.count
-        let countText = "\(count) \(RussianPlural.form(count, "подход", "подхода", "подходов"))"
+        let countText = String(localized: "\(count) sets")
         let details = items.map { item -> String in
-            guard let weight = item.plannedWeight, let reps = item.plannedReps else { return "без плана" }
-            return "\(weight.formatted(.number)) кг × \(reps)"
+            guard let weight = item.plannedWeight, let reps = item.plannedReps else { return String(localized: "no plan") }
+            return String(localized: "\(weight.formatted(.number)) kg × \(reps)")
         }.joined(separator: " · ")
         return details.isEmpty ? countText : "\(countText) · \(details)"
     }
@@ -229,19 +228,19 @@ struct WorkoutDetailView: View {
     /// an empty padded `VStack`.
     private var bottomButtons: some View {
         VStack(spacing: 10) {
-            Button("Добавить упражнение") { activeSheet = .picker }
+            Button("Add exercise") { activeSheet = .picker }
                 .font(.sans(15))
                 .buttonStyle(.bordered)
                 .tint(.plateBlue)
 
             if !workout.items.isEmpty {
                 if showsOwnStartButton {
-                    Button("Начать") { start() }
+                    Button("Start") { start() }
                         .font(.sans(15))
                         .buttonStyle(.borderedProminent)
                         .tint(.plateBlue)
                 } else {
-                    Text("Тренировка уже идёт — заверши её, чтобы начать эту")
+                    Text("A workout is already running — finish it to start this one")
                         .font(.sans(13))
                         .foregroundStyle(.steel)
                 }
@@ -280,7 +279,7 @@ struct WorkoutDetailView: View {
         } header: {
             HStack(spacing: 6) {
                 Image(systemName: "trophy.fill").foregroundStyle(.plateRed)
-                Text("\(records.count) \(RussianPlural.form(records.count, "рекорд", "рекорда", "рекордов"))")
+                Text("\(records.count) records")
                     .font(.sans(15))
                     .foregroundStyle(.ink)
             }
@@ -301,7 +300,7 @@ struct WorkoutDetailView: View {
                     SetRow(weight: set.weight, reps: set.reps, fontSize: 14, isRecord: recordIDs.contains(set.persistentModelID))
                 }
             }
-            NavigationLink("Вся история упражнения") {
+            NavigationLink("Full exercise history") {
                 ExerciseDetailView(exercise: exercise)
             }
             .font(.sans(14))
@@ -312,7 +311,7 @@ struct WorkoutDetailView: View {
                 Spacer()
                 let planned = workout.plannedSetCount(for: exercise)
                 if planned > 0 {
-                    Text("\(workout.loggedSetCount(for: exercise)) из \(planned)")
+                    Text("\(workout.loggedSetCount(for: exercise)) of \(planned)")
                         .font(.mono(13))
                         .foregroundStyle(.steel)
                 }
@@ -340,10 +339,10 @@ struct WorkoutDetailView: View {
         }
         if workout.isActive {
             ToolbarItem(placement: .cancellationAction) {
-                Button("Закрыть") { closeIfEmpty() }
+                Button("Close") { closeIfEmpty() }
             }
             ToolbarItem(placement: .primaryAction) {
-                Button("Завершить") { finish() }
+                Button("Finish") { finish() }
             }
         }
         // Reachable two ways: pushed from `WorkoutListView` to browse history (which
@@ -359,7 +358,7 @@ struct WorkoutDetailView: View {
         // would make `app.buttons["Готово"]` ambiguous in a UI test.
         if workout.completedAt != nil {
             ToolbarItem(placement: .primaryAction) {
-                Button("Закрыть") { dismiss() }
+                Button("Close") { dismiss() }
                     .accessibilityIdentifier("workoutDetail.doneButton")
             }
         }
@@ -445,14 +444,14 @@ struct WorkoutDetailView: View {
     }
 }
 
-#Preview("План") {
+#Preview("Plan") {
     let container = PreviewSupport.container()
     let context = container.mainContext
-    let bench = Exercise(name: "Жим лёжа")
-    let squat = Exercise(name: "Присед")
+    let bench = Exercise(name: "Bench press")
+    let squat = Exercise(name: "Squat")
     context.insert(bench)
     context.insert(squat)
-    let workout = Workout(name: "Грудь и ноги")
+    let workout = Workout(name: "Chest and legs")
     context.insert(workout)
     workout.addExercise(bench, weight: 60, reps: 8, context: context)
     workout.addExercise(squat, weight: 100, reps: 5, context: context)
@@ -463,12 +462,12 @@ struct WorkoutDetailView: View {
     .modelContainer(container)
 }
 
-#Preview("Идёт, крупный текст") {
+#Preview("Running, large text") {
     let container = PreviewSupport.container()
     let context = container.mainContext
-    let bench = Exercise(name: "Жим лёжа")
+    let bench = Exercise(name: "Bench press")
     context.insert(bench)
-    let workout = Workout(name: "Грудь")
+    let workout = Workout(name: "Chest")
     context.insert(workout)
     workout.addExercise(bench, weight: 60, reps: 8, context: context)
     workout.start()

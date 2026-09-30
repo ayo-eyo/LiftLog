@@ -87,10 +87,10 @@ enum ExerciseProgressMetric: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .weight: "Вес"
-        case .oneRepMax: "1ПМ"
-        case .volume: "Объём"
-        case .reps: "Повторы"
+        case .weight: String(localized: "Weight")
+        case .oneRepMax: String(localized: "1RM")
+        case .volume: String(localized: "Volume")
+        case .reps: String(localized: "Reps")
         }
     }
 
@@ -113,10 +113,10 @@ enum ExerciseChartPeriod: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .threeMonths: "3 мес"
-        case .sixMonths: "6 мес"
-        case .year: "Год"
-        case .all: "Всё"
+        case .threeMonths: String(localized: "3 mo")
+        case .sixMonths: String(localized: "6 mo")
+        case .year: String(localized: "Year")
+        case .all: String(localized: "All")
         }
     }
 

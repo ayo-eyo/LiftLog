@@ -15,9 +15,9 @@ struct WeightInputRow: View {
 
     var body: some View {
         HStack {
-            Text("Вес").font(.sans(16)).foregroundStyle(.ink)
+            Text("Weight").font(.sans(16)).foregroundStyle(.ink)
             Spacer()
-            TextField("кг", value: $weight, format: .number)
+            TextField("kg", value: $weight, format: .number)
                 .font(.mono(17))
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.center)
@@ -33,12 +33,12 @@ struct WeightInputRow: View {
                     if isFocused {
                         ToolbarItemGroup(placement: .keyboard) {
                             Spacer()
-                            Button("Готово") { isFocused = false }
+                            Button("Done") { isFocused = false }
                         }
                     }
                 }
             if let stepper {
-                Stepper("Вес, кг", value: stepper, in: 0...500, step: 0.25)
+                Stepper("Weight, kg", value: stepper, in: 0...500, step: 0.25)
                     .labelsHidden()
             }
         }
@@ -56,9 +56,9 @@ struct RepsInputRow: View {
 
     var body: some View {
         HStack {
-            Text("Повторы").font(.sans(16)).foregroundStyle(.ink)
+            Text("Reps").font(.sans(16)).foregroundStyle(.ink)
             Spacer()
-            TextField("Повторы", value: $reps, format: .number)
+            TextField("Reps", value: $reps, format: .number)
                 .font(.mono(17))
                 .keyboardType(.numberPad)
                 .multilineTextAlignment(.center)
@@ -71,12 +71,12 @@ struct RepsInputRow: View {
                     if isFocused {
                         ToolbarItemGroup(placement: .keyboard) {
                             Spacer()
-                            Button("Готово") { isFocused = false }
+                            Button("Done") { isFocused = false }
                         }
                     }
                 }
             if let stepper {
-                Stepper("Повторы", value: stepper, in: 1...100)
+                Stepper("Reps", value: stepper, in: 1...100)
                     .labelsHidden()
             }
         }
@@ -99,7 +99,7 @@ struct SetProgressView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Подход \(setNumber) из \(planned)")
+            Text("Set \(setNumber) of \(planned)")
                 .font(.sans(13))
                 .foregroundStyle(.steel)
             HStack(spacing: 4) {
@@ -112,7 +112,7 @@ struct SetProgressView: View {
         }
         .accessibilityIdentifier("exerciseLog.progress")
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Подход \(setNumber) из \(planned)")
+        .accessibilityLabel("Set \(setNumber) of \(planned)")
     }
 }
 
@@ -130,7 +130,7 @@ struct SetRow: View {
                     .font(.system(size: fontSize * 0.8))
                     .foregroundStyle(Color.plateRed)
             }
-            Text(weight.formatted(.number) + " кг")
+            Text("\(weight.formatted(.number)) kg")
                 .font(.mono(fontSize)).foregroundStyle(.ink)
             Spacer()
             Text("× \(reps)")
@@ -140,6 +140,8 @@ struct SetRow: View {
         // separate elements instead of one composed "75 kg, 10 reps" reading — this
         // row appears on five screens, so it's worth fixing once here.
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(weight.formatted(.number)) кг, \(reps) \(RussianPlural.form(reps, "повтор", "повтора", "повторов"))\(isRecord ? ", рекорд веса" : "")")
+        .accessibilityLabel(isRecord
+            ? String(localized: "\(weight.formatted(.number)) kg, \(reps) reps, weight record")
+            : String(localized: "\(weight.formatted(.number)) kg, \(reps) reps"))
     }
 }

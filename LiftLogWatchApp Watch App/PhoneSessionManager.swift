@@ -225,7 +225,7 @@ final class PhoneSessionManager: NSObject, WCSessionDelegate {
             // The phone couldn't apply it at all (workout or exercise gone on its side).
             // Retrying would block everything queued behind it, so it goes — loudly.
             logger.error("phone rejected a queued command, dropping it")
-            lastError = "Телефон не принял часть данных"
+            lastError = String(localized: "The phone didn’t accept some of the data")
             drop(entry)
         }
         if let data = reply[WatchMessageKey.context] as? Data {
@@ -336,7 +336,7 @@ final class PhoneSessionManager: NSObject, WCSessionDelegate {
         guard let decoded = try? JSONDecoder().decode(WatchContext.self, from: data) else {
             // Nothing else changes here, so the screen keeps showing the last context
             // that *did* decode — a stale list with no visible cause. Leave a trace.
-            logger.error("не удалось декодировать контекст с телефона (\(data.count) байт), экран остаётся на прошлом состоянии")
+            logger.error("failed to decode the phone’s context (\(data.count) bytes), the screen keeps its last state")
             return
         }
         if isFresh { hasFreshContext = true }

@@ -105,7 +105,7 @@ struct WorkoutExerciseLogView: View {
                 } label: {
                     Image(systemName: "chart.xyaxis.line")
                 }
-                .accessibilityLabel("История")
+                .accessibilityLabel("History")
                 .accessibilityIdentifier("exerciseLog.history")
             }
         }
@@ -125,7 +125,7 @@ struct WorkoutExerciseLogView: View {
         VStack(spacing: 12) {
             WeightInputRow(weight: $weight, stepper: weightBinding)
             RepsInputRow(reps: $reps, stepper: repsBinding)
-            Button("Добавить подход") {
+            Button("Add set") {
                 logSet()
             }
             .font(.sans(15))
@@ -148,7 +148,7 @@ struct WorkoutExerciseLogView: View {
         // Checked against `current` before `WorkoutFlow.advance` below can swap it.
         if let record = ExerciseStats.recordBeaten(by: newSet.persistentModelID, in: ExerciseStats.samples(for: current)) {
             withAnimation { recordBanner = record }
-            AccessibilityNotification.Announcement("Новый рекорд, \(ProgressFormat.kg(record.weight))").post()
+            AccessibilityNotification.Announcement(String(localized: "New record, \(ProgressFormat.kg(record.weight))")).post()
         }
         restTimer.start(duration: RestTimer.defaultDuration, exerciseName: current.name)
         WatchSessionManager.shared.pushSnapshot(for: workout)
@@ -174,14 +174,14 @@ struct WorkoutExerciseLogView: View {
 
     private var planFulfilledBanner: some View {
         VStack(spacing: 12) {
-            Text("План выполнен")
+            Text("Plan complete")
                 .font(.display(20))
                 .foregroundStyle(.ink)
-            Text("Все запланированные подходы записаны")
+            Text("All planned sets are logged")
                 .font(.sans(13))
                 .foregroundStyle(.steel)
                 .multilineTextAlignment(.center)
-            Button("Завершить тренировку") {
+            Button("Finish workout") {
                 // Pops back to `WorkoutDetailView`, which then shows the completed
                 // summary — that screen's own toolbar ("Закрыть") is the way out of
                 // the `fullScreenCover` from there. A more direct route (closing the
@@ -199,7 +199,7 @@ struct WorkoutExerciseLogView: View {
             .font(.sans(15))
             .buttonStyle(.borderedProminent)
             .tint(.plateBlue)
-            Button("Продолжить") {
+            Button("Continue") {
                 withAnimation { showPlanFulfilled = false }
             }
             .font(.sans(14))
@@ -216,11 +216,11 @@ struct WorkoutExerciseLogView: View {
             HStack(spacing: 6) {
                 Image(systemName: "trophy.fill")
                     .foregroundStyle(.plateRed)
-                Text("Новый рекорд · \(ProgressFormat.kg(record.weight))")
+                Text("New record · \(ProgressFormat.kg(record.weight))")
                     .font(.sans(13))
                     .foregroundStyle(.ink)
                 Spacer()
-                Text("было \(ProgressFormat.kg(record.previous))")
+                Text("was \(ProgressFormat.kg(record.previous))")
                     .font(.sans(11))
                     .foregroundStyle(.steel)
             }
@@ -260,7 +260,7 @@ struct WorkoutExerciseLogView: View {
     private var restBlock: some View {
         VStack(spacing: 8) {
             RestTimerView(restTimer: restTimer, duration: RestTimer.defaultDuration)
-            Button("Пропустить отдых") {
+            Button("Skip rest") {
                 restTimer.skip()
                 WatchSessionManager.shared.pushSnapshot(for: workout)
             }
@@ -291,9 +291,9 @@ struct WorkoutExerciseLogView: View {
 #Preview {
     let container = PreviewSupport.container()
     let context = container.mainContext
-    let bench = Exercise(name: "Жим лёжа", catalogID: "Barbell_Bench_Press_-_Medium_Grip")
+    let bench = Exercise(name: "Bench press", catalogID: "Barbell_Bench_Press_-_Medium_Grip")
     context.insert(bench)
-    let workout = Workout(name: "Грудь")
+    let workout = Workout(name: "Chest")
     context.insert(workout)
     workout.addExercise(bench, weight: 60, reps: 8, context: context)
     workout.start()

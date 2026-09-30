@@ -70,9 +70,9 @@ nonisolated enum BackupError: Error, Equatable, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .unreadable:
-            "Это не файл резервной копии LiftLog, или он повреждён."
+            String(localized: "This isn’t a LiftLog backup file, or it’s damaged.")
         case .newerFormat:
-            "Файл создан более новой версией приложения. Обновите LiftLog и попробуйте снова."
+            String(localized: "The file was made by a newer version of the app. Update LiftLog and try again.")
         }
     }
 }
@@ -100,7 +100,7 @@ nonisolated enum BackupCoding {
             if let date = try? Date(string, strategy: dateStyle) { return date }
             // A hand-edited file may drop the milliseconds.
             if let date = try? Date(string, strategy: Date.ISO8601FormatStyle()) { return date }
-            throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Не дата ISO 8601: \(string)"))
+            throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Not an ISO 8601 date: \(string)"))
         }
         return decoder
     }

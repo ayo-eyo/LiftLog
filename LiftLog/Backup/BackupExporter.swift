@@ -102,7 +102,7 @@ enum BackupExporter {
         timeFormatter.timeZone = timeZone
         timeFormatter.dateFormat = "HH:mm"
 
-        var lines = ["Дата;Время;Тренировка;Упражнение;Подход;Вес, кг;Повторы"]
+        var lines = [String(localized: "Date;Time;Workout;Exercise;Set;Weight, kg;Reps")]
         func appendRows(_ sets: [BackupSet], workoutName: String) {
             var setNumbers: [UUID?: Int] = [:]
             for set in sets {
@@ -121,9 +121,9 @@ enum BackupExporter {
             }
         }
         for workout in file.workouts {
-            appendRows(workout.sets, workoutName: workout.name.isEmpty ? "Тренировка" : workout.name)
+            appendRows(workout.sets, workoutName: workout.name.isEmpty ? String(localized: "Workout") : workout.name)
         }
-        appendRows(file.standaloneSets, workoutName: "Вне тренировки")
+        appendRows(file.standaloneSets, workoutName: String(localized: "Outside a workout"))
         return "\u{FEFF}" + lines.joined(separator: "\r\n") + "\r\n"
     }
 

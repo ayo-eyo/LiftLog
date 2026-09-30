@@ -27,7 +27,7 @@ extension Workout {
         do {
             try context.save()
         } catch {
-            completionLogger.error("не удалось сохранить завершение тренировки: \(error.localizedDescription)")
+            completionLogger.error("failed to save the workout’s completion: \(error.localizedDescription)")
         }
         Task { await HealthKitManager.save(workout) }
         watchSession.pushSnapshot(for: nil)

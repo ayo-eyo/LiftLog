@@ -30,29 +30,29 @@ struct WatchWorkoutListView: View {
                     // незапущенные тренировки и идущая, история остаётся на телефоне —
                     // иначе после завершения экран читается как «всё пропало».
                     ContentUnavailableView(
-                        "Планов нет",
+                        "No plans",
                         systemImage: "figure.strengthtraining.traditional",
-                        description: Text("Создай тренировку на телефоне — она появится здесь")
+                        description: Text("Create a workout on the phone — it will show up here")
                     )
                 } else {
                     List {
                         if let snapshot = phone.snapshot {
-                            Section("Идёт") {
+                            Section("In progress") {
                                 NavigationLink(value: WatchRoute.workout) {
                                     row(
-                                        title: snapshot.name.isEmpty ? "Тренировка" : snapshot.name,
-                                        subtitle: "\(snapshot.exercises.count) \(RussianPlural.form(snapshot.exercises.count, "упражнение", "упражнения", "упражнений"))"
+                                        title: snapshot.name.isEmpty ? String(localized: "Workout") : snapshot.name,
+                                        subtitle: String(localized: "\(snapshot.exercises.count) exercises")
                                     )
                                 }
                             }
                         }
                         if !phone.plans.isEmpty {
-                            Section("Планы") {
+                            Section("Plans") {
                                 ForEach(phone.plans) { plan in
                                     NavigationLink(value: WatchRoute.plan(plan.id)) {
                                         row(
                                             title: plan.name.isEmpty ? plan.date.formatted(date: .abbreviated, time: .omitted) : plan.name,
-                                            subtitle: "\(plan.exercises.count) \(RussianPlural.form(plan.exercises.count, "упражнение", "упражнения", "упражнений"))"
+                                            subtitle: String(localized: "\(plan.exercises.count) exercises")
                                         )
                                     }
                                 }
@@ -85,14 +85,14 @@ struct WatchWorkoutListView: View {
                 path = []
             }
         }
-        .alert("Не удалось начать", isPresented: startConflictBinding) {
-            Button("Повторить") { phone.retryAfterConflict() }
-            Button("Отменить старт", role: .destructive) { phone.cancelQueuedStart() }
+        .alert("Couldn’t start", isPresented: startConflictBinding) {
+            Button("Retry") { phone.retryAfterConflict() }
+            Button("Cancel start", role: .destructive) { phone.cancelQueuedStart() }
         } message: {
             Text(conflictMessage)
         }
-        .alert("Ошибка", isPresented: errorBinding) {
-            Button("Ок", role: .cancel) { phone.lastError = nil }
+        .alert("Error", isPresented: errorBinding) {
+            Button("OK", role: .cancel) { phone.lastError = nil }
         } message: {
             Text(phone.lastError ?? "")
         }
@@ -120,9 +120,9 @@ struct WatchWorkoutListView: View {
     private var conflictMessage: String {
         let sets = phone.queuedSetCountForConflict
         let tail = sets > 0
-            ? " Если отменить старт, \(sets) \(RussianPlural.form(sets, "записанный подход", "записанных подхода", "записанных подходов")) будет отброшено."
+            ? " " + String(localized: "If you cancel the start, \(sets) logged sets will be discarded.")
             : ""
-        return "На телефоне уже идёт другая тренировка." + tail
+        return String(localized: "Another workout is already running on the phone.") + tail
     }
 }
 
@@ -143,7 +143,7 @@ private struct PlanView: View {
             planList(plan)
         } else {
             // Удалён на телефоне, пока экран был открыт.
-            ContentUnavailableView("Плана больше нет", systemImage: "figure.strengthtraining.traditional")
+            ContentUnavailableView("This plan is gone", systemImage: "figure.strengthtraining.traditional")
         }
     }
 
@@ -159,7 +159,7 @@ private struct PlanView: View {
                     }
                 }
             }
-            Button("Начать") {
+            Button("Start") {
                 phone.startWorkout(plan)
             }
             .buttonStyle(.borderedProminent)
@@ -168,14 +168,14 @@ private struct PlanView: View {
             // button, which reads as a stray slab around it.
             .listRowBackground(Color.clear)
         }
-        .navigationTitle(plan.name.isEmpty ? "План" : plan.name)
+        .navigationTitle(plan.name.isEmpty ? String(localized: "Plan") : plan.name)
     }
 
     private func plannedDescription(_ sets: [WatchWorkoutSnapshot.PlannedSet]) -> String {
         let count = sets.count
         guard let first = sets.first, let weight = first.weight, let reps = first.reps else {
-            return "\(count) \(RussianPlural.form(count, "подход", "подхода", "подходов"))"
+            return String(localized: "\(count) sets")
         }
-        return "\(count)×\(reps) · \(weight.formatted(.number)) кг"
+        return String(localized: "\(count)×\(reps) · \(weight.formatted(.number)) kg")
     }
 }

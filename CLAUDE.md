@@ -9,7 +9,15 @@ LiftLog is a SwiftUI + SwiftData workout-tracking app for iOS with a companion w
 - **LiftLog** — the iOS app. Owns all persistence (SwiftData) and business logic.
 - **LiftLogWatchApp Watch App** — a remote control with no store of the workouts themselves; it mirrors state pushed from the phone over WatchConnectivity and sends commands back. The one thing it does persist is its outgoing command queue, so sets logged (and workouts started) with the phone out of range aren't lost.
 
-UI strings are in Russian.
+The UI is in Russian and English, picked by the device language (plans/features/localization).
+**English is the source language**: string literals in code are English keys, and Russian lives
+in the String Catalogs — `LiftLog/Localizable.xcstrings`, `LiftLogWatchApp Watch App/Localizable.xcstrings`,
+and an `InfoPlist.xcstrings` next to each for the Health usage strings. A literal passed straight
+to SwiftUI (`Text("…")`, `Button("…")`, `.navigationTitle("…")`) is localized as is; a string built
+into a `String` first (computed titles, alert messages, notifications, CSV) needs
+`String(localized:)`. Counts go through plural variations in the catalog (`"\(n) sets"`), not
+hand-picked word forms. Every new key needs its Russian translation in the catalog —
+`LocalizationTests` fails otherwise. The test plans run in Russian.
 
 ## Commands
 
@@ -107,7 +115,7 @@ The iOS app's sources are grouped by feature, with the shared domain model on it
 | `Sync/` | `WatchSessionManager` and the phone's copy of `WorkoutSyncModels.swift` |
 | `Backup/` | JSON backup format, export (JSON/CSV) and import, the «Данные» screen |
 | `Services/` | System integrations: `HealthKitManager`, `NotificationManager` |
-| `DesignSystem/` | `Theme`, `Fonts`, `RussianPlural` |
+| `DesignSystem/` | `Theme`, `Fonts` |
 
 `Assets.xcassets`, `Info.plist` and `LiftLog.entitlements` stay at the `LiftLog/` root — the build settings point at those paths. The watch app (`LiftLogWatchApp Watch App/`) is flat. Both test targets mirror the app's folders — a suite goes in the folder of the code it tests (`LiftLogTests/Progress/ExerciseStatsTests.swift`, `LiftLogUITests/Workouts/WorkoutCopyUITests.swift`); tests of the shared sync file, `CrownStepping` included, go in `Sync/`. `LiftLogTests/Support/` and `LiftLogUITests/Support/` hold helpers and stay at the target roots (`SourcePaths` derives the repo root from `Support/`'s location). `WorkoutSyncModels.swift`'s two paths are hardcoded in `Scripts/check-watch-sync-parity.sh` and `SourcePaths` (`LiftLogTests/Support/WatchSyncFixtures.swift`) — move it and update both.
 

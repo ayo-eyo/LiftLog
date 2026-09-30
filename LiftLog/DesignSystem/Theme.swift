@@ -6,7 +6,7 @@ extension Color {
         var rgb: UInt64 = 0
         if !Scanner(string: hex).scanHexInt64(&rgb) {
             Logger(subsystem: Bundle.main.bundleIdentifier ?? "LiftLog", category: "Theme")
-                .error("Не удалось разобрать hex-цвет: \(hex)")
+                .error("Could not parse hex color: \(hex)")
         }
 
         let r = Double((rgb >> 16) & 0xFF) / 255

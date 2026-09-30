@@ -16,8 +16,8 @@ enum RestNotificationManager {
         guard interval > 0 else { return }
 
         let content = UNMutableNotificationContent()
-        content.title = "Отдых окончен"
-        content.body = exerciseName.map { "Пора продолжить: \($0)" } ?? "Пора продолжить"
+        content.title = String(localized: "Rest is over")
+        content.body = exerciseName.map { String(localized: "Time to continue: \($0)") } ?? String(localized: "Time to continue")
         content.sound = .default
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: interval, repeats: false)
