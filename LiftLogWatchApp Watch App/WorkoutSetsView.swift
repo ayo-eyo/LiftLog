@@ -178,23 +178,19 @@ struct LogSetView: View {
     }
 
     /// The exercise's name — without it, remembering what the set is *of* meant going back
-    /// to the list. The set count moved down into `statusRow`: a line of its own above the
-    /// tiles ran into the title once the rest timer was on screen too.
+    /// to the list. The set count is on the button instead (`logButtonTitle`): a line of its
+    /// own above the tiles ran into the title once the rest timer was on screen too.
     private var title: String {
         guard let name = exercise?.name, !name.isEmpty else { return "Подход" }
         return name
     }
 
-    /// «1/3» — the list's short form, there's no room for «Подход 1 из 3» next to the timer.
-    /// A bare «Подход 3» for an exercise with no plan, which has nothing to be "of".
-    private var setCounter: (text: String, spoken: String)? {
-        guard let exercise else { return nil }
-        guard exercise.plannedSetCount > 0 else {
-            let text = "Подход \(exercise.setsLoggedCount + 1)"
-            return (text, text)
-        }
-        let setNumber = max(exercise.setsLoggedCount, min(exercise.setsLoggedCount + 1, exercise.plannedSetCount))
-        return ("\(setNumber)/\(exercise.plannedSetCount)", "Подход \(setNumber) из \(exercise.plannedSetCount)")
+    /// «Записать 1 из 3» — the count sits on the action that logs that very set. Past the
+    /// plan (after «Продолжить») or with no plan there's nothing to be "of", and a clamped
+    /// «3 из 3» on the fourth set would be a lie.
+    private var logButtonTitle: String {
+        guard let exercise, exercise.setsLoggedCount < exercise.plannedSetCount else { return "Записать подход" }
+        return "Записать \(exercise.setsLoggedCount + 1) из \(exercise.plannedSetCount)"
     }
 
     var body: some View {
@@ -207,15 +203,27 @@ struct LogSetView: View {
             } else {
                 weightTile
                 repsTile
-                statusRow
+
+                if let restEndDate = phone.snapshot?.restEndDate {
+                    TimelineView(.periodic(from: restEndDate, by: 1)) { timeline in
+                        if restEndDate > timeline.date {
+                            Text(clockString(restEndDate.timeIntervalSince(timeline.date)))
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
 
                 if WatchSyncMerge.shouldWarnAboutQueue(phone.pending, now: now) {
                     QueueStatusLabel(phone: phone)
                 }
 
-                Button("Записать подход") { logSet() }
+                Button(logButtonTitle) { logSet() }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
+                    // «Записать 10 из 12» on a 40 mm watch: shrink rather than wrap.
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                     .disabled(exercise == nil || reps <= 0)
             }
         }
@@ -237,29 +245,6 @@ struct LogSetView: View {
             guard !didLoadDefaults else { return }
             didLoadDefaults = true
             applyDefaults()
-        }
-    }
-
-    /// «1/3 · 1:55»: the set count, plus the rest timer while resting — one line for both.
-    @ViewBuilder
-    private var statusRow: some View {
-        if let restEndDate = phone.snapshot?.restEndDate {
-            TimelineView(.periodic(from: restEndDate, by: 1)) { timeline in
-                statusText(rest: restEndDate > timeline.date ? restEndDate.timeIntervalSince(timeline.date) : nil)
-            }
-        } else {
-            statusText(rest: nil)
-        }
-    }
-
-    @ViewBuilder
-    private func statusText(rest: TimeInterval?) -> some View {
-        let parts = [setCounter?.text, rest.map(clockString)].compactMap { $0 }
-        if !parts.isEmpty {
-            Text(parts.joined(separator: " · "))
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
-                .accessibilityLabel([setCounter?.spoken, rest.map { "отдых \(clockString($0))" }].compactMap { $0 }.joined(separator: ", "))
         }
     }
 
