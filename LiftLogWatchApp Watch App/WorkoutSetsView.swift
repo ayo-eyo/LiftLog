@@ -38,6 +38,16 @@ struct WorkoutSetsView: View {
                                     Text(countLabel(for: exercise))
                                         .font(.caption2)
                                         .foregroundStyle(.secondary)
+                                    // This workout's plan, set by set. Last time belongs on the
+                                    // set screen, next to the plan's numbers in the tiles
+                                    // (plans/features/last-session, FR-3).
+                                    if let plan = planLabel(for: exercise) {
+                                        Text(plan)
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                            .lineLimit(2)
+                                            .truncationMode(.tail)
+                                    }
                                 }
                                 Spacer()
                                 if exercise.isSetPlanFulfilled {
@@ -83,6 +93,19 @@ struct WorkoutSetsView: View {
         exercise.plannedSetCount > 0
             ? "\(exercise.setsLoggedCount)/\(exercise.plannedSetCount)"
             : "\(exercise.setsLoggedCount)"
+    }
+
+    /// «20×10 · 20×10 · 25×8»; nil with no planned numbers at all.
+    private func planLabel(for exercise: WatchWorkoutSnapshot.ExerciseInfo) -> String? {
+        let sets = exercise.plannedSets.compactMap { set -> String? in
+            switch (set.weight, set.reps) {
+            case let (weight?, reps?): "\(weight.formatted(.number))×\(reps)"
+            case let (nil, reps?): "×\(reps)"
+            case let (weight?, nil): "\(weight.formatted(.number)) кг"
+            case (nil, nil): nil
+            }
+        }
+        return sets.isEmpty ? nil : sets.joined(separator: " · ")
     }
 
     private func restRow(remaining: TimeInterval, name: String?) -> some View {
@@ -135,6 +158,24 @@ extension View {
             now.wrappedValue = Date()
         }
     }
+}
+
+extension View {
+    /// Weight/reps tile: always on a fill, so both tap targets show where they end, and the
+    /// one the crown turns gets a green ring — the system's own color for crown focus. Not
+    /// the accent color: the watch app doesn't set one, and the default read as plain gray.
+    func inputTile(isFocused: Bool) -> some View {
+        background(Color.white.opacity(isFocused ? 0.18 : 0.1), in: .rect(cornerRadius: 8))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8)
+                    .strokeBorder(.green, lineWidth: isFocused ? 2 : 0)
+            }
+    }
+}
+
+/// «57,5×7» — same shape as the phone's «Прошлый раз».
+func setLabel(_ set: WatchWorkoutSnapshot.LoggedSet) -> String {
+    "\(set.weight.formatted(.number))×\(set.reps)"
 }
 
 func clockString(_ interval: TimeInterval) -> String {
@@ -201,8 +242,20 @@ struct LogSetView: View {
             if showPlanFulfilled {
                 planFulfilledBanner
             } else {
-                weightTile
-                repsTile
+                // Side by side, not stacked: the watch has room for exactly as many lines as
+                // this screen had before «Прошлый раз», and one more slid under the title.
+                HStack(spacing: 4) {
+                    weightTile
+                    repsTile
+                }
+                // The same set from last time — set 2 shows last time's second set — right
+                // under the numbers being dialed in, which is what it gets compared with.
+                if let last = exercise?.lastSessionSetForNext {
+                    Text("Прошлый раз: \(setLabel(last))")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
 
                 if let restEndDate = phone.snapshot?.restEndDate {
                     TimelineView(.periodic(from: restEndDate, by: 1)) { timeline in
@@ -254,12 +307,16 @@ struct LogSetView: View {
     private var weightTile: some View {
         Text("\(weight.formatted(Self.weightFormat)) кг")
             .font(.title3.monospacedDigit())
+            // Half the width now: «102,25 кг» shrinks rather than wraps.
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 6)
-            .background(field == .weight ? Color.accentColor.opacity(0.2) : Color.clear, in: .rect(cornerRadius: 8))
+            .inputTile(isFocused: field == .weight)
             .focusable(true)
             .focused($field, equals: .weight)
-            .digitalCrownRotation($weight, from: 0, through: 500, by: Self.weightStep, sensitivity: .medium, isContinuous: false, isHapticFeedbackEnabled: true)
+            // `.low`, like reps: at `.medium` a small turn ran through several 0.25 kg steps.
+            .digitalCrownRotation($weight, from: 0, through: 500, by: Self.weightStep, sensitivity: .low, isContinuous: false, isHapticFeedbackEnabled: true)
             // The crown drives `weight` continuously under the hood even with `by:` set —
             // rotation deltas accumulate float error, so left alone the binding drifts to
             // values like 20.000000000004 (which is what was rendering as fractions down
@@ -283,9 +340,11 @@ struct LogSetView: View {
     private var repsTile: some View {
         Text("× \(Int(reps.rounded()))")
             .font(.title3.monospacedDigit())
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 6)
-            .background(field == .reps ? Color.accentColor.opacity(0.2) : Color.clear, in: .rect(cornerRadius: 8))
+            .inputTile(isFocused: field == .reps)
             .focusable(true)
             .focused($field, equals: .reps)
             .digitalCrownRotation($reps, from: 1, through: 50, by: 1, sensitivity: .low, isContinuous: false, isHapticFeedbackEnabled: true)

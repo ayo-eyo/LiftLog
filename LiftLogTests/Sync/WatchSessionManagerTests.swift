@@ -726,3 +726,47 @@ struct WatchSessionManagerRecordWeightTests {
         #expect(watchSaysRecord == (weight == 82.5))
     }
 }
+
+@Suite("WatchSessionManager — прошлый раз в контексте")
+struct WatchSessionManagerLastSessionTests {
+    @Test("упражнение идущей тренировки несёт подходы прошлой сессии, по порядку")
+    func activeWorkoutCarriesLastSession() throws {
+        let store = try TestStore.open()
+        let bench = Fixtures.exercise(in: store.context)
+        Fixtures.completedWorkout(bench, sets: [(60, 8), (57.5, 7)], on: Fixtures.day(0), in: store.context)
+        let workout = Fixtures.workout(date: Fixtures.day(1), startedAt: Fixtures.day(1), exercises: [bench], in: store.context)
+        workout.logSet(weight: 62.5, reps: 6, for: bench, now: Fixtures.day(1).addingTimeInterval(60), context: store.context)
+        let manager = WatchSessionManager()
+        manager.start(modelContext: store.context, restTimer: Fixtures.restTimer())
+
+        let info = manager.exerciseInfo(for: bench, in: workout)
+
+        #expect(info.lastSession == [.init(weight: 60, reps: 8), .init(weight: 57.5, reps: 7)])
+    }
+
+    @Test("план несёт самую свежую сессию, даже новее своей даты — часы начнут его офлайн")
+    func planCarriesLatestSession() throws {
+        let store = try TestStore.open()
+        let bench = Fixtures.exercise(in: store.context)
+        let plan = Fixtures.workout(date: Fixtures.day(0), startedAt: nil, items: [(bench, 60, 8)], in: store.context)
+        Fixtures.completedWorkout(bench, sets: [(65, 5)], on: Fixtures.day(2), in: store.context)
+        let manager = WatchSessionManager()
+        manager.start(modelContext: store.context, restTimer: Fixtures.restTimer())
+        manager.refresh()
+
+        let summary = try #require(manager.lastPlans.first { $0.id == plan.syncID })
+
+        #expect(summary.exercises.first?.lastSession == [.init(weight: 65, reps: 5)])
+    }
+
+    @Test("упражнение без истории уходит с пустым прошлым разом")
+    func noHistoryMeansEmptyLastSession() throws {
+        let store = try TestStore.open()
+        let bench = Fixtures.exercise(in: store.context)
+        let workout = Fixtures.workout(startedAt: Fixtures.epoch, exercises: [bench], in: store.context)
+        let manager = WatchSessionManager()
+        manager.start(modelContext: store.context, restTimer: Fixtures.restTimer())
+
+        #expect(manager.exerciseInfo(for: bench, in: workout).lastSession.isEmpty)
+    }
+}

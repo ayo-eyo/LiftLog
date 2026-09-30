@@ -270,7 +270,20 @@ struct ExerciseLastSessionTests {
         let last = try #require(ExerciseStats.lastSession(ExerciseStats.samples(for: bench), before: current))
 
         #expect(last.sets.map { $0.weight } == [62.5, 62.5])
-        #expect(WorkoutExerciseLogView.setsSummary(last.sets) == "62,5×6 · 62,5×5")
+        #expect(ProgressFormat.setsSummary(last.sets) == "62,5×6 · 62,5×5")
+    }
+
+    @Test("у плана прошлый раз — самая свежая сессия, даже если она новее даты создания плана")
+    func planTakesLatestSessionRegardlessOfItsDate() throws {
+        let store = try TestStore.open()
+        let bench = Fixtures.exercise(in: store.context)
+        Fixtures.completedWorkout(bench, sets: [(60, 8)], on: Fixtures.day(0), in: store.context)
+        let plan = Fixtures.workout(date: Fixtures.day(1), startedAt: nil, exercises: [bench], in: store.context)
+        Fixtures.completedWorkout(bench, sets: [(62.5, 6)], on: Fixtures.day(3), in: store.context)
+
+        let last = try #require(ExerciseStats.lastSession(ExerciseStats.samples(for: bench), before: plan))
+
+        #expect(last.sets.map { $0.weight } == [62.5])
     }
 
     @Test("без прошлых сессий прошлого раза нет")

@@ -20,6 +20,16 @@ enum ProgressFormat {
         }
     }
 
+    /// «60×8 · 60×8 · 57,5×7».
+    static func setsSummary(_ sets: [SetSample]) -> String {
+        sets.map { "\($0.weight.formatted(.number))×\($0.reps)" }.joined(separator: " · ")
+    }
+
+    /// «Прошлый раз, 3 сент.: 60×8 · 60×8» — one wording for every screen that shows it.
+    static func lastTime(_ session: ExerciseSession) -> String {
+        "Прошлый раз, \(day(session.date)): \(setsSummary(session.sets))"
+    }
+
     /// «3 сент.», with the year only when it isn't the current one.
     static func day(_ date: Date, now: Date = .now, calendar: Calendar = .current) -> String {
         if calendar.isDate(date, equalTo: now, toGranularity: .year) {

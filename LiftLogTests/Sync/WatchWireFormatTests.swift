@@ -339,3 +339,28 @@ struct WatchWireFormatRecordWeightTests {
         #expect(!info.isWeightRecord(500))
     }
 }
+
+@Suite("ExerciseInfo — прошлый раз на проводе")
+struct WatchWireFormatLastSessionTests {
+    @Test("lastSession переживает round-trip по порядку")
+    func lastSessionRoundTrips() throws {
+        let snapshot = WatchSyncFixtures.snapshot(
+            exercises: [WatchSyncFixtures.exerciseInfo(lastSession: [(60, 8), (57.5, 7)])]
+        )
+
+        let decoded = try #require(try WatchSyncFixtures.roundTrip(snapshot))
+
+        #expect(decoded.exercises.first?.lastSession == [.init(weight: 60, reps: 8), .init(weight: 57.5, reps: 7)])
+    }
+
+    @Test("упражнение от старого телефона без lastSession декодируется с пустым прошлым разом")
+    func payloadWithoutLastSessionDecodesEmpty() throws {
+        let payload: [String: Any] = ["id": UUID().uuidString, "name": "Жим лёжа", "setsLoggedCount": 1]
+        let data = try JSONSerialization.data(withJSONObject: payload)
+
+        let info = try WatchSyncFixtures.decoder.decode(WatchWorkoutSnapshot.ExerciseInfo.self, from: data)
+
+        #expect(info.lastSession.isEmpty)
+        #expect(info.lastSessionSetForNext == nil)
+    }
+}
