@@ -4,6 +4,11 @@ import SwiftUI
 /// can be started from here — with or without the phone in range.
 struct WatchWorkoutListView: View {
     let phone: PhoneSessionManager
+    /// The «Завершить тренировку?» dialog lives here, on the root, not on the workout
+    /// screen that asks for it: finishing makes `phone.snapshot` nil at once, which tears
+    /// that screen down (its link disappears, `PlanView` swaps it out, both dismiss) while
+    /// the dialog is still up — and a dialog whose presenter is gone stays stuck on screen.
+    @State private var isConfirmingFinish = false
 
     var body: some View {
         NavigationStack {
@@ -22,7 +27,7 @@ struct WatchWorkoutListView: View {
                         if let snapshot = phone.snapshot {
                             Section("Идёт") {
                                 NavigationLink {
-                                    WorkoutSetsView(phone: phone)
+                                    WorkoutSetsView(phone: phone, isConfirmingFinish: $isConfirmingFinish)
                                 } label: {
                                     row(
                                         title: snapshot.name.isEmpty ? "Тренировка" : snapshot.name,
@@ -35,7 +40,7 @@ struct WatchWorkoutListView: View {
                             Section("Планы") {
                                 ForEach(phone.plans) { plan in
                                     NavigationLink {
-                                        PlanView(phone: phone, plan: plan)
+                                        PlanView(phone: phone, plan: plan, isConfirmingFinish: $isConfirmingFinish)
                                     } label: {
                                         row(
                                             title: plan.name.isEmpty ? plan.date.formatted(date: .abbreviated, time: .omitted) : plan.name,
@@ -50,6 +55,10 @@ struct WatchWorkoutListView: View {
                 }
             }
             .navigationTitle("LiftLog")
+        }
+        .confirmationDialog("Завершить тренировку?", isPresented: $isConfirmingFinish, titleVisibility: .visible) {
+            Button("Завершить", role: .destructive) { phone.finishWorkout() }
+            Button("Отмена", role: .cancel) {}
         }
         .alert("Не удалось начать", isPresented: startConflictBinding) {
             Button("Повторить") { phone.retryAfterConflict() }
@@ -100,6 +109,7 @@ struct WatchWorkoutListView: View {
 private struct PlanView: View {
     let phone: PhoneSessionManager
     let plan: WatchWorkoutSummary
+    @Binding var isConfirmingFinish: Bool
     @Environment(\.dismiss) private var dismiss
     @State private var didStart = false
 
@@ -108,7 +118,7 @@ private struct PlanView: View {
     var body: some View {
         Group {
             if isRunning {
-                WorkoutSetsView(phone: phone)
+                WorkoutSetsView(phone: phone, isConfirmingFinish: $isConfirmingFinish)
             } else {
                 planList
             }
