@@ -7,7 +7,6 @@ import WatchKit
 struct WorkoutSetsView: View {
     let phone: PhoneSessionManager
     @State private var isConfirmingFinish = false
-    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         Group {
@@ -28,9 +27,7 @@ struct WorkoutSetsView: View {
                         }
                     }
                     ForEach(snapshot.exercises) { exercise in
-                        NavigationLink {
-                            LogSetView(phone: phone, exerciseID: exercise.id)
-                        } label: {
+                        NavigationLink(value: WatchRoute.logSet(exerciseID: exercise.id)) {
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(exercise.name)
@@ -64,14 +61,6 @@ struct WorkoutSetsView: View {
         .confirmationDialog("Завершить тренировку?", isPresented: $isConfirmingFinish, titleVisibility: .visible) {
             Button("Завершить", role: .destructive) { phone.finishWorkout() }
             Button("Отмена", role: .cancel) {}
-        }
-        // Тренировка кончилась (здесь или на телефоне) — возвращаемся к списку вместо
-        // того, чтобы показывать «Нет активной тренировки» на месте только что
-        // завершённой.
-        .onChange(of: phone.snapshot?.workoutID) { old, new in
-            if old != nil, new == nil {
-                dismiss()
-            }
         }
     }
 
@@ -139,7 +128,7 @@ func clockString(_ interval: TimeInterval) -> String {
     return String(format: "%d:%02d", seconds / 60, seconds % 60)
 }
 
-private struct LogSetView: View {
+struct LogSetView: View {
     let phone: PhoneSessionManager
     /// `@State`, not `let` — FR-2's auto-advance swaps this in place instead of
     /// pushing a new screen, same reasoning as `WorkoutExerciseLogView.current` on the
