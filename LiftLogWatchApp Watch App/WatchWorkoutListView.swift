@@ -19,6 +19,8 @@ struct WatchWorkoutListView: View {
     /// with the set-logging screen on top (e.g. its «План выполнен» → «Завершить»), the
     /// screens below dismissed and dropped their links, and the top one stayed put.
     @State private var path: [WatchRoute] = []
+    /// See `refreshingNow` — here only for the queue line.
+    @State private var now = Date()
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -56,11 +58,14 @@ struct WatchWorkoutListView: View {
                                 }
                             }
                         }
-                        Section { QueueStatusView(phone: phone) }
+                        if WatchSyncMerge.shouldWarnAboutQueue(phone.pending, now: now) {
+                            Section { QueueStatusLabel(phone: phone) }
+                        }
                     }
                 }
             }
             .navigationTitle("LiftLog")
+            .refreshingNow($now, at: WatchSyncMerge.queueWarningDate(phone.pending))
             .navigationDestination(for: WatchRoute.self) { route in
                 switch route {
                 case .workout:

@@ -7,6 +7,9 @@ import WatchKit
 struct WorkoutSetsView: View {
     let phone: PhoneSessionManager
     @State private var isConfirmingFinish = false
+    /// Moved forward by `refreshingNow` exactly when the rest ends or the queue turns
+    /// stale — see there.
+    @State private var now = Date()
 
     var body: some View {
         Group {
@@ -15,9 +18,10 @@ struct WorkoutSetsView: View {
                     // Condition on the Section's presence, not on its content — this
                     // way the ticking `TimelineView` only exists while actually
                     // resting, instead of running at 1Hz for as long as the workout
-                    // screen is open, and the List's direct child is a stable
-                    // Section/nothing rather than always-present-but-sometimes-empty.
-                    if let restEndDate = snapshot.restEndDate {
+                    // screen is open. And against `now`, not just `restEndDate != nil`:
+                    // the snapshot keeps the end date after the rest is over, and a row
+                    // whose content has gone empty still draws as a blank slab.
+                    if let restEndDate = snapshot.restEndDate, restEndDate > now {
                         Section {
                             TimelineView(.periodic(from: restEndDate, by: 1)) { timeline in
                                 if restEndDate > timeline.date {
@@ -44,7 +48,9 @@ struct WorkoutSetsView: View {
                         }
                     }
                     Section {
-                        QueueStatusView(phone: phone)
+                        if WatchSyncMerge.shouldWarnAboutQueue(phone.pending, now: now) {
+                            QueueStatusLabel(phone: phone)
+                        }
                         Button("Завершить", role: .destructive) { isConfirmingFinish = true }
                             .font(.caption)
                     }
@@ -58,6 +64,8 @@ struct WorkoutSetsView: View {
             }
         }
         .navigationTitle(title)
+        .refreshingNow($now, at: phone.snapshot?.restEndDate)
+        .refreshingNow($now, at: WatchSyncMerge.queueWarningDate(phone.pending))
         .confirmationDialog("Завершить тренировку?", isPresented: $isConfirmingFinish, titleVisibility: .visible) {
             Button("Завершить", role: .destructive) { phone.finishWorkout() }
             Button("Отмена", role: .cancel) {}
@@ -91,35 +99,41 @@ struct WorkoutSetsView: View {
     }
 }
 
-/// One line about the offline queue — but only once it's actually stuck (see
-/// `WatchSyncMerge.shouldWarnAboutQueue`). A queue that drains in a second is normal
-/// operation, not news.
-struct QueueStatusView: View {
+/// One line about the offline queue — shown only once it's actually stuck (see
+/// `WatchSyncMerge.shouldWarnAboutQueue`); a queue that drains in a second is normal
+/// operation, not news. The caller decides whether it's shown, not this view: inside a
+/// `List`, a view that renders nothing still takes a row and draws as a blank slab.
+struct QueueStatusLabel: View {
     let phone: PhoneSessionManager
 
     var body: some View {
-        // The `TimelineView` is scheduled on the exact moment the age threshold passes,
-        // so the line can appear while the screen just sits there — and it only exists
-        // while something is queued, instead of ticking for the whole workout.
-        if let warningDate = WatchSyncMerge.queueWarningDate(phone.pending) {
-            TimelineView(.periodic(from: warningDate, by: 60)) { _ in
-                // The schedule is only here to force a re-render at the threshold; the
-                // decision reads the real clock, since a schedule whose start is still
-                // in the future can hand the body that future date on first render.
-                if WatchSyncMerge.shouldWarnAboutQueue(phone.pending, now: Date()) {
-                    label
-                }
-            }
-        }
-    }
-
-    private var label: some View {
         Label(
             "\(phone.unsentCount) \(RussianPlural.form(phone.unsentCount, "запись", "записи", "записей")) не отправлено",
             systemImage: "arrow.triangle.2.circlepath"
         )
         .font(.caption2)
         .foregroundStyle(.secondary)
+    }
+}
+
+extension View {
+    /// Sets `now` to the current time once `date` arrives (and whenever `date` changes),
+    /// so something whose *presence* depends on the clock — a finished rest, a queue that
+    /// has aged into a warning — appears or goes away on time without a `TimelineView`
+    /// re-rendering the whole screen every second.
+    func refreshingNow(_ now: Binding<Date>, at date: Date?) -> some View {
+        task(id: date) {
+            now.wrappedValue = Date()
+            guard let date else { return }
+            let delay = date.timeIntervalSinceNow
+            guard delay > 0 else { return }
+            do {
+                try await Task.sleep(for: .seconds(delay))
+            } catch {
+                return // `date` changed or the screen went away
+            }
+            now.wrappedValue = Date()
+        }
     }
 }
 
@@ -145,6 +159,8 @@ struct LogSetView: View {
     /// The weight of a set that was just a record; clears itself after a moment. Screen
     /// state, so it survives an auto-advance to the next exercise, like the phone's banner.
     @State private var recordBanner: Double?
+    /// See `refreshingNow` — here only for the queue line.
+    @State private var now = Date()
 
     private enum Field: Hashable { case weight, reps }
     @FocusState private var field: Field?
@@ -189,7 +205,9 @@ struct LogSetView: View {
                     }
                 }
 
-                QueueStatusView(phone: phone)
+                if WatchSyncMerge.shouldWarnAboutQueue(phone.pending, now: now) {
+                    QueueStatusLabel(phone: phone)
+                }
 
                 Button("Записать подход") { logSet() }
                     .buttonStyle(.borderedProminent)
@@ -199,6 +217,7 @@ struct LogSetView: View {
         }
         .padding(.horizontal, 6)
         .navigationTitle(title)
+        .refreshingNow($now, at: WatchSyncMerge.queueWarningDate(phone.pending))
         .task(id: recordBanner) {
             guard recordBanner != nil else { return }
             do {
