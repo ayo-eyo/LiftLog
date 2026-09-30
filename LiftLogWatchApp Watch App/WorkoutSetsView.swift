@@ -6,8 +6,7 @@ import WatchKit
 /// away and stay put until the phone confirms them.
 struct WorkoutSetsView: View {
     let phone: PhoneSessionManager
-    /// Owned by `WatchWorkoutListView`, which also presents the dialog — see there.
-    @Binding var isConfirmingFinish: Bool
+    @State private var isConfirmingFinish = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -62,6 +61,10 @@ struct WorkoutSetsView: View {
             }
         }
         .navigationTitle(title)
+        .confirmationDialog("Завершить тренировку?", isPresented: $isConfirmingFinish, titleVisibility: .visible) {
+            Button("Завершить", role: .destructive) { phone.finishWorkout() }
+            Button("Отмена", role: .cancel) {}
+        }
         // Тренировка кончилась (здесь или на телефоне) — возвращаемся к списку вместо
         // того, чтобы показывать «Нет активной тренировки» на месте только что
         // завершённой.
