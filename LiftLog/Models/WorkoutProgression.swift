@@ -74,9 +74,13 @@ struct ExerciseProgression: Identifiable {
     let loggedVolume: Double
     let isBodyweight: Bool
     let isFulfilled: Bool
+    /// What the verdict was worked out with — the screen marks positions held at the limit.
+    let settings: ProgressionSettings
 
     var id: PersistentIdentifier { exercise.persistentModelID }
     var hasSuggestion: Bool { suggested != current }
+    /// Whether the rule had anything to judge: at least one position with planned reps.
+    var hasPlan: Bool { current.contains { $0.reps != nil } }
 }
 
 /// The progression rule (plans/features/progression, FR-1). Nothing is stored: it's all
@@ -88,7 +92,8 @@ enum WorkoutProgression {
         workout.groupedItems.map { group in
             let planned = group.items.map { ProgressionPosition(weight: $0.plannedWeight, reps: $0.plannedReps) }
             let logged = workout.setsFor(group.exercise).map { (weight: $0.weight, reps: $0.reps) }
-            let verdict = progression(planned: planned, logged: logged, settings: settings(group.exercise))
+            let exerciseSettings = settings(group.exercise)
+            let verdict = progression(planned: planned, logged: logged, settings: exerciseSettings)
             return ExerciseProgression(
                 exercise: group.exercise,
                 current: planned,
@@ -96,9 +101,16 @@ enum WorkoutProgression {
                 plannedVolume: verdict.plannedVolume,
                 loggedVolume: verdict.loggedVolume,
                 isBodyweight: verdict.isBodyweight,
-                isFulfilled: verdict.isFulfilled
+                isFulfilled: verdict.isFulfilled,
+                settings: exerciseSettings
             )
         }
+    }
+
+    /// Whether the progression screen has anything to show for `workout`: a planned
+    /// position with reps somewhere in it (FR-1 — an empty workout gets no screen).
+    static func hasPlan(_ workout: Workout) -> Bool {
+        workout.items.contains { !$0.isDeleted && $0.plannedReps != nil }
     }
 
     struct Verdict: Equatable {

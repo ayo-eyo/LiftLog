@@ -75,5 +75,6 @@ final class AnalyticsUITests: XCTestCase {
         let finishButton = app.buttons["Завершить"]
         finishButton.waitUntilVisible()
         finishButton.tap()
+        app.skipNextWorkoutPlan()
     }
 }

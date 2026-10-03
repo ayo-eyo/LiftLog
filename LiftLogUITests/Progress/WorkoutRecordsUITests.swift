@@ -123,5 +123,6 @@ final class WorkoutRecordsUITests: XCTestCase {
         let finishButton = app.buttons["Завершить"]
         finishButton.waitUntilVisible()
         finishButton.tap()
+        app.skipNextWorkoutPlan()
     }
 }

@@ -40,6 +40,21 @@ struct WorkoutDetailView: View {
     /// full dismiss (`activeSheet = nil`) and presenting `.defaults` from
     /// `onDismiss` instead avoids that.
     @State private var pendingDefaultsExercise: Exercise?
+    /// «Следующая тренировка» (plans/features/progression, FR-2), and why it's up: right
+    /// after finishing, closing it also closes this screen; opened from a finished
+    /// workout's own button, it just closes.
+    @State private var nextPlan: NextPlanPresentation?
+    @State private var closesAfterNextPlan = false
+    /// The workout was finished while another screen was pushed on top of this one (the
+    /// plan-fulfilled banner on `WorkoutExerciseLogView`) — show «Следующая тренировка»
+    /// once this screen is back, not from under the pushed one.
+    @State private var showsNextPlanOnAppear = false
+    @State private var isOnScreen = false
+
+    private enum NextPlanPresentation: String, Identifiable {
+        case afterFinish, fromCompleted
+        var id: String { rawValue }
+    }
 
     @Query(filter: #Predicate<Workout> { $0.startedAt != nil && $0.completedAt == nil })
     private var activeWorkouts: [Workout]
@@ -85,7 +100,36 @@ struct WorkoutDetailView: View {
             }
             Button("Cancel", role: .cancel) { pendingDeleteExercises = [] }
         }
+        .sheet(item: $nextPlan, onDismiss: {
+            if closesAfterNextPlan {
+                closesAfterNextPlan = false
+                dismiss()
+            }
+        }) { presentation in
+            NavigationStack {
+                NextWorkoutPlanView(workout: workout) {
+                    closesAfterNextPlan = presentation == .afterFinish
+                    nextPlan = nil
+                }
+            }
+        }
+        // Every way a workout ends while this screen is around — its own «Завершить», the
+        // banner on the exercise screen pushed over it, a `.finish` from the watch — goes
+        // through here, so «Следующая тренировка» comes up for all of them.
+        .onChange(of: workout.completedAt) { old, new in
+            guard old == nil, new != nil, WorkoutProgression.hasPlan(workout) else { return }
+            if isOnScreen {
+                nextPlan = .afterFinish
+            } else {
+                showsNextPlanOnAppear = true
+            }
+        }
         .onAppear {
+            isOnScreen = true
+            if showsNextPlanOnAppear {
+                showsNextPlanOnAppear = false
+                nextPlan = .afterFinish
+            }
             if workout.isActive {
                 WatchSessionManager.shared.pushSnapshot(for: workout)
             }
@@ -94,6 +138,7 @@ struct WorkoutDetailView: View {
         // weight/reps — is part of what the watch lists and can start, so the watch gets
         // the result once, on the way out, instead of on every keystroke.
         .onDisappear {
+            isOnScreen = false
             WatchSessionManager.shared.refresh()
         }
     }
@@ -254,6 +299,15 @@ struct WorkoutDetailView: View {
     private var completedList: some View {
         let records = ExerciseStats.records(in: workout)
         return List {
+            if WorkoutProgression.hasPlan(workout) {
+                Section {
+                    Button("Plan next workout") { nextPlan = .fromCompleted }
+                        .font(.sans(15))
+                        .foregroundStyle(.plateBlue)
+                        .accessibilityIdentifier("workoutDetail.planNext")
+                }
+                .listRowBackground(Color.chalk)
+            }
             if !records.isEmpty {
                 recordsSection(records)
             }
@@ -350,8 +404,8 @@ struct WorkoutDetailView: View {
         // just a second, equally obvious way out) and, now, popped back to from the
         // plan-fulfilled banner on `WorkoutExerciseLogView` after finishing there —
         // which has *no* other way out, since this screen doesn't push itself inside
-        // a `fullScreenCover` and never did (`finish()` above dismisses immediately,
-        // before this state ever renders, for the direct path).
+        // a `fullScreenCover` and never did. (The direct «Завершить» never lands here:
+        // it dismisses at once, or after «Следующая тренировка» closes.)
         // Labeled "Закрыть", not "Готово": `EditSetView`'s own sheet also has a
         // "Готово" button, and the two are reachable on screen at the same time
         // (editing a set from this screen's own completed-sets list) — same text
@@ -393,9 +447,13 @@ struct WorkoutDetailView: View {
         Task { await HealthKitManager.startWatchWorkout() }
     }
 
+    /// With a plan to progress, the screen stays for «Следующая тренировка» (the
+    /// `completedAt` change brings it up) and closes with it.
     private func finish() {
         Workout.complete(workout, restTimer: restTimer, context: context)
-        dismiss()
+        if !WorkoutProgression.hasPlan(workout) {
+            dismiss()
+        }
     }
 
     private func closeIfEmpty() {

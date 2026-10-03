@@ -161,6 +161,31 @@ struct WorkoutProgressionWorkoutTests {
         #expect(!result[1].hasSuggestion)
     }
 
+    @Test("вердикт несёт настройки своего упражнения — экран по ним отмечает лимит")
+    func progressionCarriesExerciseSettings() throws {
+        let store = try TestStore.open()
+        let pullUp = Fixtures.exercise("Подтягивания", in: store.context)
+        pullUp.progressionRepLimit = 10
+        let workout = Fixtures.workout(items: [(pullUp, 0, 10)], in: store.context)
+
+        let result = WorkoutProgression.progressions(for: workout) { $0.progressionSettings(defaults: .standard) }
+
+        #expect(result.first?.settings == ProgressionSettings(weightStep: 2.5, repLimit: 10))
+    }
+
+    @Test("экран прогрессии нужен, только если в тренировке есть позиция с плановыми повторами")
+    func hasPlanNeedsPlannedReps() throws {
+        let store = try TestStore.open()
+        let bench = Fixtures.exercise(in: store.context)
+        let empty = Fixtures.workout(in: store.context)
+        let withoutNumbers = Fixtures.workout(items: [(bench, nil, nil)], in: store.context)
+        let planned = Fixtures.workout(items: [(bench, nil, nil), (bench, 60, 8)], in: store.context)
+
+        #expect(!WorkoutProgression.hasPlan(empty))
+        #expect(!WorkoutProgression.hasPlan(withoutNumbers))
+        #expect(WorkoutProgression.hasPlan(planned))
+    }
+
     @Test("пустая тренировка — пустой список")
     func emptyWorkout() throws {
         let store = try TestStore.open()

@@ -41,12 +41,9 @@ final class WorkoutAutoAdvanceUITests: XCTestCase {
 
         app.buttons["Завершить тренировку"].tap()
 
-        // The banner's own dismiss only pops back to `WorkoutDetailView`, now showing
-        // the completed summary — its «Готово» toolbar button is the way out of the
-        // `fullScreenCover` from there (see the comment on it for why).
-        let doneButton = app.buttons["workoutDetail.doneButton"]
-        XCTAssertTrue(doneButton.waitForExistence(timeout: 5), "После завершения тренировки должна появиться кнопка «Готово»")
-        doneButton.tap()
+        // The banner's own dismiss pops back to `WorkoutDetailView`, which brings up
+        // «Следующая тренировка»; skipping it closes the `fullScreenCover` too.
+        app.skipNextWorkoutPlan()
 
         // Wait for a concrete signal that the `fullScreenCover` actually closed —
         // asserting the accessory's absence right away would race the dismiss
