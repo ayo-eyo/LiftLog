@@ -27,36 +27,54 @@ struct CrownSteppingTests {
     }
 }
 
-/// The weight crown turns a value counted in steps, not kilograms — bound to kilograms,
-/// one unit of rotation ran through four 0.25 kg steps.
-@Suite("CrownStepping — колёсико веса крутит шаги, а не килограммы")
-struct WeightCrownTests {
-    @Test("одно деление колёсика — ровно один шаг веса, как у повторов")
-    func oneStrideIsOneWeightStep() throws {
-        let start = CrownStepping.crownValue(forWeight: 20)
-        let next = start + CrownStepping.weightCrownStride
+/// The weight and reps crowns turn a value counted in steps, not kilograms or reps — bound
+/// to kilograms, one unit of rotation ran through four 0.25 kg steps but only one rep.
+@Suite("CrownStepping — колёсики веса и повторов крутят шаги, а не килограммы")
+struct SteppedCrownTests {
+    @Test("одно деление колёсика — ровно один шаг, у веса и у повторов одинаково", arguments: [
+        (20.0, CrownStepping.weightStep),
+        (10.0, CrownStepping.repsStep),
+    ])
+    func oneStrideIsOneStep(value: Double, step: Double) throws {
+        let next = CrownStepping.crownValue(for: value, step: step) + CrownStepping.crownStride
 
-        #expect(CrownStepping.weight(forCrownValue: next) == 20 + CrownStepping.weightStep)
+        #expect(CrownStepping.value(forCrownValue: next, step: step) == value + step)
+    }
+
+    @Test("полный диапазон веса и повторов занимает столько делений, сколько в нём шагов")
+    func rangesAreCountedInSteps() throws {
+        let weightDetents = CrownStepping.crownValue(for: CrownStepping.maxWeight, step: CrownStepping.weightStep) / CrownStepping.crownStride
+        let repsDetents = CrownStepping.crownValue(for: CrownStepping.maxReps, step: CrownStepping.repsStep) / CrownStepping.crownStride
+
+        #expect(weightDetents == 2000)
+        #expect(repsDetents == 50)
     }
 
     @Test("вес переживает путь туда и обратно через значение колёсика", arguments: [0, 0.25, 20, 57.5, 102.25, 500])
     func weightRoundTrips(weight: Double) throws {
-        let crown = CrownStepping.crownValue(forWeight: weight)
+        let crown = CrownStepping.crownValue(for: weight, step: CrownStepping.weightStep)
 
-        #expect(CrownStepping.weight(forCrownValue: crown) == weight)
+        #expect(CrownStepping.value(forCrownValue: crown, step: CrownStepping.weightStep) == weight)
+    }
+
+    @Test("повторы переживают путь туда и обратно через значение колёсика", arguments: [1.0, 8, 12, 50])
+    func repsRoundTrip(reps: Double) throws {
+        let crown = CrownStepping.crownValue(for: reps, step: CrownStepping.repsStep)
+
+        #expect(CrownStepping.value(forCrownValue: crown, step: CrownStepping.repsStep) == reps)
     }
 
     @Test("вес не на сетке шага приводится к ближайшему шагу")
     func offGridWeightSnaps() throws {
-        let crown = CrownStepping.crownValue(forWeight: 20.3)
+        let crown = CrownStepping.crownValue(for: 20.3, step: CrownStepping.weightStep)
 
-        #expect(CrownStepping.weight(forCrownValue: crown) == 20.25)
+        #expect(CrownStepping.value(forCrownValue: crown, step: CrownStepping.weightStep) == 20.25)
     }
 
-    @Test("дрейф колёсика между делениями не попадает в вес")
+    @Test("дрейф колёсика между делениями не попадает в значение")
     func crownDriftIsCleared() throws {
-        let drifted = CrownStepping.crownValue(forWeight: 20) + 0.000000000004
+        let drifted = CrownStepping.crownValue(for: 20, step: CrownStepping.weightStep) + 0.000000000004
 
-        #expect(CrownStepping.weight(forCrownValue: drifted) == 20)
+        #expect(CrownStepping.value(forCrownValue: drifted, step: CrownStepping.weightStep) == 20)
     }
 }

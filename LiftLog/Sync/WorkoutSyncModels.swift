@@ -586,7 +586,7 @@ enum WatchHealthRecording {
 
 // MARK: - Crown input
 
-/// Snapping the watch's weight-entry Digital Crown onto a fixed step. Lives here (not in
+/// Snapping the watch's weight and reps Digital Crowns onto a fixed step. Lives here (not in
 /// the watch-only `WorkoutSetsView.swift`) purely so it's testable — the watch target has
 /// no test target of its own, same reasoning as `WatchSyncMerge` above.
 enum CrownStepping {
@@ -598,26 +598,29 @@ enum CrownStepping {
         (value / step).rounded() * step
     }
 
-    /// One click of the weight crown. A plate change is 0.25 kg at the finest.
+    /// One click of each crown. A plate change is 0.25 kg at the finest.
     static let weightStep: Double = 0.25
+    static let repsStep: Double = 1
     static let maxWeight: Double = 500
+    static let maxReps: Double = 50
 
-    /// How far the crown has to turn for one weight step, in the crown's own value units.
-    /// The crown's speed is set in those units, not in steps: bound straight to kilograms
-    /// with `by: 0.25`, one unit of rotation ran through four steps, while reps — 1 rep
-    /// per unit — felt right. So the crown turns a value counted in steps instead, and
-    /// the weight is derived from it. Raise this if a turn still runs through too many.
-    static let weightCrownStride: Double = 1
+    /// How far a crown has to turn for one step, in the crown's own value units — the
+    /// same for weight and reps, so both tiles turn alike. The crown's speed is set in
+    /// those units, not in steps: bound straight to kilograms with `by: 0.25`, one unit of
+    /// rotation ran through four weight steps but only one rep. So each crown turns a
+    /// value counted in steps instead, and the weight or reps is derived from it. Raise
+    /// this if a turn still runs through too many.
+    static let crownStride: Double = 1
 
-    /// The crown value that shows `weight`.
-    static func crownValue(forWeight weight: Double) -> Double {
-        snapped(weight / weightStep * weightCrownStride, step: weightCrownStride)
+    /// The crown value that shows `value`, for a crown stepping by `step`.
+    static func crownValue(for value: Double, step: Double) -> Double {
+        snapped(value / step * crownStride, step: crownStride)
     }
 
-    /// The weight the crown value stands for, snapped onto the weight step — the crown
-    /// drifts between detents, see `snapped`.
-    static func weight(forCrownValue value: Double) -> Double {
-        snapped(value / weightCrownStride * weightStep, step: weightStep)
+    /// The value a crown value stands for, snapped onto `step` — the crown drifts between
+    /// detents, see `snapped`.
+    static func value(forCrownValue crownValue: Double, step: Double) -> Double {
+        snapped(crownValue / crownStride * step, step: step)
     }
 }
 

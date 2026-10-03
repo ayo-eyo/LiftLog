@@ -173,6 +173,30 @@ extension View {
     }
 }
 
+extension View {
+    /// The crown for a weight/reps tile. `crownValue` is counted in steps (see
+    /// `CrownStepping.crownStride`), so one detent is one step on both tiles — bound to
+    /// kilograms with `by: 0.25` instead, a small turn ran through several weight steps.
+    /// `from`/`through` are in the value's own units.
+    func steppedCrown(_ crownValue: Binding<Double>, from: Double, through: Double, step: Double) -> some View {
+        digitalCrownRotation(
+            crownValue,
+            from: CrownStepping.crownValue(for: from, step: step),
+            through: CrownStepping.crownValue(for: through, step: step),
+            by: CrownStepping.crownStride,
+            sensitivity: .low,
+            isContinuous: false,
+            isHapticFeedbackEnabled: true
+        )
+        // The crown drives the value continuously under the hood even with `by:` set —
+        // rotation deltas accumulate float error, so left alone the binding drifts
+        // between detents. Snap back onto the grid on every change.
+        .onChange(of: crownValue.wrappedValue) { _, newValue in
+            crownValue.wrappedValue = CrownStepping.snapped(newValue, step: CrownStepping.crownStride)
+        }
+    }
+}
+
 /// «57,5×7» — same shape as the phone's «Прошлый раз».
 func setLabel(_ set: WatchWorkoutSnapshot.LoggedSet) -> String {
     "\(set.weight.formatted(.number))×\(set.reps)"
@@ -191,10 +215,10 @@ struct LogSetView: View {
     @State private var exerciseID: UUID
     /// `Double`, not `Int` — `digitalCrownRotation` requires `BinaryFloatingPoint`;
     /// converted to `Int` only where it leaves this view (`phone.logSet`, the label).
-    /// The weight crown turns `weightCrown`, counted in steps, not kilograms — see
-    /// `CrownStepping.weightCrownStride`; `weight` is read and set through it.
-    @State private var weightCrown: Double = CrownStepping.crownValue(forWeight: 20)
-    @State private var reps: Double = 10
+    /// The crowns turn `weightCrown`/`repsCrown`, counted in steps, not kilograms or reps
+    /// — see `CrownStepping.crownStride`; `weight` and `reps` are read and set through them.
+    @State private var weightCrown = CrownStepping.crownValue(for: 20, step: CrownStepping.weightStep)
+    @State private var repsCrown = CrownStepping.crownValue(for: 10, step: CrownStepping.repsStep)
     @State private var didLoadDefaults = false
     /// Shown instead of the input tiles once logging a set closes the last remaining
     /// exercise — see FR-2. Mirrors `WorkoutExerciseLogView.showPlanFulfilled`.
@@ -206,8 +230,13 @@ struct LogSetView: View {
     @State private var now = Date()
 
     private var weight: Double {
-        get { CrownStepping.weight(forCrownValue: weightCrown) }
-        nonmutating set { weightCrown = CrownStepping.crownValue(forWeight: newValue) }
+        get { CrownStepping.value(forCrownValue: weightCrown, step: Self.weightStep) }
+        nonmutating set { weightCrown = CrownStepping.crownValue(for: newValue, step: Self.weightStep) }
+    }
+
+    private var reps: Double {
+        get { CrownStepping.value(forCrownValue: repsCrown, step: Self.repsStep) }
+        nonmutating set { repsCrown = CrownStepping.crownValue(for: newValue, step: Self.repsStep) }
     }
 
     private enum Field: Hashable { case weight, reps }
@@ -310,6 +339,8 @@ struct LogSetView: View {
 
     private static let weightStep = CrownStepping.weightStep
     private static let maxWeight = CrownStepping.maxWeight
+    private static let repsStep = CrownStepping.repsStep
+    private static let maxReps = CrownStepping.maxReps
     private static let weightFormat: FloatingPointFormatStyle<Double> = .number.precision(.fractionLength(0...2))
 
     private var weightTile: some View {
@@ -323,23 +354,7 @@ struct LogSetView: View {
             .inputTile(isFocused: field == .weight)
             .focusable(true)
             .focused($field, equals: .weight)
-            // Same sensitivity and stride as reps: one detent is one 0.25 kg step. Bound to
-            // kilograms with `by: 0.25` instead, a small turn ran through several steps.
-            .digitalCrownRotation(
-                $weightCrown,
-                from: 0,
-                through: CrownStepping.crownValue(forWeight: Self.maxWeight),
-                by: CrownStepping.weightCrownStride,
-                sensitivity: .low,
-                isContinuous: false,
-                isHapticFeedbackEnabled: true
-            )
-            // The crown drives the value continuously under the hood even with `by:` set —
-            // rotation deltas accumulate float error, so left alone the binding drifts
-            // between detents. Snap back onto the grid on every change.
-            .onChange(of: weightCrown) { _, newValue in
-                weightCrown = CrownStepping.snapped(newValue, step: CrownStepping.weightCrownStride)
-            }
+            .steppedCrown($weightCrown, from: 0, through: Self.maxWeight, step: Self.weightStep)
             .onTapGesture { field = .weight }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Weight")
@@ -363,15 +378,15 @@ struct LogSetView: View {
             .inputTile(isFocused: field == .reps)
             .focusable(true)
             .focused($field, equals: .reps)
-            .digitalCrownRotation($reps, from: 1, through: 50, by: 1, sensitivity: .low, isContinuous: false, isHapticFeedbackEnabled: true)
+            .steppedCrown($repsCrown, from: 1, through: Self.maxReps, step: Self.repsStep)
             .onTapGesture { field = .reps }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Reps")
             .accessibilityValue("\(Int(reps.rounded()))")
             .accessibilityAdjustableAction { direction in
                 switch direction {
-                case .increment: reps = min(50, reps + 1)
-                case .decrement: reps = max(1, reps - 1)
+                case .increment: reps = min(Self.maxReps, reps + Self.repsStep)
+                case .decrement: reps = max(1, reps - Self.repsStep)
                 @unknown default: break
                 }
             }
