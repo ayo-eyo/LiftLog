@@ -291,10 +291,19 @@ extension Workout {
     /// Builds a plan from `source`: its planned positions, verbatim — same ordered
     /// exercises, same planned weight/reps, same number of positions. What was
     /// actually logged is ignored, so a workout done short or heavier doesn't drift
-    /// the next plan (progression is a separate feature). Sets, `startedAt`/
+    /// the next plan (progression goes through the overload below). Sets, `startedAt`/
     /// `completedAt` are never copied; `Exercise` objects are shared, not
     /// duplicated, so exercise history stays unified; the source is never mutated.
     static func copy(of source: Workout, sortIndex: Int, now: Date = .now, context: ModelContext) -> Workout {
+        copy(of: source, positions: [:], sortIndex: sortIndex, now: now, context: context)
+    }
+
+    /// The same copy with the planned numbers of some exercises replaced — the next plan
+    /// out of the progression screen (plans/features/progression, FR-2). `positions` is
+    /// keyed by the exercise's `persistentModelID`, in the order of its positions; an
+    /// exercise missing from it is copied verbatim, and so are positions past the end of
+    /// its list. The number of positions never changes.
+    static func copy(of source: Workout, positions: [PersistentIdentifier: [ProgressionPosition]], sortIndex: Int, now: Date = .now, context: ModelContext) -> Workout {
         let copy = Workout(date: now, name: source.name, sortIndex: sortIndex)
         context.insert(copy)
 
@@ -302,8 +311,13 @@ extension Workout {
         // if the source's `order` got interleaved, and renumbers from 0.
         var order = 0
         for group in source.groupedItems {
-            for position in group.items {
-                let item = WorkoutItem(exercise: group.exercise, plannedWeight: position.plannedWeight, plannedReps: position.plannedReps, order: order)
+            let replacements = positions[group.exercise.persistentModelID] ?? []
+            for (index, position) in group.items.enumerated() {
+                // A replacement wins outright, a cleared (nil) value included.
+                let planned = index < replacements.count
+                    ? replacements[index]
+                    : ProgressionPosition(weight: position.plannedWeight, reps: position.plannedReps)
+                let item = WorkoutItem(exercise: group.exercise, plannedWeight: planned.weight, plannedReps: planned.reps, order: order)
                 context.insert(item)
                 copy.items.append(item)
                 order += 1

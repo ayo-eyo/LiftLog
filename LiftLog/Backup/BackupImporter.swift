@@ -54,6 +54,10 @@ enum BackupImporter {
     /// Applies the file and saves once. On a failed save the context is rolled back, so a
     /// half-applied import never lands — callers pass a context of their own
     /// (`autosaveEnabled = false`) so nothing partial shows in the UI in the meantime.
+    ///
+    /// Progression overrides (plans/features/progression, FR-5): a created exercise takes
+    /// them from the file, an existing one only where it has none of its own. The app-wide
+    /// settings are a separate step, `applySettings`, since they don't live in the store.
     @discardableResult
     static func apply(_ file: BackupFile, context: ModelContext) throws -> ImportResult {
         let plan = try makePlan(file, context: context)
@@ -62,8 +66,19 @@ enum BackupImporter {
         for backup in plan.missingExercises {
             let exercise = Exercise(name: backup.name, catalogID: backup.catalogID, createdAt: backup.createdAt)
             exercise.syncID = backup.syncID
+            exercise.progressionWeightStep = backup.progressionWeightStep
+            exercise.progressionRepLimit = backup.progressionRepLimit
             context.insert(exercise)
             created[backup.syncID] = exercise
+        }
+        for backup in file.exercises {
+            guard let existing = plan.matched[backup.syncID] else { continue }
+            if existing.progressionWeightStep == nil {
+                existing.progressionWeightStep = backup.progressionWeightStep
+            }
+            if existing.progressionRepLimit == nil {
+                existing.progressionRepLimit = backup.progressionRepLimit
+            }
         }
         func exercise(for id: UUID?) -> Exercise? {
             guard let id else { return nil }
@@ -126,6 +141,16 @@ enum BackupImporter {
             addedWorkouts: plan.newWorkouts.count,
             addedExercises: plan.missingExercises.count,
             addedStandaloneSets: plan.newStandaloneSets.count
+        )
+    }
+
+    /// The file's app-wide progression settings replace the current ones — it's the user's
+    /// own backup. A file from before the settings existed changes nothing.
+    static func applySettings(_ file: BackupFile, to defaults: UserDefaults = .standard) {
+        guard let settings = file.settings else { return }
+        ProgressionDefaults.save(
+            ProgressionSettings(weightStep: settings.progressionWeightStep, repLimit: settings.progressionRepLimit),
+            to: defaults
         )
     }
 

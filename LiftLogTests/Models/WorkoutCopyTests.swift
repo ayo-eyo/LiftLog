@@ -150,4 +150,42 @@ struct WorkoutCopyTests {
 
         #expect(copy.name == "День груди")
     }
+
+    @Test("копия с позициями подменяет цифры упражнения, остальные копирует как есть")
+    func copyWithPositionsReplacesNumbers() throws {
+        let store = try TestStore.open()
+        let bench = Fixtures.exercise("Жим лёжа", in: store.context)
+        let squat = Fixtures.exercise("Присед", in: store.context)
+        let source = Fixtures.workout(items: [(bench, 60, 8), (bench, 60, 8), (squat, 100, 5)], in: store.context)
+
+        let copy = Workout.copy(
+            of: source,
+            positions: [bench.persistentModelID: [ProgressionPosition(weight: 62.5, reps: 8), ProgressionPosition(weight: 62.5, reps: 7)]],
+            sortIndex: 0,
+            context: store.context
+        )
+
+        let items = copy.sortedItems
+        #expect(items.map(\.plannedWeight) == [62.5, 62.5, 100])
+        #expect(items.map(\.plannedReps) == [8, 7, 5])
+        #expect(items.map(\.order) == [0, 1, 2])
+        #expect(source.sortedItems.map(\.plannedWeight) == [60, 60, 100])
+    }
+
+    @Test("позиции сверх переданного списка копируются как есть, очищенное значение остаётся пустым")
+    func copyWithShortPositionListKeepsTail() throws {
+        let store = try TestStore.open()
+        let bench = Fixtures.exercise(in: store.context)
+        let source = Fixtures.workout(items: [(bench, 60, 8), (bench, 65, 6)], in: store.context)
+
+        let copy = Workout.copy(
+            of: source,
+            positions: [bench.persistentModelID: [ProgressionPosition(weight: nil, reps: 10)]],
+            sortIndex: 0,
+            context: store.context
+        )
+
+        #expect(copy.sortedItems.map(\.plannedWeight) == [nil, 65])
+        #expect(copy.sortedItems.map(\.plannedReps) == [10, 6])
+    }
 }

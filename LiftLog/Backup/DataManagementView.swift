@@ -3,10 +3,10 @@ import SwiftData
 import UniformTypeIdentifiers
 
 /// «Данные»: export the history as JSON or CSV, load a JSON backup back
-/// (plans/features/backup-sync, FR-1). Presented as a sheet from the workout list.
+/// (plans/features/backup-sync, FR-1). Pushed from «Настройки» (`SettingsView`), which
+/// owns the navigation stack and the way out.
 struct DataManagementView: View {
     @Environment(\.modelContext) private var context
-    @Environment(\.dismiss) private var dismiss
 
     @Query private var workouts: [Workout]
     @Query private var exercises: [Exercise]
@@ -37,40 +37,33 @@ struct DataManagementView: View {
     @State private var isExporting = false
 
     var body: some View {
-        NavigationStack {
-            List {
-                exportSection
-                importSection
-                summarySection
+        List {
+            exportSection
+            importSection
+            summarySection
+        }
+        .scrollContentBackground(.hidden)
+        .background(.chalk)
+        .navigationTitle("Data")
+        .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $shareItem) { item in
+            ActivityView(activityItems: [item.url])
+                .presentationDetents([.medium, .large])
+        }
+        .fileImporter(isPresented: $isPickingFile, allowedContentTypes: [.json]) { result in
+            readPickedFile(result)
+        }
+        .alert(
+            "Load from file?",
+            isPresented: Binding(get: { pendingImport != nil }, set: { if !$0 { pendingImport = nil } }),
+            presenting: pendingImport
+        ) { pending in
+            if pending.preview.hasChanges {
+                Button("Load") { applyImport(pending.file) }
             }
-            .scrollContentBackground(.hidden)
-            .background(.chalk)
-            .navigationTitle("Data")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                }
-            }
-            .sheet(item: $shareItem) { item in
-                ActivityView(activityItems: [item.url])
-                    .presentationDetents([.medium, .large])
-            }
-            .fileImporter(isPresented: $isPickingFile, allowedContentTypes: [.json]) { result in
-                readPickedFile(result)
-            }
-            .alert(
-                "Load from file?",
-                isPresented: Binding(get: { pendingImport != nil }, set: { if !$0 { pendingImport = nil } }),
-                presenting: pendingImport
-            ) { pending in
-                if pending.preview.hasChanges {
-                    Button("Load") { applyImport(pending.file) }
-                }
-                Button(pending.preview.hasChanges ? "Cancel" : "Got it", role: .cancel) {}
-            } message: { pending in
-                Text(Self.previewText(pending.preview))
-            }
+            Button(pending.preview.hasChanges ? "Cancel" : "Got it", role: .cancel) {}
+        } message: { pending in
+            Text(Self.previewText(pending.preview))
         }
         .alert(
             notice?.title ?? "",
@@ -240,6 +233,7 @@ struct DataManagementView: View {
         importContext.autosaveEnabled = false
         do {
             let result = try BackupImporter.apply(file, context: importContext)
+            BackupImporter.applySettings(file)
             importStatus = Self.resultText(result)
             WatchSessionManager.shared.refresh()
         } catch {

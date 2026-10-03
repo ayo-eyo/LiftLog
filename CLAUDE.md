@@ -111,13 +111,14 @@ The iOS app's sources are grouped by feature, with the shared domain model on it
 | Folder (under `LiftLog/`) | What goes there |
 |---|---|
 | `App/` | Entry point and tab shell: `LiftLogApp`, `RootTabView`, `PreviewSupport` |
-| `Models/` | SwiftData models and the logic on them: `Workout`, `WorkoutItem`, `WorkoutSet`, `Exercise`, `WorkoutCompletion`, `WorkoutFlow`, `DataIntegrity` |
+| `Models/` | SwiftData models and the logic on them: `Workout`, `WorkoutItem`, `WorkoutSet`, `Exercise`, `WorkoutCompletion`, `WorkoutFlow`, `WorkoutProgression`, `DataIntegrity` |
 | `Workouts/` | Workout list, plan/active/completed screens, set logging and editing, shared set inputs, rest timer |
 | `Catalog/` | Bundled exercise catalog and its screens, exercise picker, thumbnails |
 | `MuscleMap/` | Muscle atlas data, SVG path parsing, `MuscleMapView` |
 | `Progress/` | `ExerciseStats`, the exercise progress screen, `TrainingAnalytics` and the Analytics tab |
 | `Sync/` | `WatchSessionManager` and the phone's copy of `WorkoutSyncModels.swift` |
 | `Backup/` | JSON backup format, export (JSON/CSV) and import, the «Данные» screen |
+| `Settings/` | «Настройки» (progression step and rep limit, the way into «Данные») and its shared rows |
 | `Services/` | System integrations: `HealthKitManager`, `NotificationManager` |
 | `DesignSystem/` | `Theme`, `Fonts` |
 
@@ -148,7 +149,9 @@ Ordering, and the invariants that hold it together:
 - `moveExercise(from:to:)` moves whole exercise *groups* (all of an exercise's positions travel together) and then renumbers `order` sequentially; it reimplements `move(fromOffsets:toOffset:)` semantics so the model layer doesn't import SwiftUI.
 - `deleteExercise(_:context:)` removes from the in-memory `items`/`sets` arrays as well as calling `context.delete` — SwiftData won't prune a deleted object out of an already-loaded relationship array until the next save/fetch.
 
-`Workout.copy(of:sortIndex:now:context:)` builds a plan from an existing workout: same ordered exercises, `Exercise` objects **shared, not duplicated** (so exercise history stays unified), source never mutated, sets and both timestamps never copied. The copy repeats the source's **plan** verbatim — same planned positions, weight and reps; what was actually logged is ignored, so a workout done short or heavier doesn't drift the next plan (progression is a separate, future feature).
+`Workout.copy(of:sortIndex:now:context:)` builds a plan from an existing workout: same ordered exercises, `Exercise` objects **shared, not duplicated** (so exercise history stays unified), source never mutated, sets and both timestamps never copied. The copy repeats the source's **plan** verbatim — same planned positions, weight and reps; what was actually logged is ignored, so a workout done short or heavier doesn't drift the next plan. Progression goes through the overload `copy(of:positions:sortIndex:…)`, which replaces an exercise's planned numbers.
+
+**Progression** (`plans/features/progression`): `WorkoutProgression` derives, per exercise of a finished workout, whether the plan was fulfilled (logged volume ≥ planned, all logged sets counted; bodyweight compares reps) and the next plan — +weight step for weighted positions, +1 rep up to the rep limit for bodyweight ones. Nothing is stored except the settings: app-wide in `UserDefaults` (`ProgressionDefaults`), per-exercise overrides on `Exercise.progressionWeightStep`/`progressionRepLimit` (nil = app-wide).
 
 `Workout.version` is a monotonic counter bumped by `bumpVersion()` on every change to the workout's contents — one logged set is exactly +1, and plan edits/start/finish bump it too so the counter never goes backwards. It rides in the watch snapshot and is how the watch decides whether the phone has caught up with what it logged offline. Anything that mutates a workout outside the model layer (currently only `EditSetView`) has to bump it by hand.
 

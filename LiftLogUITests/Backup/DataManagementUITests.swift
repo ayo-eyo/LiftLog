@@ -1,6 +1,7 @@
 import XCTest
 
-/// FR-1 of plans/features/backup-sync: the gear in the workout list opens «Данные», the
+/// FR-1 of plans/features/backup-sync: the gear in the workout list opens «Настройки» and
+/// from there «Данные» (plans/features/progression, FR-3); the
 /// summary reflects the store, and exporting JSON brings up the share sheet. What happens
 /// inside the system sheet isn't ours to automate; the file contents are covered by
 /// `BackupTests`.
@@ -9,9 +10,13 @@ final class DataManagementUITests: XCTestCase {
     func test_экранДанныхПоказываетСводкуИОткрываетШторкуЭкспорта() throws {
         let app = AppLauncher.launch()
 
-        let dataButton = app.buttons["workoutList.data"]
-        dataButton.waitUntilVisible()
-        dataButton.tap()
+        let settingsButton = app.buttons["workoutList.settings"]
+        settingsButton.waitUntilVisible()
+        settingsButton.tap()
+
+        let dataLink = app.buttons["settings.data"]
+        dataLink.waitUntilVisible()
+        dataLink.tap()
 
         let workoutsRow = app.descendants(matching: .any)["dataManagement.summary.workouts"]
         XCTAssertTrue(workoutsRow.waitForExistence(timeout: 5), "Экран «Данные» должен показать сводку")
