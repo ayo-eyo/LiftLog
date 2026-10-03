@@ -12,6 +12,11 @@ struct ExerciseDetailView: View {
     /// including the period's "fall back to «Всё»" rule as history grows.
     @State private var metric: ExerciseProgressMetric?
     @State private var period: ExerciseChartPeriod?
+    /// What an override starts from when switched on, and what the row shows while off.
+    /// Read once: the app-wide values can't change while this screen is on top. Not
+    /// `@AppStorage` — with it this screen never went idle once pushed (the progress UI
+    /// test timed out waiting for it), with or without the section on screen.
+    @State private var defaults = ProgressionDefaults.load()
 
     var body: some View {
         // Derived on every render rather than cached: a few hundred sets sort in
@@ -21,11 +26,17 @@ struct ExerciseDetailView: View {
         let sessions = ExerciseStats.sessions(samples)
         Group {
             if sessions.isEmpty {
-                ContentUnavailableView(
-                    "No sets yet",
-                    systemImage: "chart.xyaxis.line",
-                    description: Text("Log sets in a workout — progress will show up here")
-                )
+                // Still a list, so the progression settings are there before the first set.
+                List {
+                    ContentUnavailableView(
+                        "No sets yet",
+                        systemImage: "chart.xyaxis.line",
+                        description: Text("Log sets in a workout — progress will show up here")
+                    )
+                    .listRowBackground(Color.chalk)
+                    progressionSection
+                }
+                .scrollContentBackground(.hidden)
             } else {
                 content(samples: samples, sessions: sessions)
             }
@@ -58,6 +69,8 @@ struct ExerciseDetailView: View {
             .listRowBackground(Color.chalk)
             .listRowSeparator(.hidden)
 
+            progressionSection
+
             ForEach(Array(sessions.enumerated()), id: \.element.id) { index, session in
                 Section {
                     ForEach(session.sets, id: \.id) { sample in
@@ -76,6 +89,39 @@ struct ExerciseDetailView: View {
             }
         }
         .scrollContentBackground(.hidden)
+    }
+
+    /// The exercise's own progression step and rep limit (plans/features/progression,
+    /// FR-4). Off = «Как в настройках»; switching one on starts it from the app-wide value.
+    private var progressionSection: some View {
+        Section {
+            Toggle("Weight step as in settings", isOn: Binding(
+                get: { exercise.progressionWeightStep == nil },
+                set: { exercise.progressionWeightStep = $0 ? nil : defaults.weightStep }
+            ))
+            .accessibilityIdentifier("exerciseProgress.weightStepDefault")
+            ProgressionWeightStepRow(step: Binding(
+                get: { exercise.progressionWeightStep ?? defaults.weightStep },
+                set: { exercise.progressionWeightStep = $0 }
+            ))
+            .disabled(exercise.progressionWeightStep == nil)
+
+            Toggle("Rep limit as in settings", isOn: Binding(
+                get: { exercise.progressionRepLimit == nil },
+                set: { exercise.progressionRepLimit = $0 ? nil : defaults.repLimit }
+            ))
+            .accessibilityIdentifier("exerciseProgress.repLimitDefault")
+            ProgressionRepLimitRow(limit: Binding(
+                get: { exercise.progressionRepLimit ?? defaults.repLimit },
+                set: { exercise.progressionRepLimit = $0 }
+            ))
+            .disabled(exercise.progressionRepLimit == nil)
+        } header: {
+            Text("Progression")
+        }
+        .font(.sans(16))
+        .tint(.plateBlue)
+        .listRowBackground(Color.chalk)
     }
 
     private func sessionHeader(_ session: ExerciseSession) -> some View {

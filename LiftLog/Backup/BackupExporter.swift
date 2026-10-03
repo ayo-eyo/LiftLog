@@ -11,7 +11,7 @@ enum BackupExporter {
 
     /// The whole history. Sorted deterministically (ties broken by `syncID`), so two
     /// exports of the same data are identical — the round-trip tests compare files.
-    static func makeFile(context: ModelContext, now: Date = .now) throws -> BackupFile {
+    static func makeFile(context: ModelContext, now: Date = .now, settings: ProgressionSettings = ProgressionDefaults.load()) throws -> BackupFile {
         let exercises = try context.fetch(FetchDescriptor<Exercise>())
             .filter { !$0.isDeleted }
             .sorted { ($0.createdAt, $0.syncID.uuidString) < ($1.createdAt, $1.syncID.uuidString) }
@@ -28,10 +28,18 @@ enum BackupExporter {
             exportedAt: now,
             appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
             exercises: exercises.map {
-                BackupExercise(syncID: $0.syncID, name: $0.name, catalogID: $0.catalogID, createdAt: $0.createdAt)
+                BackupExercise(
+                    syncID: $0.syncID,
+                    name: $0.name,
+                    catalogID: $0.catalogID,
+                    createdAt: $0.createdAt,
+                    progressionWeightStep: $0.progressionWeightStep,
+                    progressionRepLimit: $0.progressionRepLimit
+                )
             },
             workouts: workouts.map(backup(of:)),
-            standaloneSets: standaloneSets.map(backup(of:))
+            standaloneSets: standaloneSets.map(backup(of:)),
+            settings: BackupSettings(progressionWeightStep: settings.weightStep, progressionRepLimit: settings.repLimit)
         )
     }
 

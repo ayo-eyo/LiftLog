@@ -1897,6 +1897,16 @@
         }
       }
     },
+    "Progression" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прогрессия"
+          }
+        }
+      }
+    },
     "Pull" : {
       "localizations" : {
         "ru" : {
@@ -1933,6 +1943,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Рекорды за период"
+          }
+        }
+      }
+    },
+    "Rep limit" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Лимит повторов"
+          }
+        }
+      }
+    },
+    "Rep limit as in settings" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Лимит как в настройках"
           }
         }
       }
@@ -2013,6 +2043,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Подходы"
+          }
+        }
+      }
+    },
+    "Settings" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настройки"
           }
         }
       }
@@ -2237,12 +2277,42 @@
         }
       }
     },
+    "Weight step" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Шаг прибавки"
+          }
+        }
+      }
+    },
+    "Weight step as in settings" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Шаг как в настройках"
+          }
+        }
+      }
+    },
     "Weight, kg" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Вес, кг"
+          }
+        }
+      }
+    },
+    "When a workout’s plan is done, the next one adds this much weight. Bodyweight exercises add a rep instead, up to the limit. Each exercise can have its own values on its progress screen." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Если план тренировки выполнен, в следующей вес прибавляется на этот шаг. В упражнениях с собственным весом вместо этого прибавляется повтор — до лимита. У каждого упражнения можно задать свои значения на экране его прогресса."
           }
         }
       }

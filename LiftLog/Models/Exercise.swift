@@ -7,6 +7,10 @@ final class Exercise {
     var name: String
     var createdAt: Date
     var catalogID: String?
+    /// This exercise's own progression step and rep limit; nil means the app-wide setting
+    /// applies (plans/features/progression, decision 4). See `progressionSettings(defaults:)`.
+    var progressionWeightStep: Double?
+    var progressionRepLimit: Int?
     @Relationship(deleteRule: .cascade, inverse: \WorkoutSet.exercise) var sets: [WorkoutSet] = []
 
     init(name: String, catalogID: String? = nil, createdAt: Date = .now) {

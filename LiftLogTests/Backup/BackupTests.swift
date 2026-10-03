@@ -15,6 +15,71 @@ private func populate(_ context: ModelContext) {
     Fixtures.standaloneSet(weight: 70, reps: 3, for: bench, at: Fixtures.day(2), in: context)
 }
 
+@Suite("Резервная копия — настройки прогрессии")
+struct BackupProgressionTests {
+    private func freshDefaults() throws -> UserDefaults {
+        let name = "BackupProgressionTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defaults.removePersistentDomain(forName: name)
+        return defaults
+    }
+
+    @Test("переопределения упражнения и общие настройки переживают экспорт и импорт")
+    func roundTrip() throws {
+        let source = try TestStore.open()
+        let bench = Fixtures.exercise("Жим гантелей", in: source.context)
+        bench.progressionWeightStep = 2
+        bench.progressionRepLimit = 15
+        let file = try BackupExporter.makeFile(context: source.context, settings: ProgressionSettings(weightStep: 1.25, repLimit: 30))
+
+        let decoded = try BackupImporter.decode(BackupExporter.encodeJSON(file))
+        let target = try TestStore.open()
+        let defaults = try freshDefaults()
+        try BackupImporter.apply(decoded, context: target.context)
+        BackupImporter.applySettings(decoded, to: defaults)
+
+        let imported = try #require(try target.fetch(Exercise.self).first)
+        #expect(imported.progressionWeightStep == 2)
+        #expect(imported.progressionRepLimit == 15)
+        #expect(ProgressionDefaults.load(defaults) == ProgressionSettings(weightStep: 1.25, repLimit: 30))
+    }
+
+    @Test("файл без полей прогрессии читается: переопределений нет, общие настройки не меняются")
+    func fileWithoutProgressionFields() throws {
+        let json = """
+        {"formatVersion":1,"exportedAt":"2025-01-01T00:00:00.000Z","exercises":[{"syncID":"8B7A1C2E-4C1B-4E0D-9F55-2B9C1D1E0A01","name":"Bench","createdAt":"2025-01-01T00:00:00.000Z"}],"workouts":[],"standaloneSets":[]}
+        """
+        let file = try BackupImporter.decode(Data(json.utf8))
+        let target = try TestStore.open()
+        let defaults = try freshDefaults()
+        ProgressionDefaults.save(ProgressionSettings(weightStep: 5, repLimit: 12), to: defaults)
+
+        try BackupImporter.apply(file, context: target.context)
+        BackupImporter.applySettings(file, to: defaults)
+
+        let imported = try #require(try target.fetch(Exercise.self).first)
+        #expect(imported.progressionWeightStep == nil)
+        #expect(imported.progressionRepLimit == nil)
+        #expect(ProgressionDefaults.load(defaults) == ProgressionSettings(weightStep: 5, repLimit: 12))
+    }
+
+    @Test("слияние не затирает своё переопределение, но заполняет пустое")
+    func mergeKeepsLocalOverride() throws {
+        let source = try TestStore.open()
+        let fileBench = Fixtures.exercise("Жим лёжа", catalogID: "Barbell_Bench_Press_-_Medium_Grip", in: source.context)
+        fileBench.progressionWeightStep = 5
+        fileBench.progressionRepLimit = 8
+        let target = try TestStore.open()
+        let localBench = Fixtures.exercise("Жим лёжа", catalogID: "Barbell_Bench_Press_-_Medium_Grip", in: target.context)
+        localBench.progressionWeightStep = 1
+
+        try BackupImporter.apply(BackupExporter.makeFile(context: source.context), context: target.context)
+
+        #expect(localBench.progressionWeightStep == 1)
+        #expect(localBench.progressionRepLimit == 8)
+    }
+}
+
 @Suite("Резервная копия — полный цикл")
 struct BackupRoundTripTests {
     @Test("экспорт → файл → импорт в пустой стор даёт ту же историю")

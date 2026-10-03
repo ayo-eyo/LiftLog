@@ -19,6 +19,14 @@ nonisolated struct BackupFile: Codable, Equatable, Sendable {
     /// Sets logged outside any workout. The app no longer creates them, but older stores
     /// hold them and they're part of the history.
     var standaloneSets: [BackupSet]
+    /// The app-wide progression settings (plans/features/progression, FR-5). Optional, so
+    /// files from before it read as "defaults" and the format version stays 1.
+    var settings: BackupSettings? = nil
+}
+
+nonisolated struct BackupSettings: Codable, Equatable, Sendable {
+    var progressionWeightStep: Double
+    var progressionRepLimit: Int
 }
 
 nonisolated struct BackupExercise: Codable, Equatable, Sendable {
@@ -26,6 +34,9 @@ nonisolated struct BackupExercise: Codable, Equatable, Sendable {
     var name: String
     var catalogID: String?
     var createdAt: Date
+    /// The exercise's own progression overrides; nil = the app-wide setting.
+    var progressionWeightStep: Double? = nil
+    var progressionRepLimit: Int? = nil
 }
 
 nonisolated struct BackupWorkout: Codable, Equatable, Sendable {
