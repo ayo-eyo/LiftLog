@@ -191,7 +191,9 @@ struct LogSetView: View {
     @State private var exerciseID: UUID
     /// `Double`, not `Int` — `digitalCrownRotation` requires `BinaryFloatingPoint`;
     /// converted to `Int` only where it leaves this view (`phone.logSet`, the label).
-    @State private var weight: Double = 20
+    /// The weight crown turns `weightCrown`, counted in steps, not kilograms — see
+    /// `CrownStepping.weightCrownStride`; `weight` is read and set through it.
+    @State private var weightCrown: Double = CrownStepping.crownValue(forWeight: 20)
     @State private var reps: Double = 10
     @State private var didLoadDefaults = false
     /// Shown instead of the input tiles once logging a set closes the last remaining
@@ -202,6 +204,11 @@ struct LogSetView: View {
     @State private var recordBanner: Double?
     /// See `refreshingNow` — here only for the queue line.
     @State private var now = Date()
+
+    private var weight: Double {
+        get { CrownStepping.weight(forCrownValue: weightCrown) }
+        nonmutating set { weightCrown = CrownStepping.crownValue(forWeight: newValue) }
+    }
 
     private enum Field: Hashable { case weight, reps }
     @FocusState private var field: Field?
@@ -301,7 +308,8 @@ struct LogSetView: View {
         }
     }
 
-    private static let weightStep: Double = 0.25
+    private static let weightStep = CrownStepping.weightStep
+    private static let maxWeight = CrownStepping.maxWeight
     private static let weightFormat: FloatingPointFormatStyle<Double> = .number.precision(.fractionLength(0...2))
 
     private var weightTile: some View {
@@ -315,14 +323,22 @@ struct LogSetView: View {
             .inputTile(isFocused: field == .weight)
             .focusable(true)
             .focused($field, equals: .weight)
-            // `.low`, like reps: at `.medium` a small turn ran through several 0.25 kg steps.
-            .digitalCrownRotation($weight, from: 0, through: 500, by: Self.weightStep, sensitivity: .low, isContinuous: false, isHapticFeedbackEnabled: true)
-            // The crown drives `weight` continuously under the hood even with `by:` set —
-            // rotation deltas accumulate float error, so left alone the binding drifts to
-            // values like 20.000000000004 (which is what was rendering as fractions down
-            // to the ten-thousandths). Snap back onto the step grid on every change.
-            .onChange(of: weight) { _, newValue in
-                weight = CrownStepping.snapped(newValue, step: Self.weightStep)
+            // Same sensitivity and stride as reps: one detent is one 0.25 kg step. Bound to
+            // kilograms with `by: 0.25` instead, a small turn ran through several steps.
+            .digitalCrownRotation(
+                $weightCrown,
+                from: 0,
+                through: CrownStepping.crownValue(forWeight: Self.maxWeight),
+                by: CrownStepping.weightCrownStride,
+                sensitivity: .low,
+                isContinuous: false,
+                isHapticFeedbackEnabled: true
+            )
+            // The crown drives the value continuously under the hood even with `by:` set —
+            // rotation deltas accumulate float error, so left alone the binding drifts
+            // between detents. Snap back onto the grid on every change.
+            .onChange(of: weightCrown) { _, newValue in
+                weightCrown = CrownStepping.snapped(newValue, step: CrownStepping.weightCrownStride)
             }
             .onTapGesture { field = .weight }
             .accessibilityElement(children: .ignore)
@@ -330,7 +346,7 @@ struct LogSetView: View {
             .accessibilityValue("\(weight.formatted(Self.weightFormat)) kilograms")
             .accessibilityAdjustableAction { direction in
                 switch direction {
-                case .increment: weight = min(500, weight + Self.weightStep)
+                case .increment: weight = min(Self.maxWeight, weight + Self.weightStep)
                 case .decrement: weight = max(0, weight - Self.weightStep)
                 @unknown default: break
                 }
