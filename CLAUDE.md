@@ -88,10 +88,10 @@ Test setup in the repo:
 - Both test targets use file-system-synchronized groups: a new file in `LiftLogTests/` or
   `LiftLogUITests/` is picked up automatically — do not edit `project.pbxproj` for it.
 - Suites exist and are expected to stay green: domain (`WorkoutModelTests`, `WorkoutOrderTests`,
-  `WorkoutCopyTests`, `WorkoutDefaultsTests`, `PersistenceTests`, `DataIntegrityTests`), progress
+  `WorkoutCopyTests`, `WorkoutDefaultsTests`, `WorkoutProgressionTests`, `PersistenceTests`, `DataIntegrityTests`), progress
   (`ExerciseStatsTests`, `TrainingAnalyticsTests`), sync
   (`WatchSessionManagerTests`, `WatchWireFormatTests`, `WatchSyncMergeTests`), and UI (`WorkoutActiveScreenUITests`,
-  `WorkoutCopyUITests`, `WorkoutSetEditUITests`, `WorkoutStartAccessoryUITests`, `ExerciseProgressUITests`,
+  `WorkoutCopyUITests`, `WorkoutProgressionUITests`, `WorkoutSetEditUITests`, `WorkoutStartAccessoryUITests`, `ExerciseProgressUITests`,
   `WorkoutRecordsUITests`, `AnalyticsUITests`). Extend the
   matching suite rather than starting a parallel one.
 
@@ -151,7 +151,7 @@ Ordering, and the invariants that hold it together:
 
 `Workout.copy(of:sortIndex:now:context:)` builds a plan from an existing workout: same ordered exercises, `Exercise` objects **shared, not duplicated** (so exercise history stays unified), source never mutated, sets and both timestamps never copied. The copy repeats the source's **plan** verbatim — same planned positions, weight and reps; what was actually logged is ignored, so a workout done short or heavier doesn't drift the next plan. Progression goes through the overload `copy(of:positions:sortIndex:…)`, which replaces an exercise's planned numbers.
 
-**Progression** (`plans/features/progression`): `WorkoutProgression` derives, per exercise of a finished workout, whether the plan was fulfilled (logged volume ≥ planned, all logged sets counted; bodyweight compares reps) and the next plan — +weight step for weighted positions, +1 rep up to the rep limit for bodyweight ones. Nothing is stored except the settings: app-wide in `UserDefaults` (`ProgressionDefaults`), per-exercise overrides on `Exercise.progressionWeightStep`/`progressionRepLimit` (nil = app-wide).
+**Progression** (`plans/features/progression`): `WorkoutProgression` derives, per exercise of a finished workout, whether the plan was fulfilled (logged volume ≥ planned, all logged sets counted; bodyweight compares reps) and the next plan — +weight step for weighted positions, +1 rep up to the rep limit for bodyweight ones. Nothing is stored except the settings: app-wide in `UserDefaults` (`ProgressionDefaults`), per-exercise overrides on `Exercise.progressionWeightStep`/`progressionRepLimit` (nil = app-wide). «Следующая тренировка» (`NextWorkoutPlanView`) is a sheet on `WorkoutDetailView`, brought up by its `onChange(of: completedAt)` — so it follows every finish while that screen is around, the plan-fulfilled banner and a watch `.finish` included — and by «Спланировать следующую» on a finished workout; after a finish, closing it closes the workout screen too. UI tests that finish a workout with a plan step past it with `app.skipNextWorkoutPlan()`.
 
 `Workout.version` is a monotonic counter bumped by `bumpVersion()` on every change to the workout's contents — one logged set is exactly +1, and plan edits/start/finish bump it too so the counter never goes backwards. It rides in the watch snapshot and is how the watch decides whether the phone has caught up with what it logged offline. Anything that mutates a workout outside the model layer (currently only `EditSetView`) has to bump it by hand.
 

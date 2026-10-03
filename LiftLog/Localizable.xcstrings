@@ -1,6 +1,16 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ / %@ kg" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ / %2$@ кг"
+          }
+        }
+      }
+    },
     "%@ kg" : {
       "localizations" : {
         "ru" : {
@@ -181,6 +191,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ · %@"
+          }
+        }
+      }
+    },
+    "%@, next time %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, в следующий раз %2$@"
           }
         }
       }
@@ -1737,6 +1757,26 @@
         }
       }
     },
+    "Next time" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В следующий раз"
+          }
+        }
+      }
+    },
+    "Next workout" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Следующая тренировка"
+          }
+        }
+      }
+    },
     "No records in the period" : {
       "localizations" : {
         "ru" : {
@@ -1887,6 +1927,36 @@
         }
       }
     },
+    "Plan done" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "План выполнен"
+          }
+        }
+      }
+    },
+    "Plan next workout" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Спланировать следующую"
+          }
+        }
+      }
+    },
+    "Plan not done" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "План не выполнен"
+          }
+        }
+      }
+    },
     "Primary" : {
       "localizations" : {
         "ru" : {
@@ -1997,6 +2067,16 @@
         }
       }
     },
+    "Save plan" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохранить план"
+          }
+        }
+      }
+    },
     "Search exercises" : {
       "localizations" : {
         "ru" : {
@@ -2063,6 +2143,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Плечи"
+          }
+        }
+      }
+    },
+    "Skip" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пропустить"
           }
         }
       }
@@ -2437,6 +2527,16 @@
         }
       }
     },
+    "limit" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "лимит"
+          }
+        }
+      }
+    },
     "no change" : {
       "localizations" : {
         "ru" : {
@@ -2463,6 +2563,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "основные мышцы: %@"
+          }
+        }
+      }
+    },
+    "reps: %lld / %lld" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "повторов: %1$lld / %2$lld"
           }
         }
       }

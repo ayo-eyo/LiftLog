@@ -45,3 +45,14 @@ extension XCUIElement {
         return appeared
     }
 }
+
+extension XCUIApplication {
+    /// Finishing a workout with a plan brings up «Следующая тренировка»
+    /// (plans/features/progression, FR-2); «Пропустить» closes it and the workout screen
+    /// with it, landing where a finish used to land before the screen existed.
+    func skipNextWorkoutPlan(file: StaticString = #filePath, line: UInt = #line) {
+        let skipButton = buttons["nextPlan.skip"]
+        skipButton.waitUntilVisible(file: file, line: line)
+        skipButton.tap()
+    }
+}

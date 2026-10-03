@@ -52,6 +52,7 @@ final class WorkoutSetEditUITests: XCTestCase {
         let finishButton = app.buttons["Завершить"]
         finishButton.waitUntilVisible()
         finishButton.tap()
+        app.skipNextWorkoutPlan()
 
         app.cells.firstMatch.waitUntilVisible()
         app.cells.firstMatch.tap()
