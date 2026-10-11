@@ -34,6 +34,9 @@ final class WatchSessionManager: NSObject, WCSessionDelegate {
     private weak var restTimer: RestTimer?
     private var started = false
     private var currentWorkout: Workout?
+    /// «Следующая тренировка» after a `.finish` from the watch, for when the workout's own
+    /// screen isn't there to show it.
+    let nextPlanPrompt = NextPlanPrompt()
 
     /// The most recently computed context, kept even when `WCSession` isn't activated
     /// yet or `updateApplicationContext` fails, so it can be resent once activation
@@ -397,6 +400,7 @@ final class WatchSessionManager: NSObject, WCSessionDelegate {
             markApplied(command.commandID)
             if target.isActive {
                 Workout.complete(target, restTimer: restTimer, context: context, watchSession: self)
+                nextPlanPrompt.workoutFinishedFromWatch(target)
                 return true
             }
         }

@@ -10,6 +10,7 @@ struct RootTabView: View {
     @State private var restTimer = RestTimer()
     @State private var didRunDataIntegrityCheck = false
     @Environment(\.scenePhase) private var scenePhase
+    private let nextPlanPrompt = WatchSessionManager.shared.nextPlanPrompt
 
     var body: some View {
         TabView {
@@ -33,6 +34,18 @@ struct RootTabView: View {
         .fullScreenCover(item: $presentedWorkout) { workout in
             NavigationStack {
                 WorkoutDetailView(workout: workout, restTimer: restTimer)
+            }
+        }
+        // A workout finished from the watch while its own screen wasn't showing — the
+        // sheet `WorkoutDetailView` would otherwise have brought up.
+        .sheet(item: Binding(
+            get: { nextPlanPrompt.workout },
+            set: { if $0 == nil { nextPlanPrompt.workout = nil } }
+        )) { workout in
+            NavigationStack {
+                NextWorkoutPlanView(workout: workout) {
+                    nextPlanPrompt.workout = nil
+                }
             }
         }
         .task {

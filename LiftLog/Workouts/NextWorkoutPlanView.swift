@@ -5,7 +5,8 @@ import SwiftData
 /// plan turns into next time. Per exercise — was the plan done, the volume against plan,
 /// and each position as «60×8 → 62,5×8». Every number can be changed before saving;
 /// nothing touches the store until «Сохранить план», which creates the next workout as a
-/// plan. Presented as a sheet by `WorkoutDetailView`, in its own `NavigationStack`.
+/// plan. Presented as a sheet by `WorkoutDetailView` (or `RootTabView` after a finish from
+/// the watch, see `NextPlanPrompt`), in its own `NavigationStack`.
 struct NextWorkoutPlanView: View {
     let workout: Workout
     /// Called after «Сохранить план» or «Пропустить» — the presenter closes the sheet and

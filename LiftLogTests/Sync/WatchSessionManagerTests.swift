@@ -313,6 +313,52 @@ struct WatchSessionManagerLifecycleTests {
         #expect(manager.lastSnapshot == nil)
     }
 
+    @Test("завершение с часов тренировки с планом просит показать «Следующую тренировку», когда её экран не открыт")
+    func finishFromWatchPromptsNextPlanWhenItsScreenIsNotShowing() throws {
+        let store = try TestStore.open()
+        let exercise = Fixtures.exercise(in: store.context)
+        let workout = Fixtures.workout(items: [(exercise, 60, 8)], in: store.context)
+        Fixtures.log([(60, 8)], for: exercise, in: workout, context: store.context)
+
+        let manager = WatchSessionManager()
+        manager.start(modelContext: store.context, restTimer: Fixtures.restTimer())
+
+        _ = manager.finish(WatchSyncFixtures.finishCommand(workoutID: workout.syncID), context: store.context)
+
+        #expect(manager.nextPlanPrompt.workout === workout)
+    }
+
+    @Test("завершение с часов не просит «Следующую тренировку», пока открыт экран этой тренировки — он покажет её сам")
+    func finishFromWatchLeavesNextPlanToTheOpenWorkoutScreen() throws {
+        let store = try TestStore.open()
+        let exercise = Fixtures.exercise(in: store.context)
+        let workout = Fixtures.workout(items: [(exercise, 60, 8)], in: store.context)
+
+        let manager = WatchSessionManager()
+        manager.start(modelContext: store.context, restTimer: Fixtures.restTimer())
+        manager.nextPlanPrompt.visibleWorkoutID = workout.syncID
+
+        _ = manager.finish(WatchSyncFixtures.finishCommand(workoutID: workout.syncID), context: store.context)
+
+        #expect(workout.completedAt != nil)
+        #expect(manager.nextPlanPrompt.workout == nil)
+    }
+
+    @Test("завершение с часов тренировки без плана не просит «Следующую тренировку»")
+    func finishFromWatchWithoutPlanDoesNotPromptNextPlan() throws {
+        let store = try TestStore.open()
+        let exercise = Fixtures.exercise(in: store.context)
+        let workout = Fixtures.workout(exercises: [exercise], in: store.context)
+
+        let manager = WatchSessionManager()
+        manager.start(modelContext: store.context, restTimer: Fixtures.restTimer())
+
+        _ = manager.finish(WatchSyncFixtures.finishCommand(workoutID: workout.syncID), context: store.context)
+
+        #expect(workout.completedAt != nil)
+        #expect(manager.nextPlanPrompt.workout == nil)
+    }
+
     @Test("повторная доставка команды завершения не переставляет completedAt")
     func duplicateFinishCommandIsIdempotent() throws {
         let store = try TestStore.open()

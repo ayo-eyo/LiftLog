@@ -115,17 +115,22 @@ struct WorkoutDetailView: View {
         }
         // Every way a workout ends while this screen is around — its own «Завершить», the
         // banner on the exercise screen pushed over it, a `.finish` from the watch — goes
-        // through here, so «Следующая тренировка» comes up for all of them.
+        // through here, so «Следующая тренировка» comes up for all of them. A watch finish
+        // with this screen not showing is `RootTabView`'s (`NextPlanPrompt`).
         .onChange(of: workout.completedAt) { old, new in
             guard old == nil, new != nil, WorkoutProgression.hasPlan(workout) else { return }
             if isOnScreen {
                 nextPlan = .afterFinish
+            } else if WatchSessionManager.shared.nextPlanPrompt.workout === workout {
+                // Finished from the watch while another screen was pushed over this one —
+                // `RootTabView` is already showing it.
             } else {
                 showsNextPlanOnAppear = true
             }
         }
         .onAppear {
             isOnScreen = true
+            WatchSessionManager.shared.nextPlanPrompt.visibleWorkoutID = workout.syncID
             if showsNextPlanOnAppear {
                 showsNextPlanOnAppear = false
                 nextPlan = .afterFinish
@@ -139,6 +144,10 @@ struct WorkoutDetailView: View {
         // the result once, on the way out, instead of on every keystroke.
         .onDisappear {
             isOnScreen = false
+            let prompt = WatchSessionManager.shared.nextPlanPrompt
+            if prompt.visibleWorkoutID == workout.syncID {
+                prompt.visibleWorkoutID = nil
+            }
             WatchSessionManager.shared.refresh()
         }
     }
