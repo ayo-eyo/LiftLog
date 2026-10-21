@@ -287,6 +287,16 @@
         }
       }
     },
+    "GymMy" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GymMy"
+          }
+        }
+      }
+    },
     "If you cancel the start, %lld logged sets will be discarded." : {
       "localizations" : {
         "en" : {
@@ -355,16 +365,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Прошлый раз: %@"
-          }
-        }
-      }
-    },
-    "LiftLog" : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "LiftLog"
           }
         }
       }

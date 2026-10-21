@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-LiftLog is a SwiftUI + SwiftData workout-tracking app for iOS with a companion watchOS app. Two Xcode targets in one project (`LiftLog.xcodeproj`):
+LiftLog is a SwiftUI + SwiftData workout-tracking app for iOS with a companion watchOS app. Users see it as **GymMy** (display name, the watch's title, backup file names and messages); `LiftLog` stays the name of the project, targets, module and bundle IDs — changing `com.you.LiftLog` would install a different app and leave the store behind. Two Xcode targets in one project (`LiftLog.xcodeproj`):
 
 - **LiftLog** — the iOS app. Owns all persistence (SwiftData) and business logic.
 - **LiftLogWatchApp Watch App** — a remote control with no store of the workouts themselves; it mirrors state pushed from the phone over WatchConnectivity and sends commands back. The one thing it does persist is its outgoing command queue, so sets logged (and workouts started) with the phone out of range aren't lost.
@@ -176,6 +176,8 @@ The watch app has no SwiftData store and no App Group — the two entitlements f
 - Rest timer state (`endDate`/`exerciseName`) rides inside the same snapshot. Both sides independently schedule a local notification for the timer's end — `NotificationManager` (phone) and `RestNotificationManager` (watch) — because notification mirroring from phone to watch only works when the phone is locked/idle, not during an active hands-on-watch workout. If you change rest-duration or notification content, update both.
 
 ### Theming and assets
+
+The app icons are Icon Composer documents — `LiftLog/AppIcon.icon` (squares) and `LiftLogWatchApp Watch App/AppIcon.icon` (circles, the same layers scaled down): `icon.json` plus SVG layers in `Assets/`, background is `plateBlue`. Edit them in Icon Composer (`Xcode.app/Contents/Applications`); `ictool` there renders a preview. Keep the two in step.
 
 `Theme.swift` defines the full color palette as `Color` statics (`.ink`, `.chalk`, `.plateBlue`, etc.) plus a matching `ShapeStyle` extension — use these instead of ad hoc colors. `Fonts.swift` wraps three bundled custom fonts (`Oswald-SemiBold` display, `IBMPlexSans-Regular` body, `IBMPlexMono-Regular` for numeric weight×reps display) behind `Font.display/.sans/.mono`.
 

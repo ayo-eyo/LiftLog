@@ -81,9 +81,9 @@ nonisolated enum BackupError: Error, Equatable, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .unreadable:
-            String(localized: "This isn’t a LiftLog backup file, or it’s damaged.")
+            String(localized: "This isn’t a GymMy backup file, or it’s damaged.")
         case .newerFormat:
-            String(localized: "The file was made by a newer version of the app. Update LiftLog and try again.")
+            String(localized: "The file was made by a newer version of the app. Update GymMy and try again.")
         }
     }
 }

@@ -346,7 +346,7 @@ struct BackupCSVTests {
     @Test("имя файла — местная дата")
     func fileNameUsesLocalDate() {
         let lateEvening = Fixtures.epoch.addingTimeInterval(-3_600) // 31 Dec 23:00 UTC
-        #expect(BackupExporter.fileName(.json, date: lateEvening, timeZone: TimeZone(identifier: "Europe/Moscow")!) == "LiftLog-2025-01-01.json")
-        #expect(BackupExporter.fileName(.csv, date: lateEvening, timeZone: TimeZone(identifier: "UTC")!) == "LiftLog-sets-2024-12-31.csv")
+        #expect(BackupExporter.fileName(.json, date: lateEvening, timeZone: TimeZone(identifier: "Europe/Moscow")!) == "GymMy-2025-01-01.json")
+        #expect(BackupExporter.fileName(.csv, date: lateEvening, timeZone: TimeZone(identifier: "UTC")!) == "GymMy-sets-2024-12-31.csv")
     }
 }
