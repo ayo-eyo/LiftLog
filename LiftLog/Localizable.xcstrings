@@ -2227,12 +2227,12 @@
         }
       }
     },
-    "The file was made by a newer version of the app. Update LiftLog and try again." : {
+    "The file was made by a newer version of the app. Update GymMy and try again." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Файл создан более новой версией приложения. Обновите LiftLog и попробуйте снова."
+            "value" : "Файл создан более новой версией приложения. Обновите GymMy и попробуйте снова."
           }
         }
       }
@@ -2257,12 +2257,12 @@
         }
       }
     },
-    "This isn’t a LiftLog backup file, or it’s damaged." : {
+    "This isn’t a GymMy backup file, or it’s damaged." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Это не файл резервной копии LiftLog, или он повреждён."
+            "value" : "Это не файл резервной копии GymMy, или он повреждён."
           }
         }
       }

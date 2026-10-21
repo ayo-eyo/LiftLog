@@ -64,7 +64,7 @@ struct WatchWorkoutListView: View {
                     }
                 }
             }
-            .navigationTitle("LiftLog")
+            .navigationTitle("GymMy")
             .refreshingNow($now, at: WatchSyncMerge.queueWarningDate(phone.pending))
             .navigationDestination(for: WatchRoute.self) { route in
                 switch route {

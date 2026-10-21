@@ -79,12 +79,12 @@ enum BackupExporter {
         try BackupCoding.encoder().encode(file)
     }
 
-    /// `LiftLog-2026-09-13.json`, `LiftLog-sets-2026-09-13.csv` — the local date.
+    /// `GymMy-2026-09-13.json`, `GymMy-sets-2026-09-13.csv` — the local date.
     nonisolated static func fileName(_ kind: Kind, date: Date, timeZone: TimeZone = .current) -> String {
         let day = date.formatted(Date.ISO8601FormatStyle(timeZone: timeZone).year().month().day())
         switch kind {
-        case .json: return "LiftLog-\(day).json"
-        case .csv: return "LiftLog-sets-\(day).csv"
+        case .json: return "GymMy-\(day).json"
+        case .csv: return "GymMy-sets-\(day).csv"
         }
     }
 

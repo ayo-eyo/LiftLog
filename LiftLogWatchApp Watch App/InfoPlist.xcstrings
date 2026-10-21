@@ -3,36 +3,34 @@
   "strings" : {
     "CFBundleDisplayName" : {
       "comment" : "Bundle display name",
-      "extractionState" : "extracted_with_value",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiftLogWatchApp"
+            "value" : "GymMy"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiftLogWatchApp"
+            "value" : "GymMy"
           }
         }
       }
     },
     "CFBundleName" : {
       "comment" : "Bundle name",
-      "extractionState" : "extracted_with_value",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiftLogWatchApp Watch App"
+            "value" : "GymMy"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiftLogWatchApp Watch App"
+            "value" : "GymMy"
           }
         }
       }
