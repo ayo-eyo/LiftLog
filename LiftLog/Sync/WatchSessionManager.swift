@@ -408,6 +408,15 @@ final class WatchSessionManager: NSObject, WCSessionDelegate {
         return true
     }
 
+    #if DEBUG
+    /// A `.finish` from the watch for whatever is running, through the same path a real
+    /// one takes — UI tests have no paired watch to send it (see `LiftLogApp.finishesFromWatchOnBackground`).
+    func simulateFinishFromWatch() {
+        guard let modelContext, let active = activeWorkout(context: modelContext) else { return }
+        perform(.finish(WatchFinishWorkoutCommand(commandID: UUID(), workoutID: active.syncID)), context: modelContext, reply: nil)
+    }
+    #endif
+
     /// The watch is recording this workout into Health with heart rate and energy, so the
     /// phone's bare copy has to go: skipped if the workout is still running
     /// (`HealthKitManager.save` checks the flag), deleted if the phone already finished

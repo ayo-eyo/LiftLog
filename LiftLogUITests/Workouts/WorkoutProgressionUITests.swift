@@ -59,9 +59,64 @@ final class WorkoutProgressionUITests: XCTestCase {
         XCTAssertTrue(planNext.waitForExistence(timeout: 5), "После «Пропустить» остаёмся на завершённой тренировке")
     }
 
+    /// The watch finishes the workout while the phone sits in a pocket on the exercise
+    /// screen — pushed over the workout, so the workout screen itself isn't the one showing.
+    @MainActor
+    func test_завершениеСЧасовПоказываетСледующуюТренировкуПоверхЭкранаУпражнения() throws {
+        let app = AppLauncher.launch(arguments: [.inMemoryStore, .finishFromWatchOnBackground])
+        doPlannedSet(app, returnToWorkout: false)
+
+        finishFromWatch(app)
+
+        XCTAssertTrue(
+            app.buttons["nextPlan.position.0.0"].waitForExistence(timeout: 5),
+            "Завершение с часов должно открыть «Следующая тренировка»"
+        )
+    }
+
+    /// Same, with the workout opened from the «Тренировка идёт» accessory — a
+    /// `fullScreenCover`, which a sheet from under it can't be presented over.
+    @MainActor
+    func test_завершениеСЧасовПоказываетСледующуюТренировкуПоверхОткрытойИзПанели() throws {
+        let app = AppLauncher.launch(arguments: [.inMemoryStore, .finishFromWatchOnBackground])
+        doPlannedSet(app)
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+
+        let accessory = app.buttons["root.startAccessory"]
+        accessory.waitUntilVisible()
+        accessory.tap()
+
+        // By identifier: the accessory behind the cover carries the exercise name too.
+        let exerciseRow = app.buttons["workoutDetail.exerciseProgress.0"]
+        exerciseRow.waitUntilVisible()
+        exerciseRow.tap()
+        app.buttons["exerciseLog.history"].waitUntilVisible()
+
+        finishFromWatch(app)
+
+        XCTAssertTrue(
+            app.buttons["nextPlan.position.0.0"].waitForExistence(timeout: 5),
+            "Завершение с часов должно открыть «Следующая тренировка» поверх тренировки, открытой из панели"
+        )
+        app.buttons["nextPlan.skip"].tap()
+        XCTAssertTrue(
+            app.buttons["workoutList.addWorkout"].waitForExistence(timeout: 5),
+            "После «Пропустить» экран тренировки закрывается, как после завершения на телефоне"
+        )
+    }
+
+    /// The app goes to the background — where `-uiTestFinishFromWatchOnBackground` finishes
+    /// the workout the way a `.finish` from the watch does — and comes back.
+    private func finishFromWatch(_ app: XCUIApplication) {
+        XCUIDevice.shared.press(.home)
+        XCTAssertTrue(app.wait(for: .runningBackground, timeout: 5) || app.wait(for: .runningBackgroundSuspended, timeout: 5))
+        app.activate()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 5))
+    }
+
     /// New workout, one planned position (the editor's default 20 × 10), started, that
-    /// position logged, back on the workout screen.
-    private func doPlannedSet(_ app: XCUIApplication) {
+    /// position logged, back on the workout screen (or left on the exercise screen).
+    private func doPlannedSet(_ app: XCUIApplication, returnToWorkout: Bool = true) {
         let addWorkout = app.buttons["workoutList.addWorkout"]
         addWorkout.waitUntilVisible()
         addWorkout.tap()
@@ -99,6 +154,8 @@ final class WorkoutProgressionUITests: XCTestCase {
         logSetButton.waitUntilVisible()
         logSetButton.tap()
 
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+        if returnToWorkout {
+            app.navigationBars.buttons.element(boundBy: 0).tap()
+        }
     }
 }
