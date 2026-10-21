@@ -9,6 +9,7 @@ struct RootTabView: View {
     @State private var presentedWorkout: Workout?
     @State private var restTimer = RestTimer()
     @State private var didRunDataIntegrityCheck = false
+    @State private var closesCoverAfterNextPlan = false
     @Environment(\.scenePhase) private var scenePhase
     private let nextPlanPrompt = WatchSessionManager.shared.nextPlanPrompt
 
@@ -35,18 +36,22 @@ struct RootTabView: View {
             NavigationStack {
                 WorkoutDetailView(workout: workout, restTimer: restTimer)
             }
+            // While the cover is up, «Следующая тренировка» has to come from inside it —
+            // a sheet from under a `fullScreenCover` is never presented. Closing it after
+            // the finish closes the workout screen too, as after «Завершить».
+            .sheet(item: nextPlanItem(fromCover: true), onDismiss: {
+                if closesCoverAfterNextPlan {
+                    closesCoverAfterNextPlan = false
+                    presentedWorkout = nil
+                }
+            }) { workout in
+                nextPlanSheet(for: workout) { closesCoverAfterNextPlan = true }
+            }
         }
         // A workout finished from the watch while its own screen wasn't showing — the
         // sheet `WorkoutDetailView` would otherwise have brought up.
-        .sheet(item: Binding(
-            get: { nextPlanPrompt.workout },
-            set: { if $0 == nil { nextPlanPrompt.workout = nil } }
-        )) { workout in
-            NavigationStack {
-                NextWorkoutPlanView(workout: workout) {
-                    nextPlanPrompt.workout = nil
-                }
-            }
+        .sheet(item: nextPlanItem(fromCover: false)) { workout in
+            nextPlanSheet(for: workout) {}
         }
         .task {
             // The Health permission sheet is presented inside the app and covers the
@@ -75,6 +80,29 @@ struct RootTabView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 WatchSessionManager.shared.refresh()
+            }
+            #if DEBUG
+            if phase == .background, LiftLogApp.finishesFromWatchOnBackground {
+                WatchSessionManager.shared.simulateFinishFromWatch()
+            }
+            #endif
+        }
+    }
+
+    /// `nextPlanPrompt.workout` for the one presenter that can show it: the workout cover
+    /// while it's up, `RootTabView` itself otherwise.
+    private func nextPlanItem(fromCover: Bool) -> Binding<Workout?> {
+        Binding(
+            get: { (presentedWorkout != nil) == fromCover ? nextPlanPrompt.workout : nil },
+            set: { if $0 == nil { nextPlanPrompt.workout = nil } }
+        )
+    }
+
+    private func nextPlanSheet(for workout: Workout, onClose: @escaping () -> Void) -> some View {
+        NavigationStack {
+            NextWorkoutPlanView(workout: workout) {
+                onClose()
+                nextPlanPrompt.workout = nil
             }
         }
     }

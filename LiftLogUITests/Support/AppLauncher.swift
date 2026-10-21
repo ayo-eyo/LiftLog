@@ -5,6 +5,9 @@ enum LaunchArgument: String {
     /// Runs the app against an in-memory SwiftData store, so each UI test starts
     /// from an empty database and leaves nothing behind in the simulator.
     case inMemoryStore = "-uiTestInMemoryStore"
+    /// Finishes the running workout through the watch's `.finish` path when the app goes
+    /// to the background — UI tests have no paired watch to send one.
+    case finishFromWatchOnBackground = "-uiTestFinishFromWatchOnBackground"
 }
 
 /// Single entry point for launching the app under test.

@@ -44,6 +44,17 @@ struct LiftLogApp: App {
         }
     }()
 
+    /// UI tests launch with `-uiTestFinishFromWatchOnBackground` to have the running
+    /// workout finished "from the watch" when the app goes to the background — the phone in
+    /// a pocket while the watch ends the workout. DEBUG-only, like `isUITesting`.
+    static var finishesFromWatchOnBackground: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-uiTestFinishFromWatchOnBackground")
+        #else
+        false
+        #endif
+    }
+
     /// UI tests launch with `-uiTestInMemoryStore` (see `AppLauncher`) so each
     /// run starts from an empty store instead of resuming whatever workout the
     /// previous run left active. DEBUG-only: never reachable in a shipped build.
